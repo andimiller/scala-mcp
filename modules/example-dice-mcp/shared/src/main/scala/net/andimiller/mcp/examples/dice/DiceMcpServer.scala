@@ -2,9 +2,10 @@ package net.andimiller.mcp.examples.dice
 
 import cats.effect.{IO, Ref, Resource}
 import cats.effect.std.Random
+import cats.syntax.all.*
 import io.circe.{Decoder, Encoder}
 import net.andimiller.mcp.core.protocol.{PromptArgument, PromptMessage}
-import net.andimiller.mcp.core.schema.JsonSchema
+import net.andimiller.mcp.core.schema.{JsonSchema, description, example}
 import net.andimiller.mcp.core.server.{Prompt, Resource as McpResource, PromptHandler, ResourceHandler}
 import net.andimiller.mcp.stdio.StdioMcpResourceIOApp
 
@@ -16,16 +17,27 @@ object DiceMcpServer extends StdioMcpResourceIOApp[DiceMcpServer.DiceResources]:
   )
 
   case class RollDiceRequest(
-    dice: String
+    @description("Dice notation (e.g., '1d6', '2d20 + 5', '3d4 - 2')")
+    @example("1d6")
+    @example("2d20 + 5")
+    dice: String,
+    @description("Number of times to roll (defaults to 1)")
+    @example(1)
+    @example(3)
+    rolls: Option[Int] = None
   ) derives JsonSchema, Decoder
 
-  case class RollDiceResponse(
+  case class RollResult(
     expression: String,
     min: Int,
     max: Int,
     result: Int,
     breakdown: String
-  ) derives Encoder, JsonSchema
+  ) derives Encoder.AsObject, JsonSchema
+
+  case class RollDiceResponse(
+    rolls: List[RollResult]
+  ) derives Encoder.AsObject, JsonSchema
 
   // Server configuration
   override def serverName = "dice-mcp"
@@ -45,14 +57,19 @@ object DiceMcpServer extends StdioMcpResourceIOApp[DiceMcpServer.DiceResources]:
       (request: RollDiceRequest) =>
         given Random[IO] = r.random
         val roller = DiceRoller[IO]
-        roller.rollDice(request.dice).flatMap { result =>
-          r.rollHistory.update(history => (result :: history).take(100)) *>
+        val count = request.rolls.getOrElse(1)
+        List.fill(count)(roller.rollDice(request.dice)).sequence.flatMap { results =>
+          r.rollHistory.update(history => (results ++ history).take(100)) *>
           IO.pure(RollDiceResponse(
-            expression = result.expression,
-            min = result.min,
-            max = result.max,
-            result = result.result,
-            breakdown = result.breakdown
+            rolls = results.map { result =>
+              RollResult(
+                expression = result.expression,
+                min = result.min,
+                max = result.max,
+                result = result.result,
+                breakdown = result.breakdown
+              )
+            }
           ))
         }
     }

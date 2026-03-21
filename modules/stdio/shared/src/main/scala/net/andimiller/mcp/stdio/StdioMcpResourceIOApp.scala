@@ -60,7 +60,7 @@ trait StdioMcpResourceIOApp[R] extends IOApp.Simple:
    * @param description A description of what the tool does
    * @param handler The function that handles tool requests
    */
-  def tool[Req: JsonSchema: Decoder, Res: JsonSchema: Encoder](
+  def tool[Req: JsonSchema: Decoder, Res: JsonSchema: Encoder.AsObject](
     name: String,
     description: String
   )(handler: Req => IO[Res]): ToolHandler[IO] =

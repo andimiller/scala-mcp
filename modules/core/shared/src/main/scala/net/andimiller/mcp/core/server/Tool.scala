@@ -32,7 +32,7 @@ object Tool:
     toolName: Name,
     schema: JsonSchema[A],
     decoder: Decoder[A],
-    encoder: Encoder[R],
+    encoder: Encoder.AsObject[R],
     outputSchemaInstance: JsonSchema[R]
   ): ToolHandler[F] =
     new ToolHandler[F]:
@@ -60,7 +60,7 @@ object Tool:
   )(using
     schema: JsonSchema[A],
     decoder: Decoder[A],
-    encoder: Encoder[R],
+    encoder: Encoder.AsObject[R],
     outputSchemaInstance: JsonSchema[R]
   ): ToolHandler[F] =
     new ToolHandler[F]:
@@ -140,7 +140,7 @@ class ToolBuilder[F[_]: Async]:
     toolOutputSchema = Some(JsonSchema.toJson[R])
     this
 
-  def handler[A: Decoder, R: Encoder: JsonSchema](f: A => F[R]): ToolHandler[F] =
+  def handler[A: Decoder, R: Encoder.AsObject: JsonSchema](f: A => F[R]): ToolHandler[F] =
     require(toolName.isDefined, "Tool name is required")
     require(toolSchema.isDefined, "Tool schema is required")
 

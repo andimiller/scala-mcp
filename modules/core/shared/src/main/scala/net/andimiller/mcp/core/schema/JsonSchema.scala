@@ -8,6 +8,9 @@ import scala.deriving.Mirror
 /** Annotation for field descriptions */
 case class description(value: String) extends scala.annotation.StaticAnnotation
 
+/** Annotation for field examples */
+case class example(value: Any) extends scala.annotation.StaticAnnotation
+
 /** JSON Schema value representation */
 sealed trait JsonSchemaValue:
   def toJson: Json
@@ -30,12 +33,14 @@ case class ObjectSchema(
 /** Property schema with metadata */
 case class PropertySchema(
   schema: JsonSchemaValue,
-  description: Option[String] = None
+  description: Option[String] = None,
+  examples: List[Json] = Nil
 ) extends JsonSchemaValue:
   def toJson: Json =
     val base = schema.toJson.asObject.getOrElse(JsonObject.empty)
     val withDesc = description.fold(base)(d => base.add("description", d.asJson))
-    Json.fromJsonObject(withDesc)
+    val withExamples = if examples.nonEmpty then withDesc.add("examples", Json.arr(examples*)) else withDesc
+    Json.fromJsonObject(withExamples)
 
 /** String schema */
 case class StringSchema(
@@ -150,9 +155,9 @@ object JsonSchema:
   given JsonSchema[Boolean] with
     def schema: JsonSchemaValue = BooleanSchema()
 
-  // Option support (makes field optional)
+  // Option support (uses inner type schema; field is already excluded from `required`)
   given [A](using s: JsonSchema[A]): JsonSchema[Option[A]] with
-    def schema: JsonSchemaValue = UnionSchema(List(s.schema, NullSchema()))
+    def schema: JsonSchemaValue = s.schema
 
   // List support
   given [A](using s: JsonSchema[A]): JsonSchema[List[A]] with
@@ -174,13 +179,14 @@ object JsonSchema:
         val labels = getLabels[p.MirroredElemLabels]
         val schemas = getSchemasForProduct[p.MirroredElemTypes]
         val descriptions = getDescriptions[A]
+        val examples = getExamples[A]
 
         val properties = labels.zip(schemas).map { case (name, schema) =>
           val desc = descriptions.get(name)
-          name -> PropertySchema(schema, desc)
+          val exs = examples.getOrElse(name, Nil)
+          name -> PropertySchema(schema, desc, exs)
         }.toMap
 
-        // Fields without Option are required
         val requiredFields = getRequiredFields[p.MirroredElemTypes](labels)
 
         ObjectSchema(properties, requiredFields, additionalProperties = false)
@@ -219,11 +225,11 @@ object JsonSchema:
       case _: (Option[t] *: ts) => getRequiredFields[ts](labels.tail)
       case _: (t *: ts) => labels.head :: getRequiredFields[ts](labels.tail)
 
-  // Helper to extract description annotations (simplified version)
   private inline def getDescriptions[A]: Map[String, String] =
-    // This would require more advanced macro work to extract annotations
-    // For now, return empty map - can be enhanced later
-    Map.empty
+    ${ JsonSchemaMacros.getDescriptionsImpl[A] }
+
+  private inline def getExamples[A]: Map[String, List[Json]] =
+    ${ JsonSchemaMacros.getExamplesImpl[A] }
 
   // Builder-style API for manual schema construction
   object obj:
