@@ -1,14 +1,19 @@
 package net.andimiller.mcp.examples.dice
 
-import cats.effect.{IO, Ref}
+import cats.effect.{IO, Ref, Resource}
 import cats.effect.std.Random
 import io.circe.{Decoder, Encoder}
 import net.andimiller.mcp.core.protocol.{PromptArgument, PromptMessage}
 import net.andimiller.mcp.core.schema.JsonSchema
-import net.andimiller.mcp.core.server.{Prompt, Resource, PromptHandler, ResourceHandler}
-import net.andimiller.mcp.stdio.StdioMcpIOApp
+import net.andimiller.mcp.core.server.{Prompt, Resource as McpResource, PromptHandler, ResourceHandler}
+import net.andimiller.mcp.stdio.StdioMcpResourceIOApp
 
-object DiceMcpServer extends StdioMcpIOApp:
+object DiceMcpServer extends StdioMcpResourceIOApp[DiceMcpServer.DiceResources]:
+
+  case class DiceResources(
+    rollHistory: Ref[IO, List[DiceRoller.RollResult]],
+    random: Random[IO]
+  )
 
   case class RollDiceRequest(
     dice: String
@@ -22,37 +27,40 @@ object DiceMcpServer extends StdioMcpIOApp:
     breakdown: String
   ) derives Encoder, JsonSchema
 
-  // Shared state: roll history
-  private val rollHistory: Ref[IO, List[DiceRoller.RollResult]] = Ref.unsafe(List.empty)
-
   // Server configuration
   override def serverName = "dice-mcp"
   override def serverVersion = "1.0.0"
 
+  override def mkResources: Resource[IO, DiceResources] =
+    Resource.eval(
+      for
+        history <- Ref.of[IO, List[DiceRoller.RollResult]](Nil)
+        random  <- Random.scalaUtilRandom[IO]
+      yield DiceResources(history, random)
+    )
+
   // Define the tools provided by this server
-  override def tools = List(
+  override def tools(r: DiceResources) = List(
     tool("roll_dice", "Roll dice using standard notation (e.g., '1d6', '2d20 + 5', '3d4 - 2')") {
       (request: RollDiceRequest) =>
-        Random.scalaUtilRandom[IO].flatMap { random =>
-          given Random[IO] = random
-          val roller = DiceRoller[IO]
-          roller.rollDice(request.dice).flatMap { result =>
-            rollHistory.update(history => (result :: history).take(100)) *>
-            IO.pure(RollDiceResponse(
-              expression = result.expression,
-              min = result.min,
-              max = result.max,
-              result = result.result,
-              breakdown = result.breakdown
-            ))
-          }
+        given Random[IO] = r.random
+        val roller = DiceRoller[IO]
+        roller.rollDice(request.dice).flatMap { result =>
+          r.rollHistory.update(history => (result :: history).take(100)) *>
+          IO.pure(RollDiceResponse(
+            expression = result.expression,
+            min = result.min,
+            max = result.max,
+            result = result.result,
+            breakdown = result.breakdown
+          ))
         }
     }
   )
 
   // Define the resources provided by this server
-  override def resources: List[ResourceHandler[IO]] = List(
-    Resource.static[IO](
+  override def resources(r: DiceResources): List[ResourceHandler[IO]] = List(
+    McpResource.static[IO](
       resourceUri = "dice://rules/standard",
       resourceName = "Dice Notation Rules",
       resourceDescription = Some("Standard dice notation syntax and examples"),
@@ -83,12 +91,12 @@ object DiceMcpServer extends StdioMcpIOApp:
                    |""".stripMargin
     ),
 
-    Resource.dynamic[IO](
+    McpResource.dynamic[IO](
       resourceUri = "dice://history",
       resourceName = "Roll History",
       resourceDescription = Some("Recent dice roll results"),
       resourceMimeType = Some("text/plain"),
-      reader = () => rollHistory.get.map { history =>
+      reader = () => r.rollHistory.get.map { history =>
         if history.isEmpty then "No rolls yet."
         else
           history.zipWithIndex.map { (roll, i) =>
@@ -99,7 +107,7 @@ object DiceMcpServer extends StdioMcpIOApp:
   )
 
   // Define the prompts provided by this server
-  override def prompts: List[PromptHandler[IO]] = List(
+  override def prompts(r: DiceResources): List[PromptHandler[IO]] = List(
     Prompt.static[IO](
       promptName = "explain_notation",
       promptDescription = Some("Explain dice notation syntax"),
