@@ -17,8 +17,8 @@ A Scala 3 library for building [Model Context Protocol (MCP)](https://modelconte
 
 ```scala
 libraryDependencies ++= Seq(
-  "dev.mcp" %% "mcp-core" % "0.1.0-SNAPSHOT",
-  "dev.mcp" %% "mcp-stdio" % "0.1.0-SNAPSHOT"
+  "net.andimiller.mcp" %% "mcp-core" % "0.1.0-SNAPSHOT",
+  "net.andimiller.mcp" %% "mcp-stdio" % "0.1.0-SNAPSHOT"
 )
 ```
 
@@ -27,8 +27,8 @@ libraryDependencies ++= Seq(
 ```scala
 import cats.effect.{IO, IOApp}
 import io.circe.{Decoder, Encoder}
-import mcp.core.schema.JsonSchema
-import mcp.core.server.{ServerBuilder, Tool}
+import net.andimiller.mcp.core.schema.JsonSchema
+import net.andimiller.mcp.core.server.{ServerBuilder, Tool}
 
 // Define your request/response types with automatic derivation
 case class WeatherRequest(
@@ -58,7 +58,7 @@ object WeatherServer extends IOApp.Simple:
       .build
       .flatMap { server =>
         // Run over stdio transport
-        import mcp.stdio.StdioTransport
+        import net.andimiller.mcp.stdio.StdioTransport
         StdioTransport.run(server)
       }
 ```
@@ -217,7 +217,7 @@ Then configure it as an MCP server in your client (e.g., Claude Code):
 A simpler example that demonstrates the core API directly (tool creation patterns, `ServerBuilder`, schema derivation) without a transport layer.
 
 ```bash
-sbt "examples/runMain mcp.examples.WeatherServer"
+sbt "examples/runMain net.andimiller.mcp.examples.WeatherServer"
 ```
 
 ## Status
@@ -249,7 +249,7 @@ sbt compile
 sbt test
 
 # Run example
-sbt "examples/runMain mcp.examples.WeatherServer"
+sbt "examples/runMain net.andimiller.mcp.examples.WeatherServer"
 ```
 
 ## License
