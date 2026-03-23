@@ -44,7 +44,7 @@ object Tool:
         arguments.as[A] match
           case Right(input) =>
             handler(input).map { result =>
-              ToolResult.text(result.asJson.noSpaces)
+              ToolResult.structured(result.asJson)
             }
           case Left(error) =>
             Async[F].pure(ToolResult.error(s"Invalid arguments: ${error.getMessage}"))
@@ -72,7 +72,7 @@ object Tool:
         arguments.as[A] match
           case Right(input) =>
             handler(input).map { result =>
-              ToolResult.text(result.asJson.noSpaces)
+              ToolResult.structured(result.asJson)
             }
           case Left(error) =>
             Async[F].pure(ToolResult.error(s"Invalid arguments: ${error.getMessage}"))
@@ -158,7 +158,7 @@ class ToolBuilder[F[_]: Async]:
         arguments.as[A] match
           case Right(input) =>
             f(input).map { result =>
-              ToolResult.text(result.asJson.noSpaces)
+              ToolResult.structured(result.asJson)
             }
           case Left(error) =>
             Async[F].pure(ToolResult.error(s"Invalid arguments: ${error.getMessage}"))

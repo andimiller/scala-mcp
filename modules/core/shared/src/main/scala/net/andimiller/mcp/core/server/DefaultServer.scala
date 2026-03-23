@@ -34,7 +34,7 @@ class DefaultServer[F[_]: Async](
     toolHandlers.get(request.name) match
       case Some(handler) =>
         handler.handle(request.arguments).map { result =>
-          CallToolResponse(content = result.content, isError = result.isError)
+          CallToolResponse(content = result.content, structuredContent = result.structuredContent, isError = result.isError)
         }
       case None =>
         Async[F].raiseError(new Exception(s"Tool not found: ${request.name}"))

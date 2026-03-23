@@ -58,7 +58,8 @@ lazy val http4s = project
     libraryDependencies ++= Seq(
       "org.http4s" %% "http4s-dsl" % "0.23.28",
       "org.http4s" %% "http4s-ember-server" % "0.23.28",
-      "org.http4s" %% "http4s-circe" % "0.23.28"
+      "org.http4s" %% "http4s-circe" % "0.23.28",
+      "ch.qos.logback" % "logback-classic" % "1.5.6"
     )
   )
   .dependsOn(core.jvm)
@@ -97,6 +98,14 @@ lazy val exampleDice = crossProject(JVMPlatform, JSPlatform, NativePlatform)
   )
   .dependsOn(core, stdio)
 
+lazy val examplePomodoro = project
+  .in(file("modules/example-pomodoro-mcp"))
+  .settings(commonSettings)
+  .settings(
+    name := "example-pomodoro-mcp"
+  )
+  .dependsOn(core.jvm, http4s)
+
 lazy val root = project
   .in(file("."))
   .settings(commonSettings)
@@ -108,5 +117,6 @@ lazy val root = project
     core.jvm, core.js, core.native,
     stdio.jvm, stdio.js, stdio.native,
     exampleDice.jvm, exampleDice.js, exampleDice.native,
-    http4s, tapir, examples
+    http4s, tapir, examples,
+    examplePomodoro
   )

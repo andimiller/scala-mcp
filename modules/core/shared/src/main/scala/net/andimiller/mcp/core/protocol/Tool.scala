@@ -21,6 +21,7 @@ case class ToolCall(
 /** Result of a tool execution */
 case class ToolResult(
   content: List[Content],
+  structuredContent: Option[Json] = None,
   isError: Boolean = false
 ) derives Encoder.AsObject, Decoder
 
@@ -33,6 +34,9 @@ object ToolResult:
 
   def text(text: String): ToolResult =
     ToolResult(List(Content.Text(text)), isError = false)
+
+  def structured(json: Json): ToolResult =
+    ToolResult(List(Content.Text(json.noSpaces)), structuredContent = Some(json), isError = false)
 
 /** Request to list available tools */
 case class ListToolsRequest(
@@ -54,5 +58,6 @@ case class CallToolRequest(
 /** Response from calling a tool */
 case class CallToolResponse(
   content: List[Content],
+  structuredContent: Option[Json] = None,
   isError: Boolean = false
 ) derives Encoder.AsObject, Decoder
