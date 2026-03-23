@@ -14,6 +14,7 @@ class DefaultServer[F[_]: Async](
   val capabilities: ServerCapabilities,
   toolHandlers: Map[String, ToolHandler[F]],
   resourceHandlers: Map[String, ResourceHandler[F]],
+  resourceTemplateHandlers: List[ResourceTemplateHandler[F]],
   promptHandlers: Map[String, PromptHandler[F]],
   subscriptions: Ref[F, Set[String]]
 ) extends Server[F]:
@@ -58,7 +59,23 @@ class DefaultServer[F[_]: Async](
           ReadResourceResponse(contents = List(content))
         }
       case None =>
-        Async[F].raiseError(new Exception(s"Resource not found: ${request.uri}"))
+        // Fall back to resource templates
+        resourceTemplateHandlers.iterator.map(_.read(request.uri)).collectFirst { case Some(f) => f } match
+          case Some(readF) =>
+            readF.map(content => ReadResourceResponse(contents = List(content)))
+          case None =>
+            Async[F].raiseError(new Exception(s"Resource not found: ${request.uri}"))
+
+  override def listResourceTemplates(request: ListResourceTemplatesRequest): F[ListResourceTemplatesResponse] =
+    val templates = resourceTemplateHandlers.map { handler =>
+      ResourceTemplateDefinition(
+        uriTemplate = handler.uriTemplate,
+        name = handler.name,
+        description = handler.description,
+        mimeType = handler.mimeType
+      )
+    }
+    ListResourceTemplatesResponse(resourceTemplates = templates, nextCursor = None).pure[F]
 
   override def subscribe(request: SubscribeRequest): F[Unit] =
     subscriptions.update(_ + request.uri)
@@ -96,6 +113,7 @@ object DefaultServer:
     capabilities: ServerCapabilities,
     toolHandlers: List[ToolHandler[F]] = Nil,
     resourceHandlers: List[ResourceHandler[F]] = Nil,
+    resourceTemplateHandlers: List[ResourceTemplateHandler[F]] = Nil,
     promptHandlers: List[PromptHandler[F]] = Nil
   ): F[DefaultServer[F]] =
     for
@@ -105,6 +123,7 @@ object DefaultServer:
       capabilities = capabilities,
       toolHandlers = toolHandlers.map(h => h.name -> h).toMap,
       resourceHandlers = resourceHandlers.map(h => h.uri -> h).toMap,
+      resourceTemplateHandlers = resourceTemplateHandlers,
       promptHandlers = promptHandlers.map(h => h.name -> h).toMap,
       subscriptions = subscriptions
     )

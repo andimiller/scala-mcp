@@ -103,6 +103,28 @@ class PomodoroTimer(
       case TimerState.Completed(label, _) =>
         s"Completed: $label"
 
+  /** Get status for a specific timer by label. Checks current state then history. */
+  def statusForLabel(name: String): IO[Option[String]] =
+    for
+      now <- IO.realTime.map(_.toMillis)
+      s   <- state.get
+      h   <- history.get
+    yield
+      s match
+        case TimerState.Running(startedAt, dur, label) if label == name =>
+          val elapsed   = (now - startedAt).millis
+          val remaining = (dur - elapsed).max(Duration.Zero)
+          Some(s"Running: $label — ${remaining.toMinutes}m ${remaining.toSeconds % 60}s remaining")
+        case TimerState.Paused(elapsed, dur, label) if label == name =>
+          val remaining = (dur - elapsed).max(Duration.Zero)
+          Some(s"Paused: $label — ${remaining.toMinutes}m ${remaining.toSeconds % 60}s remaining")
+        case TimerState.Completed(label, completedAt) if label == name =>
+          Some(s"Completed: $label at ${java.time.Instant.ofEpochMilli(completedAt)}")
+        case _ =>
+          h.find(_.label == name).map { r =>
+            s"Completed: ${r.label} (${r.duration.toMinutes}min) at ${java.time.Instant.ofEpochMilli(r.completedAt)}"
+          }
+
   /** Get formatted session history. */
   def historyText: IO[String] =
     history.get.map { records =>

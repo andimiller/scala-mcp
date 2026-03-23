@@ -46,6 +46,25 @@ case class ReadResourceResponse(
   contents: List[ResourceContent]
 ) derives Encoder.AsObject, Decoder
 
+/** Resource template definition in MCP protocol (RFC 6570 URI templates) */
+case class ResourceTemplateDefinition(
+  uriTemplate: String,
+  name: String,
+  description: Option[String] = None,
+  mimeType: Option[String] = None
+) derives Encoder.AsObject, Decoder
+
+/** Request to list resource templates */
+case class ListResourceTemplatesRequest(
+  cursor: Option[String] = None
+) derives Encoder.AsObject, Decoder
+
+/** Response listing resource templates */
+case class ListResourceTemplatesResponse(
+  resourceTemplates: List[ResourceTemplateDefinition],
+  nextCursor: Option[String] = None
+) derives Encoder.AsObject, Decoder
+
 /** Request to subscribe to resource updates */
 case class SubscribeRequest(
   uri: String

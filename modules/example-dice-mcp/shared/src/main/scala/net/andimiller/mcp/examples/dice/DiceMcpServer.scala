@@ -6,7 +6,7 @@ import cats.syntax.all.*
 import io.circe.{Decoder, Encoder}
 import net.andimiller.mcp.core.protocol.{PromptArgument, PromptMessage}
 import net.andimiller.mcp.core.schema.{JsonSchema, description, example}
-import net.andimiller.mcp.core.server.{Prompt, Resource as McpResource, PromptHandler, ResourceHandler}
+import net.andimiller.mcp.core.server.{McpResource, Prompt, PromptHandler, ResourceHandler}
 import net.andimiller.mcp.stdio.StdioMcpResourceIOApp
 
 object DiceMcpServer extends StdioMcpResourceIOApp[DiceMcpServer.DiceResources]:

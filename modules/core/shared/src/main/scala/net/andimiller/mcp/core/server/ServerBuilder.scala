@@ -21,6 +21,7 @@ class ServerBuilder[F[_]: Async](
   version: String,
   toolHandlers: List[ToolHandler[F]] = Nil,
   resourceHandlers: List[ResourceHandler[F]] = Nil,
+  resourceTemplateHandlers: List[ResourceTemplateHandler[F]] = Nil,
   promptHandlers: List[PromptHandler[F]] = Nil,
   toolCapabilities: Option[ToolCapabilities] = None,
   resourceCapabilities: Option[ResourceCapabilities] = None,
@@ -33,7 +34,7 @@ class ServerBuilder[F[_]: Async](
     new ServerBuilder[F](
       name, version,
       toolHandlers :+ handler,
-      resourceHandlers, promptHandlers,
+      resourceHandlers, resourceTemplateHandlers, promptHandlers,
       toolCapabilities.orElse(Some(ToolCapabilities())),
       resourceCapabilities, promptCapabilities, loggingCapabilities
     )
@@ -48,11 +49,27 @@ class ServerBuilder[F[_]: Async](
       name, version,
       toolHandlers,
       resourceHandlers :+ handler,
-      promptHandlers,
+      resourceTemplateHandlers, promptHandlers,
       toolCapabilities,
       resourceCapabilities.orElse(Some(ResourceCapabilities())),
       promptCapabilities, loggingCapabilities
     )
+
+  /** Add a resource template handler to the server */
+  def withResourceTemplate(handler: ResourceTemplateHandler[F]): ServerBuilder[F] =
+    new ServerBuilder[F](
+      name, version,
+      toolHandlers,
+      resourceHandlers,
+      resourceTemplateHandlers :+ handler, promptHandlers,
+      toolCapabilities,
+      resourceCapabilities.orElse(Some(ResourceCapabilities())),
+      promptCapabilities, loggingCapabilities
+    )
+
+  /** Add multiple resource template handlers to the server */
+  def withResourceTemplates(handlers: ResourceTemplateHandler[F]*): ServerBuilder[F] =
+    handlers.foldLeft(this)((builder, handler) => builder.withResourceTemplate(handler))
 
   /** Add multiple resource handlers to the server */
   def withResources(handlers: ResourceHandler[F]*): ServerBuilder[F] =
@@ -62,7 +79,7 @@ class ServerBuilder[F[_]: Async](
   def withPrompt(handler: PromptHandler[F]): ServerBuilder[F] =
     new ServerBuilder[F](
       name, version,
-      toolHandlers, resourceHandlers,
+      toolHandlers, resourceHandlers, resourceTemplateHandlers,
       promptHandlers :+ handler,
       toolCapabilities, resourceCapabilities,
       promptCapabilities.orElse(Some(PromptCapabilities())),
@@ -77,7 +94,7 @@ class ServerBuilder[F[_]: Async](
   def enableToolNotifications: ServerBuilder[F] =
     new ServerBuilder[F](
       name, version,
-      toolHandlers, resourceHandlers, promptHandlers,
+      toolHandlers, resourceHandlers, resourceTemplateHandlers, promptHandlers,
       Some(ToolCapabilities(listChanged = Some(true))),
       resourceCapabilities, promptCapabilities, loggingCapabilities
     )
@@ -86,7 +103,7 @@ class ServerBuilder[F[_]: Async](
   def enableResourceSubscriptions: ServerBuilder[F] =
     new ServerBuilder[F](
       name, version,
-      toolHandlers, resourceHandlers, promptHandlers,
+      toolHandlers, resourceHandlers, resourceTemplateHandlers, promptHandlers,
       toolCapabilities,
       Some(ResourceCapabilities(subscribe = Some(true))),
       promptCapabilities, loggingCapabilities
@@ -96,7 +113,7 @@ class ServerBuilder[F[_]: Async](
   def enableResourceNotifications: ServerBuilder[F] =
     new ServerBuilder[F](
       name, version,
-      toolHandlers, resourceHandlers, promptHandlers,
+      toolHandlers, resourceHandlers, resourceTemplateHandlers, promptHandlers,
       toolCapabilities,
       Some(resourceCapabilities.getOrElse(ResourceCapabilities()).copy(listChanged = Some(true))),
       promptCapabilities, loggingCapabilities
@@ -106,7 +123,7 @@ class ServerBuilder[F[_]: Async](
   def enablePromptNotifications: ServerBuilder[F] =
     new ServerBuilder[F](
       name, version,
-      toolHandlers, resourceHandlers, promptHandlers,
+      toolHandlers, resourceHandlers, resourceTemplateHandlers, promptHandlers,
       toolCapabilities, resourceCapabilities,
       Some(PromptCapabilities(listChanged = Some(true))),
       loggingCapabilities
@@ -116,7 +133,7 @@ class ServerBuilder[F[_]: Async](
   def enableLogging: ServerBuilder[F] =
     new ServerBuilder[F](
       name, version,
-      toolHandlers, resourceHandlers, promptHandlers,
+      toolHandlers, resourceHandlers, resourceTemplateHandlers, promptHandlers,
       toolCapabilities, resourceCapabilities, promptCapabilities,
       Some(LoggingCapabilities())
     )
@@ -136,6 +153,7 @@ class ServerBuilder[F[_]: Async](
       capabilities = capabilities,
       toolHandlers = toolHandlers,
       resourceHandlers = resourceHandlers,
+      resourceTemplateHandlers = resourceTemplateHandlers,
       promptHandlers = promptHandlers
     ).widen[Server[F]]
 

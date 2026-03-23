@@ -29,6 +29,9 @@ trait Server[F[_]]:
   /** Read a resource */
   def readResource(request: ReadResourceRequest): F[ReadResourceResponse]
 
+  /** List resource templates */
+  def listResourceTemplates(request: ListResourceTemplatesRequest): F[ListResourceTemplatesResponse]
+
   /** Subscribe to resource updates */
   def subscribe(request: SubscribeRequest): F[Unit]
 

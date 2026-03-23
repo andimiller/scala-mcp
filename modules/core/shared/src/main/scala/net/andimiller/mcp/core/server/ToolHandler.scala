@@ -46,6 +46,29 @@ trait ResourceHandler[F[_]]:
   def read(): F[ResourceContent]
 
 /**
+ * Handler for a resource template (RFC 6570 URI templates).
+ *
+ * Unlike [[ResourceHandler]] which serves a fixed URI, a template handler
+ * matches a URI pattern like `pomodoro://timers/{name}` and reads content
+ * based on the extracted variables.
+ */
+trait ResourceTemplateHandler[F[_]]:
+  /** URI template (e.g. "pomodoro://timers/{name}") */
+  def uriTemplate: String
+
+  /** Human-readable name */
+  def name: String
+
+  /** Optional description */
+  def description: Option[String] = None
+
+  /** Optional MIME type */
+  def mimeType: Option[String] = None
+
+  /** Try to match a concrete URI; if it matches, read the resource */
+  def read(uri: String): Option[F[ResourceContent]]
+
+/**
  * Handler for a prompt template.
  *
  * Prompts are pre-defined message templates that can be instantiated with arguments.

@@ -72,6 +72,10 @@ class RequestHandler[F[_]: Async](server: Server[F]):
           case None =>
             Async[F].raiseError(new Exception("Missing or invalid resource read request"))
 
+      case "resources/templates/list" =>
+        val request = params.flatMap(_.as[ListResourceTemplatesRequest].toOption).getOrElse(ListResourceTemplatesRequest())
+        server.listResourceTemplates(request).map(_.asJson)
+
       case "resources/subscribe" =>
         params.flatMap(_.as[SubscribeRequest].toOption) match
           case Some(request) =>

@@ -7,7 +7,7 @@ import com.comcast.ip4s.*
 import io.circe.{Decoder, Encoder, Json}
 import org.http4s.ember.server.EmberServerBuilder
 import org.http4s.server.Router
-import net.andimiller.mcp.core.protocol.{PromptArgument, PromptMessage}
+import net.andimiller.mcp.core.protocol.{PromptArgument, PromptMessage, ResourceContent}
 import net.andimiller.mcp.core.schema.{JsonSchema, description}
 import net.andimiller.mcp.core.server.*
 import net.andimiller.mcp.http4s.StreamableHttpTransport
@@ -43,6 +43,7 @@ object PomodoroMcpServer extends cats.effect.IOApp.Simple:
       server <- ServerBuilder[IO]("pomodoro-mcp", "1.0.0")
         .withTools(mkTools(timer)*)
         .withResources(mkResources(timer)*)
+        .withResourceTemplates(mkResourceTemplates(timer)*)
         .withPrompts(mkPrompts(timer)*)
         .enableResourceSubscriptions
         .enableLogging
@@ -91,7 +92,7 @@ object PomodoroMcpServer extends cats.effect.IOApp.Simple:
   // ── resources ─────────────────────────────────────────────────────
 
   private def mkResources(timer: PomodoroTimer): List[ResourceHandler[IO]] = List(
-    net.andimiller.mcp.core.server.Resource.dynamic[IO](
+    McpResource.dynamic[IO](
       resourceUri = "pomodoro://status",
       resourceName = "Timer Status",
       resourceDescription = Some("Current pomodoro timer status (subscribable)"),
@@ -99,13 +100,33 @@ object PomodoroMcpServer extends cats.effect.IOApp.Simple:
       reader = () => timer.status
     ),
 
-    net.andimiller.mcp.core.server.Resource.dynamic[IO](
+    McpResource.dynamic[IO](
       resourceUri = "pomodoro://history",
       resourceName = "Session History",
       resourceDescription = Some("Completed pomodoro session history"),
       resourceMimeType = Some("text/plain"),
       reader = () => timer.historyText
     )
+  )
+
+  // ── resource templates ─────────────────────────────────────────────
+
+  private val timerUriPrefix = "pomodoro://timers/"
+
+  private def mkResourceTemplates(timer: PomodoroTimer): List[ResourceTemplateHandler[IO]] = List(
+    new ResourceTemplateHandler[IO]:
+      def uriTemplate = "pomodoro://timers/{name}"
+      def name = "Timer by Name"
+      override def description = Some("Look up a timer by its label")
+      override def mimeType = Some("text/plain")
+      def read(uri: String): Option[IO[ResourceContent]] =
+        Option.when(uri.startsWith(timerUriPrefix)) {
+          val timerName = uri.stripPrefix(timerUriPrefix)
+          timer.statusForLabel(timerName).map {
+            case Some(text) => ResourceContent.text(uri, text, mimeType)
+            case None       => ResourceContent.text(uri, s"No timer found with label: $timerName", mimeType)
+          }
+        }
   )
 
   // ── prompts (with arguments — unlike dice's static prompts) ───────

@@ -7,7 +7,7 @@ import net.andimiller.mcp.core.protocol.*
 /**
  * Resource builder and helper functions for creating resource handlers.
  */
-object Resource:
+object McpResource:
 
   /**
    * Create a static resource with fixed content.
@@ -65,12 +65,12 @@ object Resource:
   /**
    * Fluent builder for resources.
    */
-  def builder[F[_]: Async]: ResourceBuilder[F] = new ResourceBuilder[F]
+  def builder[F[_]: Async]: McpResourceBuilder[F] = new McpResourceBuilder[F]
 
 /**
  * Fluent builder for constructing resource handlers.
  */
-class ResourceBuilder[F[_]: Async]:
+class McpResourceBuilder[F[_]: Async]:
   private var resourceUri: Option[String] = None
   private var resourceName: Option[String] = None
   private var resourceDescription: Option[String] = None
@@ -96,7 +96,7 @@ class ResourceBuilder[F[_]: Async]:
     require(resourceUri.isDefined, "Resource URI is required")
     require(resourceName.isDefined, "Resource name is required")
 
-    Resource.static[F](
+    McpResource.static[F](
       resourceUri.get,
       resourceName.get,
       content,
@@ -108,7 +108,7 @@ class ResourceBuilder[F[_]: Async]:
     require(resourceUri.isDefined, "Resource URI is required")
     require(resourceName.isDefined, "Resource name is required")
 
-    Resource.dynamic[F](
+    McpResource.dynamic[F](
       resourceUri.get,
       resourceName.get,
       reader,
@@ -120,7 +120,7 @@ class ResourceBuilder[F[_]: Async]:
     require(resourceUri.isDefined, "Resource URI is required")
     require(resourceName.isDefined, "Resource name is required")
 
-    Resource.fromContent[F](
+    McpResource.fromContent[F](
       resourceUri.get,
       resourceName.get,
       reader,
