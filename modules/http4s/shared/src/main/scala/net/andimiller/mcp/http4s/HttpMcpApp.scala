@@ -1,7 +1,6 @@
 package net.andimiller.mcp.http4s
 
 import cats.effect.{IO, IOApp, Resource}
-import cats.effect.std.{SecureRandom, UUIDGen}
 import com.comcast.ip4s.*
 import io.circe.{Decoder, Encoder}
 import org.http4s.ember.server.EmberServerBuilder
@@ -64,28 +63,24 @@ trait HttpMcpApp[R] extends IOApp.Simple:
     Tool.buildNamed[IO, Req, Res](name, description)(handler)
 
   final def run: IO[Unit] =
-    SecureRandom.javaSecuritySecureRandom[IO].flatMap { sr =>
-      given SecureRandom[IO] = sr
+    mkResources.flatMap { r =>
+      val serverFactory: NotificationSink[IO] => IO[Server[IO]] = { sink =>
+        ServerBuilder[IO](serverName, serverVersion)
+          .withTools(tools(r, sink)*)
+          .withResources(resources(r, sink)*)
+          .withPrompts(prompts(r, sink)*)
+          .enableResourceSubscriptions
+          .enableLogging
+          .build
+      }
 
-      mkResources.flatMap { r =>
-        val serverFactory: NotificationSink[IO] => IO[Server[IO]] = { sink =>
-          ServerBuilder[IO](serverName, serverVersion)
-            .withTools(tools(r, sink)*)
-            .withResources(resources(r, sink)*)
-            .withPrompts(prompts(r, sink)*)
-            .enableResourceSubscriptions
-            .enableLogging
-            .build
-        }
-
-        StreamableHttpTransport.routes[IO](serverFactory).flatMap { mcpRoutes =>
-          val app = Router("/" -> mcpRoutes).orNotFound
-          EmberServerBuilder
-            .default[IO]
-            .withHost(host)
-            .withPort(port)
-            .withHttpApp(app)
-            .build
-        }
-      }.useForever
-    }
+      StreamableHttpTransport.routes[IO](serverFactory).flatMap { mcpRoutes =>
+        val app = Router("/" -> mcpRoutes).orNotFound
+        EmberServerBuilder
+          .default[IO]
+          .withHost(host)
+          .withPort(port)
+          .withHttpApp(app)
+          .build
+      }
+    }.useForever

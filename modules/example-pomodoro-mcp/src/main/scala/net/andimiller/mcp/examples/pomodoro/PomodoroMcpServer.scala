@@ -1,7 +1,6 @@
 package net.andimiller.mcp.examples.pomodoro
 
 import cats.effect.{IO, Ref, Resource}
-import cats.effect.std.{SecureRandom, UUIDGen}
 import cats.syntax.all.*
 import com.comcast.ip4s.*
 import io.circe.{Decoder, Encoder, Json}
@@ -187,16 +186,12 @@ object PomodoroMcpServer extends cats.effect.IOApp.Simple:
   // ── main ──────────────────────────────────────────────────────────
 
   def run: IO[Unit] =
-    SecureRandom.javaSecuritySecureRandom[IO].flatMap { sr =>
-      given SecureRandom[IO] = sr
-
-      StreamableHttpTransport.routes[IO](mkServer).flatMap { mcpRoutes =>
-        val app = Router("/" -> mcpRoutes).orNotFound
-        EmberServerBuilder
-          .default[IO]
-          .withHost(host"0.0.0.0")
-          .withPort(port"25000")
-          .withHttpApp(app)
-          .build
-      }.useForever
-    }
+    StreamableHttpTransport.routes[IO](mkServer).flatMap { mcpRoutes =>
+      val app = Router("/" -> mcpRoutes).orNotFound
+      EmberServerBuilder
+        .default[IO]
+        .withHost(host"0.0.0.0")
+        .withPort(port"25000")
+        .withHttpApp(app)
+        .build
+    }.useForever

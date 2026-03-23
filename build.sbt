@@ -50,19 +50,18 @@ lazy val stdio = crossProject(JVMPlatform, JSPlatform, NativePlatform)
   )
   .dependsOn(core)
 
-lazy val http4s = project
+lazy val http4s = crossProject(JVMPlatform, JSPlatform)
   .in(file("modules/http4s"))
   .settings(commonSettings)
   .settings(
     name := "mcp-http4s",
     libraryDependencies ++= Seq(
-      "org.http4s" %% "http4s-dsl" % "0.23.28",
-      "org.http4s" %% "http4s-ember-server" % "0.23.28",
-      "org.http4s" %% "http4s-circe" % "0.23.28",
-      "ch.qos.logback" % "logback-classic" % "1.5.6"
+      "org.http4s" %%% "http4s-dsl" % "0.23.33",
+      "org.http4s" %%% "http4s-ember-server" % "0.23.33",
+      "org.http4s" %%% "http4s-circe" % "0.23.33"
     )
   )
-  .dependsOn(core.jvm)
+  .dependsOn(core)
 
 lazy val tapir = project
   .in(file("modules/tapir"))
@@ -75,15 +74,7 @@ lazy val tapir = project
       "com.softwaremill.sttp.tapir" %% "tapir-http4s-server" % "1.11.11"
     )
   )
-  .dependsOn(core.jvm)
-
-lazy val examples = project
-  .in(file("modules/examples"))
-  .settings(commonSettings)
-  .settings(
-    name := "mcp-examples"
-  )
-  .dependsOn(core.jvm, stdio.jvm, http4s)
+  .dependsOn(core.jvm, http4s.jvm)
 
 lazy val exampleDice = crossProject(JVMPlatform, JSPlatform, NativePlatform)
   .in(file("modules/example-dice-mcp"))
@@ -102,9 +93,23 @@ lazy val examplePomodoro = project
   .in(file("modules/example-pomodoro-mcp"))
   .settings(commonSettings)
   .settings(
-    name := "example-pomodoro-mcp"
+    name := "example-pomodoro-mcp",
+    libraryDependencies ++= Seq(
+      "ch.qos.logback" % "logback-classic" % "1.5.6"
+    )
   )
-  .dependsOn(core.jvm, http4s)
+  .dependsOn(core.jvm, http4s.jvm)
+
+lazy val exampleDns = project
+  .in(file("modules/example-dns-mcp"))
+  .enablePlugins(ScalaJSPlugin)
+  .settings(commonSettings)
+  .settings(
+    name := "example-dns-mcp",
+    scalaJSLinkerConfig ~= { _.withModuleKind(ModuleKind.CommonJSModule) },
+    scalaJSUseMainModuleInitializer := true
+  )
+  .dependsOn(core.js, http4s.js)
 
 lazy val root = project
   .in(file("."))
@@ -117,6 +122,6 @@ lazy val root = project
     core.jvm, core.js, core.native,
     stdio.jvm, stdio.js, stdio.native,
     exampleDice.jvm, exampleDice.js, exampleDice.native,
-    http4s, tapir, examples,
-    examplePomodoro
+    http4s.jvm, http4s.js, tapir,
+    examplePomodoro, exampleDns
   )
