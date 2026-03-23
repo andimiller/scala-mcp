@@ -63,18 +63,6 @@ lazy val http4s = crossProject(JVMPlatform, JSPlatform)
   )
   .dependsOn(core)
 
-lazy val tapir = project
-  .in(file("modules/tapir"))
-  .settings(commonSettings)
-  .settings(
-    name := "mcp-tapir",
-    libraryDependencies ++= Seq(
-      "com.softwaremill.sttp.tapir" %% "tapir-core" % "1.11.11",
-      "com.softwaremill.sttp.tapir" %% "tapir-json-circe" % "1.11.11",
-      "com.softwaremill.sttp.tapir" %% "tapir-http4s-server" % "1.11.11"
-    )
-  )
-  .dependsOn(core.jvm, http4s.jvm)
 
 lazy val exampleDice = crossProject(JVMPlatform, JSPlatform, NativePlatform)
   .in(file("modules/example-dice-mcp"))
@@ -122,6 +110,6 @@ lazy val root = project
     core.jvm, core.js, core.native,
     stdio.jvm, stdio.js, stdio.native,
     exampleDice.jvm, exampleDice.js, exampleDice.native,
-    http4s.jvm, http4s.js, tapir,
+    http4s.jvm, http4s.js,
     examplePomodoro, exampleDns
   )
