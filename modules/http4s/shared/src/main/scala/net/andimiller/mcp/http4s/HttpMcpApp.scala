@@ -1,18 +1,20 @@
 package net.andimiller.mcp.http4s
 
 import cats.effect.{IO, IOApp, Resource}
+import cats.syntax.semigroupk.*
 import com.comcast.ip4s.*
 import io.circe.{Decoder, Encoder}
+import org.http4s.{HttpRoutes, Response, Status}
 import org.http4s.ember.server.EmberServerBuilder
+import org.http4s.headers.Location
+import org.http4s.implicits.*
 import org.http4s.server.Router
+import org.http4s.dsl.io.*
 import net.andimiller.mcp.core.schema.JsonSchema
 import net.andimiller.mcp.core.server.*
 
 /**
  * Convenience trait for building MCP servers served over Streamable HTTP.
- *
- * Mirrors [[net.andimiller.mcp.stdio.StdioMcpResourceIOApp]] but uses
- * http4s Ember + SSE instead of stdio.
  *
  * Example:
  * {{{
@@ -41,6 +43,12 @@ trait HttpMcpApp[R] extends IOApp.Simple:
   /** Port to listen on (default: 8080) */
   def port: Port = port"8080"
 
+  /** Whether to serve the MCP Explorer UI at /explorer (default: false) */
+  def explorerEnabled: Boolean = false
+
+  /** Whether to redirect / to /explorer/index.html (default: false, requires explorerEnabled) */
+  def rootRedirectToExplorer: Boolean = false
+
   /** Acquire managed resources (DB pools, HTTP clients, Refs, etc.) */
   def mkResources: Resource[IO, R]
 
@@ -49,6 +57,9 @@ trait HttpMcpApp[R] extends IOApp.Simple:
 
   /** Resource handlers, given shared resources and a per-session notification sink */
   def resources(r: R, sink: NotificationSink[IO]): List[ResourceHandler[IO]] = List.empty
+
+  /** Resource template handlers, given shared resources and a per-session notification sink */
+  def resourceTemplates(r: R, sink: NotificationSink[IO]): List[ResourceTemplateHandler[IO]] = List.empty
 
   /** Prompt handlers, given shared resources and a per-session notification sink */
   def prompts(r: R, sink: NotificationSink[IO]): List[PromptHandler[IO]] = List.empty
@@ -68,19 +79,12 @@ trait HttpMcpApp[R] extends IOApp.Simple:
         ServerBuilder[IO](serverName, serverVersion)
           .withTools(tools(r, sink)*)
           .withResources(resources(r, sink)*)
+          .withResourceTemplates(resourceTemplates(r, sink)*)
           .withPrompts(prompts(r, sink)*)
           .enableResourceSubscriptions
           .enableLogging
           .build
       }
 
-      StreamableHttpTransport.routes[IO](serverFactory).flatMap { mcpRoutes =>
-        val app = Router("/" -> mcpRoutes).orNotFound
-        EmberServerBuilder
-          .default[IO]
-          .withHost(host)
-          .withPort(port)
-          .withHttpApp(app)
-          .build
-      }
+      HttpMcpRouting.serve(serverFactory, host, port, explorerEnabled, rootRedirectToExplorer)
     }.useForever

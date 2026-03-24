@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MCP Explorer</title>
+  <link rel="stylesheet" href="./node_modules/bulma/css/bulma.min.css">
+  <style>
+    html, body { height: 100%; overflow: hidden; }
+    .full-height { height: 100vh; }
+    .sidebar { width: 260px; min-width: 260px; overflow-y: auto; border-right: 1px solid #dbdbdb; }
+    .detail-scroll { flex: 1; overflow-y: auto; }
+    .panel-block.is-active { background-color: #3273dc; color: white; }
+  </style>
+</head>
+<body>
+  <div id="main"></div>
+  <script type="module" src="./target/scala-3.6.4/mcp-explorer-fastopt/main.js"></script>
+</body>
+</html>

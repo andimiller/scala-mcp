@@ -1,0 +1,16 @@
+{
+  "name": "mcp-explorer",
+  "version": "1.0.0",
+  "description": "Browser-based MCP server explorer",
+  "scripts": {
+    "start": "parcel index.html --port 3000",
+    "build": "parcel build index.html --public-url ./"
+  },
+  "devDependencies": {
+    "parcel": "^2.12.0",
+    "process": "^0.11.10"
+  },
+  "dependencies": {
+    "bulma": "^1.0.4"
+  }
+}

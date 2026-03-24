@@ -1,24 +1,29 @@
 package net.andimiller.mcp.examples.pomodoro
 
-import cats.effect.{IO, Ref, Resource}
-import cats.syntax.all.*
+import cats.effect.{IO, Resource}
 import com.comcast.ip4s.*
-import io.circe.{Decoder, Encoder, Json}
-import org.http4s.ember.server.EmberServerBuilder
-import org.http4s.server.Router
+import io.circe.{Decoder, Encoder}
 import net.andimiller.mcp.core.protocol.{PromptArgument, PromptMessage, ResourceContent}
 import net.andimiller.mcp.core.schema.{JsonSchema, description}
 import net.andimiller.mcp.core.server.*
-import net.andimiller.mcp.http4s.StreamableHttpTransport
+import net.andimiller.mcp.http4s.HttpMcpStatefulResourceApp
 
 /**
  * Pomodoro MCP server demonstrating:
  *  - Dynamic resources with subscription notifications
  *  - Server-initiated notifications (resource updates, logging)
  *  - Dynamic prompts with arguments
- *  - Streamable HTTP transport
+ *  - Streamable HTTP transport with per-session state
  */
-object PomodoroMcpServer extends cats.effect.IOApp.Simple:
+object PomodoroMcpServer extends HttpMcpStatefulResourceApp[Unit, PomodoroTimer]:
+
+  // ── config ──────────────────────────────────────────────────────────
+
+  def serverName    = "pomodoro-mcp"
+  def serverVersion = "1.0.0"
+  override def port = port"25000"
+  override def explorerEnabled = true
+  override def rootRedirectToExplorer = true
 
   // ── request / response types ──────────────────────────────────────
 
@@ -33,25 +38,16 @@ object PomodoroMcpServer extends cats.effect.IOApp.Simple:
   case class StatusResponse(status: String) derives Encoder.AsObject, JsonSchema
   case class MessageResponse(message: String) derives Encoder.AsObject, JsonSchema
 
-  // ── server construction ───────────────────────────────────────────
+  // ── resources ───────────────────────────────────────────────────────
 
-  /** Build a Server[IO] with a per-session timer backed by the given sink. */
-  private def mkServer(sink: NotificationSink[IO]): IO[Server[IO]] =
-    for
-      timer <- PomodoroTimer.create(sink)
-      server <- ServerBuilder[IO]("pomodoro-mcp", "1.0.0")
-        .withTools(mkTools(timer)*)
-        .withResources(mkResources(timer)*)
-        .withResourceTemplates(mkResourceTemplates(timer)*)
-        .withPrompts(mkPrompts(timer)*)
-        .enableResourceSubscriptions
-        .enableLogging
-        .build
-    yield server
+  def mkResources = Resource.pure(())
+
+  def mkSessionResources(r: Unit, sink: NotificationSink[IO]): IO[PomodoroTimer] =
+    PomodoroTimer.create(sink)
 
   // ── tools ─────────────────────────────────────────────────────────
 
-  private def mkTools(timer: PomodoroTimer): List[ToolHandler[IO]] = List(
+  override def tools(r: Unit, timer: PomodoroTimer) = List(
     Tool.buildNamed[IO, StartTimerRequest, MessageResponse](
       "start_timer",
       "Start a new pomodoro timer"
@@ -90,7 +86,7 @@ object PomodoroMcpServer extends cats.effect.IOApp.Simple:
 
   // ── resources ─────────────────────────────────────────────────────
 
-  private def mkResources(timer: PomodoroTimer): List[ResourceHandler[IO]] = List(
+  override def resources(r: Unit, timer: PomodoroTimer) = List(
     McpResource.dynamic[IO](
       resourceUri = "pomodoro://status",
       resourceName = "Timer Status",
@@ -108,11 +104,11 @@ object PomodoroMcpServer extends cats.effect.IOApp.Simple:
     )
   )
 
-  // ── resource templates ─────────────────────────────────────────────
+  // ── resource templates ────────────────────────────────────────────
 
   private val timerUriPrefix = "pomodoro://timers/"
 
-  private def mkResourceTemplates(timer: PomodoroTimer): List[ResourceTemplateHandler[IO]] = List(
+  override def resourceTemplates(r: Unit, timer: PomodoroTimer) = List(
     new ResourceTemplateHandler[IO]:
       def uriTemplate = "pomodoro://timers/{name}"
       def name = "Timer by Name"
@@ -128,9 +124,9 @@ object PomodoroMcpServer extends cats.effect.IOApp.Simple:
         }
   )
 
-  // ── prompts (with arguments — unlike dice's static prompts) ───────
+  // ── prompts ───────────────────────────────────────────────────────
 
-  private def mkPrompts(timer: PomodoroTimer): List[PromptHandler[IO]] = List(
+  override def prompts(r: Unit, timer: PomodoroTimer) = List(
     Prompt.dynamic[IO](
       promptName = "plan_session",
       promptDescription = Some("Plan a focused work session with pomodoro timers"),
@@ -182,16 +178,3 @@ object PomodoroMcpServer extends cats.effect.IOApp.Simple:
       }
     )
   )
-
-  // ── main ──────────────────────────────────────────────────────────
-
-  def run: IO[Unit] =
-    StreamableHttpTransport.routes[IO](mkServer).flatMap { mcpRoutes =>
-      val app = Router("/" -> mcpRoutes).orNotFound
-      EmberServerBuilder
-        .default[IO]
-        .withHost(host"0.0.0.0")
-        .withPort(port"25000")
-        .withHttpApp(app)
-        .build
-    }.useForever

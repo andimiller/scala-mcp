@@ -59,7 +59,17 @@ lazy val http4s = crossProject(JVMPlatform, JSPlatform)
       "org.http4s" %%% "http4s-dsl" % "0.23.33",
       "org.http4s" %%% "http4s-ember-server" % "0.23.33",
       "org.http4s" %%% "http4s-circe" % "0.23.33"
-    )
+    ),
+    Compile / resourceGenerators += Def.task {
+      val _ = (LocalRootProject / buildExplorer).value
+
+      val distDir = (explorer / baseDirectory).value / "dist"
+      val targetDir = (Compile / resourceManaged).value / "explorer"
+      IO.delete(targetDir)
+      IO.copyDirectory(distDir, targetDir)
+
+      Path.allSubpaths(targetDir).map(_._1).toSeq
+    }.taskValue
   )
   .dependsOn(core)
 
@@ -99,6 +109,42 @@ lazy val exampleDns = project
   )
   .dependsOn(core.js, http4s.js)
 
+lazy val explorer = project
+  .in(file("modules/explorer"))
+  .enablePlugins(ScalaJSPlugin)
+  .settings(commonSettings)
+  .settings(
+    scalaVersion := "3.6.4",
+    name := "mcp-explorer",
+    scalaJSLinkerConfig ~= { _.withModuleKind(ModuleKind.ESModule) },
+    scalaJSUseMainModuleInitializer := true,
+    Compile / mainClass := Some("net.andimiller.mcp.explorer.Main"),
+    libraryDependencies ++= Seq(
+      "io.indigoengine" %%% "tyrian-io" % "0.14.0",
+      "org.http4s" %%% "http4s-dom" % "0.2.1",
+      "org.http4s" %%% "http4s-circe" % "0.23.33"
+    )
+  )
+  .dependsOn(core.js)
+
+lazy val buildExplorer = taskKey[Unit]("Build explorer for production")
+
+buildExplorer := {
+  val log = streams.value.log
+
+  // 1. Compile Scala.js (fast link — Parcel handles minification)
+  log.info("Compiling explorer Scala.js...")
+  (explorer / Compile / fastLinkJS).value
+
+  // 2. Run yarn build in explorer directory
+  log.info("Bundling with Parcel...")
+  val explorerDir = (explorer / baseDirectory).value
+  val exitCode = scala.sys.process.Process("yarn" :: "build" :: Nil, explorerDir).!
+  if (exitCode != 0) sys.error("yarn build failed")
+
+  log.info("Explorer build complete.")
+}
+
 lazy val root = project
   .in(file("."))
   .settings(commonSettings)
@@ -111,5 +157,6 @@ lazy val root = project
     stdio.jvm, stdio.js, stdio.native,
     exampleDice.jvm, exampleDice.js, exampleDice.native,
     http4s.jvm, http4s.js,
-    examplePomodoro, exampleDns
+    examplePomodoro, exampleDns,
+    explorer
   )
