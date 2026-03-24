@@ -19,6 +19,7 @@ A Scala 3 library for building [Model Context Protocol (MCP)](https://modelconte
 | **core** | JVM, JS, Native | Protocol types, server abstraction, schema derivation, JSON codecs |
 | **stdio** | JVM, JS, Native | stdin/stdout transport for subprocess-based servers |
 | **http4s** | JVM, JS | Streamable HTTP + SSE transport via http4s Ember |
+| **explorer** | JS | Browser-based UI for exploring and testing MCP servers |
 
 ## Quick Start
 
@@ -123,17 +124,19 @@ Or with a pre-built Native binary:
 
 ### Pomodoro MCP Server (`modules/example-pomodoro-mcp`)
 
-A JVM HTTP server demonstrating dynamic resources with subscription notifications, server-initiated logging, and argument-based prompts.
+A JVM HTTP server demonstrating dynamic resources with subscription notifications, server-initiated logging, and argument-based prompts. Uses `HttpMcpStatefulResourceApp` with per-session state — each client session gets its own `PomodoroTimer` wired to the notification sink.
 
 - **Tools**: `start_timer`, `pause_timer`, `resume_timer`, `stop_timer`, `get_status`
 - **Resources**: `pomodoro://status` (subscribable), `pomodoro://history`, `pomodoro://timers/{name}` (template)
 - **Prompts**: `plan_session` (with arguments), `review_day`
+- **Explorer**: Bundled at `/explorer` with redirect from `/`
 
 **Build and run:**
 
 ```bash
 sbt examplePomodoro/run
 # Server starts on http://0.0.0.0:25000
+# Explorer UI at http://localhost:25000 (redirects to /explorer/index.html)
 ```
 
 **Configure in Claude Code** (`.mcp.json`):
@@ -182,6 +185,35 @@ node modules/example-dns-mcp/target/scala-3.3.4/example-dns-mcp-fastopt/main.js
   }
 }
 ```
+
+---
+
+## MCP Explorer
+
+The **Explorer** is a browser-based UI for interacting with any HTTP MCP server. It lets you browse tools, resources, resource templates, and prompts, call them interactively, and inspect results — useful for development and debugging.
+
+The Explorer is a Scala.js + [Tyrian](https://tyrian.indigoengine.io/) app styled with [Bulma](https://bulma.io/), bundled into static assets by Parcel. HTTP servers can serve it alongside their MCP endpoint.
+
+### Enabling the Explorer
+
+Any `HttpMcpApp` or `HttpMcpStatefulResourceApp` server can serve the Explorer by setting:
+
+```scala
+override def explorerEnabled = true
+override def rootRedirectToExplorer = true  // optional: redirect / to /explorer/index.html
+```
+
+The Explorer is served at `/explorer/index.html` and defaults the connection URL to the current origin + `/mcp`.
+
+### Building the Explorer
+
+The Explorer assets are pre-built into the http4s module's resources. To rebuild after changes:
+
+```bash
+sbt buildExplorer
+```
+
+This compiles the Scala.js app and runs Parcel to bundle the JS and CSS into `modules/explorer/dist/`, which is then copied into the http4s classpath resources.
 
 ---
 
@@ -272,10 +304,25 @@ object MyServer extends HttpMcpApp[MyResources]:
   def serverName    = "my-server"
   def serverVersion = "1.0.0"
   override def port = port"9000"
+  override def explorerEnabled = true
   def mkResources   = Resource.eval(...)
   def tools(r: MyResources, sink: NotificationSink[IO])     = List(...)
   def resources(r: MyResources, sink: NotificationSink[IO]) = List(...)
   def prompts(r: MyResources, sink: NotificationSink[IO])   = List(...)
+```
+
+For HTTP servers that need per-session state (e.g. a timer or cache created from the notification sink), extend `HttpMcpStatefulResourceApp`:
+
+```scala
+object MyServer extends HttpMcpStatefulResourceApp[SharedState, SessionState]:
+  def serverName    = "my-server"
+  def serverVersion = "1.0.0"
+  def mkResources   = Resource.eval(...)  // shared state, created once
+  def mkSessionResources(r: SharedState, sink: NotificationSink[IO]) =
+    SessionState.create(sink)             // per-session state
+  def tools(r: SharedState, s: SessionState)     = List(...)
+  def resources(r: SharedState, s: SessionState) = List(...)
+  def prompts(r: SharedState, s: SessionState)   = List(...)
 ```
 
 ## JSON Schema Derivation
