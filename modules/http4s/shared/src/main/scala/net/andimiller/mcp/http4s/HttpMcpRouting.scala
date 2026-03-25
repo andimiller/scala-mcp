@@ -3,6 +3,7 @@ package net.andimiller.mcp.http4s
 import cats.effect.{IO, Resource}
 import cats.syntax.semigroupk.*
 import com.comcast.ip4s.*
+import fs2.io.compression.given
 import fs2.io.file.Files
 import org.http4s.{HttpRoutes, Response, Status}
 import org.http4s.ember.server.EmberServerBuilder
@@ -12,6 +13,7 @@ import org.http4s.server.Router
 import org.http4s.dsl.io.*
 import net.andimiller.mcp.core.server.{NotificationSink, Server as McpServer}
 import org.http4s.server.{Server as HttpServer}
+import org.http4s.server.middleware.GZip
 
 private[http4s] object HttpMcpRouting:
 
@@ -31,7 +33,7 @@ private[http4s] object HttpMcpRouting:
         if explorerEnabled && rootRedirectToExplorer then Router("/" -> (redirectRoute <+> mcpRoutes), "/explorer" -> ExplorerRoutes[IO])
         else if explorerEnabled then Router("/" -> mcpRoutes, "/explorer" -> ExplorerRoutes[IO])
         else Router("/" -> mcpRoutes)
-      val app = routes.orNotFound
+      val app = GZip(routes).orNotFound
       transformServer(
         EmberServerBuilder
           .default[IO]
