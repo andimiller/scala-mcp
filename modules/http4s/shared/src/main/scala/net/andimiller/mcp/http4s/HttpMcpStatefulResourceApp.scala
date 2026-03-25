@@ -5,6 +5,7 @@ import com.comcast.ip4s.*
 import io.circe.{Decoder, Encoder}
 import net.andimiller.mcp.core.schema.JsonSchema
 import net.andimiller.mcp.core.server.*
+import org.http4s.server.{Server as HttpServer}
 
 /**
  * Convenience trait for building MCP servers that need per-session stateful
@@ -46,6 +47,9 @@ trait HttpMcpStatefulResourceApp[R, S] extends IOApp.Simple:
 
   /** Whether to redirect / to /explorer/index.html (default: false, requires explorerEnabled) */
   def rootRedirectToExplorer: Boolean = false
+
+  /** Transform the http4s server resource after it is built (e.g. to log the bound address) */
+  def transformServer(server: Resource[IO, HttpServer]): Resource[IO, HttpServer] = server
 
   /** Acquire shared application resources (DB pools, HTTP clients, Refs, etc.) */
   def mkResources: Resource[IO, R]
@@ -89,5 +93,5 @@ trait HttpMcpStatefulResourceApp[R, S] extends IOApp.Simple:
         }
       }
 
-      HttpMcpRouting.serve(serverFactory, host, port, explorerEnabled, rootRedirectToExplorer)
+      HttpMcpRouting.serve(serverFactory, host, port, explorerEnabled, rootRedirectToExplorer, transformServer)
     }.useForever

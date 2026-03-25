@@ -12,6 +12,7 @@ import org.http4s.server.Router
 import org.http4s.dsl.io.*
 import net.andimiller.mcp.core.schema.JsonSchema
 import net.andimiller.mcp.core.server.*
+import org.http4s.server.{Server as HttpServer}
 
 /**
  * Convenience trait for building MCP servers served over Streamable HTTP.
@@ -48,6 +49,9 @@ trait HttpMcpApp[R] extends IOApp.Simple:
 
   /** Whether to redirect / to /explorer/index.html (default: false, requires explorerEnabled) */
   def rootRedirectToExplorer: Boolean = false
+
+  /** Transform the http4s server resource after it is built (e.g. to log the bound address) */
+  def transformServer(server: Resource[IO, HttpServer]): Resource[IO, HttpServer] = server
 
   /** Acquire managed resources (DB pools, HTTP clients, Refs, etc.) */
   def mkResources: Resource[IO, R]
@@ -86,5 +90,5 @@ trait HttpMcpApp[R] extends IOApp.Simple:
           .build
       }
 
-      HttpMcpRouting.serve(serverFactory, host, port, explorerEnabled, rootRedirectToExplorer)
+      HttpMcpRouting.serve(serverFactory, host, port, explorerEnabled, rootRedirectToExplorer, transformServer)
     }.useForever

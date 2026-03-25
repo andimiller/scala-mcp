@@ -2,19 +2,23 @@ package net.andimiller.mcp.examples.dns
 
 import cats.effect.{IO, Resource}
 import cats.syntax.all.*
-import com.comcast.ip4s.Port
-import com.comcast.ip4s.port
+import com.comcast.ip4s.{Dns as _, *}
 import io.circe.{Decoder, Encoder}
 import net.andimiller.mcp.core.protocol.{PromptArgument, PromptMessage}
 import net.andimiller.mcp.core.schema.{JsonSchema, description}
 import net.andimiller.mcp.core.server.*
 import net.andimiller.mcp.http4s.HttpMcpApp
+import org.http4s.server.{Server as HttpServer}
 
 object DnsMcpServer extends HttpMcpApp[Dns[IO]]:
 
   def serverName    = "dns-mcp"
   def serverVersion = "1.0.0"
   override def port: Port = port"8053"
+  override def explorerEnabled = true
+  override def rootRedirectToExplorer = true
+  override def transformServer(server: Resource[IO, HttpServer]): Resource[IO, HttpServer] =
+    server.evalTap(s => IO.println(s"Server started on http://${s.address}"))
 
   def mkResources: Resource[IO, Dns[IO]] = Resource.pure(Dns.fromNodeJs)
 

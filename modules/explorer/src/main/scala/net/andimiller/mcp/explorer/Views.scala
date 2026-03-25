@@ -137,7 +137,7 @@ object Views:
       else if model.resourceContents.contains(u) then
         div(
           button(`class` := Styles.callButton, onClick(Msg.ReadResource(u)))("Refresh"),
-          div(`class` := Styles.section)(div(`class` := Styles.sectionTitle)("Content"), div(`class` := Styles.resourceContent)(model.resourceContents(u).contents.map(_.text.getOrElse("[No text]")).mkString("\n")))
+          div(`class` := Styles.section)(div(`class` := Styles.sectionTitle)("Content"), pre(`class` := Styles.resourceContent)(model.resourceContents(u).contents.map(_.text.getOrElse("[No text]")).mkString("\n")))
         )
       else button(`class` := Styles.callButton, onClick(Msg.ReadResource(u)))("Read")
     )
@@ -164,7 +164,7 @@ object Views:
       ),
       if model.resourceErrors.contains(readUri) then div(`class` := Styles.errorText)(model.resourceErrors(readUri))
       else if model.resourceContents.contains(readUri) then
-        div(`class` := Styles.section)(div(`class` := Styles.sectionTitle)("Content"), div(`class` := Styles.resourceContent)(model.resourceContents(readUri).contents.map(_.text.getOrElse("[No text]")).mkString("\n")))
+        div(`class` := Styles.section)(div(`class` := Styles.sectionTitle)("Content"), pre(`class` := Styles.resourceContent)(model.resourceContents(readUri).contents.map(_.text.getOrElse("[No text]")).mkString("\n")))
       else span()
     )
   }
