@@ -109,6 +109,21 @@ lazy val exampleDns = project
   )
   .dependsOn(core.js, http4s.js)
 
+lazy val exampleRag = project
+  .in(file("modules/example-rag-mcp"))
+  .settings(commonSettings)
+  .settings(
+    name := "example-rag-mcp",
+    libraryDependencies ++= Seq(
+      "dev.langchain4j"  % "langchain4j-embeddings-all-minilm-l6-v2" % "1.0.0-beta5",
+      "co.fs2"          %% "fs2-io"                                   % "3.13.0",
+      "com.monovore"    %% "decline-effect"                           % "2.5.0",
+      "org.typelevel"   %% "log4cats-slf4j"                           % "2.7.1",
+      "ch.qos.logback"   % "logback-classic"                          % "1.5.6"
+    )
+  )
+  .dependsOn(core.jvm, http4s.jvm)
+
 lazy val explorer = project
   .in(file("modules/explorer"))
   .enablePlugins(ScalaJSPlugin)
@@ -157,6 +172,6 @@ lazy val root = project
     stdio.jvm, stdio.js, stdio.native,
     exampleDice.jvm, exampleDice.js, exampleDice.native,
     http4s.jvm, http4s.js,
-    examplePomodoro, exampleDns,
+    examplePomodoro, exampleDns, exampleRag,
     explorer
   )
