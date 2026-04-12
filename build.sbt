@@ -145,6 +145,36 @@ buildExplorer := {
   log.info("Explorer build complete.")
 }
 
+lazy val openapiMcpProxy = project
+  .in(file("modules/openapi-mcp-proxy"))
+  .settings(commonSettings)
+  .settings(
+    name := "openapi-mcp-proxy",
+    libraryDependencies ++= Seq(
+      "com.softwaremill.sttp.apispec" %% "openapi-model"      % "0.11.10",
+      "com.softwaremill.sttp.apispec" %% "openapi-circe"      % "0.11.10",
+      "io.circe"                      %% "circe-yaml"         % "1.15.0",
+      "org.http4s"                    %% "http4s-ember-client" % "0.23.33",
+      "org.http4s"                    %% "http4s-circe"       % "0.23.33",
+      "com.monovore"                  %% "decline-effect"     % "2.6.1",
+      "ch.qos.logback"                %  "logback-classic"    % "1.5.6",
+      "org.scalameta"                 %% "munit"              % "1.0.0"  % Test,
+      "org.typelevel"                 %% "munit-cats-effect"  % "2.2.0"  % Test
+    ),
+    assembly / mainClass := Some("net.andimiller.mcp.openapi.OpenApiMcpServer"),
+    assembly / assemblyJarName := "openapi-mcp-proxy",
+    assembly / assemblyPrependShellScript := Some(sbtassembly.AssemblyPlugin.defaultShellScript),
+    assembly / assemblyMergeStrategy := {
+      case PathList("META-INF", "versions", _, "module-info.class") => MergeStrategy.discard
+      case PathList("META-INF", "io.netty.versions.properties")     => MergeStrategy.first
+      case x if x.endsWith("module-info.class")                     => MergeStrategy.discard
+      case x =>
+        val oldStrategy = (assembly / assemblyMergeStrategy).value
+        oldStrategy(x)
+    }
+  )
+  .dependsOn(core.jvm, stdio.jvm)
+
 lazy val root = project
   .in(file("."))
   .settings(commonSettings)
@@ -158,5 +188,6 @@ lazy val root = project
     exampleDice.jvm, exampleDice.js, exampleDice.native,
     http4s.jvm, http4s.js,
     examplePomodoro, exampleDns,
-    explorer
+    explorer,
+    openapiMcpProxy
   )
