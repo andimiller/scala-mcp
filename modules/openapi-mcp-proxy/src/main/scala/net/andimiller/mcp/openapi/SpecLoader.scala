@@ -6,7 +6,8 @@ import fs2.io.file.{Files, Path}
 import io.circe.Json
 import io.circe.yaml.Parser as YamlParser
 import org.http4s.client.Client
-import org.http4s.{Request, Uri}
+import org.http4s.headers.Accept
+import org.http4s.{MediaType, Request, Uri}
 import sttp.apispec.openapi.OpenAPI
 import sttp.apispec.openapi.circe.given
 
@@ -26,7 +27,10 @@ object SpecLoader:
   private def fetchFromUrl(client: Client[IO], url: String): IO[String] =
     for
       uri <- IO.fromEither(Uri.fromString(url).leftMap(e => new Exception(s"Invalid URL: $url - ${e.message}")))
-      body <- client.expect[String](Request[IO](uri = uri))
+      body <- client.expect[String](
+        Request[IO](uri = uri)
+          .putHeaders(Accept(MediaType.application.json, MediaType.text.plain, MediaType("application", "yaml"), MediaType("*", "*")))
+      )
     yield body
 
   private def readFromFile(path: String): IO[String] =
