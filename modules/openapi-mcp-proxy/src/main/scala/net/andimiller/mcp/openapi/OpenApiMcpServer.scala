@@ -39,14 +39,15 @@ object OpenApiMcpServer extends CommandIOApp(
   // --- mcp subcommand group ---
 
   private val agentOpt: Opts[ConfigFormat] =
-    Opts.option[String]("agent", "Target agent: claude, cursor, opencode")
+    Opts.option[String]("agent", "Target agent: claude, claude-desktop, cursor, opencode")
       .withDefault("claude")
       .mapValidated { s =>
         s.toLowerCase match
-          case "claude"   => cats.data.Validated.valid(ConfigFormat.Claude)
-          case "cursor"   => cats.data.Validated.valid(ConfigFormat.Cursor)
-          case "opencode" => cats.data.Validated.valid(ConfigFormat.OpenCode)
-          case other      => cats.data.Validated.invalidNel(s"Unknown agent '$other'. Choose: claude, cursor, opencode")
+          case "claude"         => cats.data.Validated.valid(ConfigFormat.Claude)
+          case "claude-desktop" => cats.data.Validated.valid(ConfigFormat.ClaudeDesktop)
+          case "cursor"         => cats.data.Validated.valid(ConfigFormat.Cursor)
+          case "opencode"       => cats.data.Validated.valid(ConfigFormat.OpenCode)
+          case other            => cats.data.Validated.invalidNel(s"Unknown agent '$other'. Choose: claude, claude-desktop, cursor, opencode")
       }
 
   private val mcpAddCmd: Opts[ConfigFormat => IO[ExitCode]] =
@@ -70,7 +71,9 @@ object OpenApiMcpServer extends CommandIOApp(
 
   private val mcpCmd = Opts.subcommand("mcp", "Manage MCP server entries") {
     (agentOpt, mcpAddCmd orElse mcpDelCmd orElse mcpManageCmd).mapN { (fmt, action) =>
-      action(fmt)
+      fmt.validate match
+        case Left(err) => console.errorln(s"Error: $err").as(ExitCode(1))
+        case Right(()) => action(fmt)
     }
   }
 

@@ -20,6 +20,7 @@ A Scala 3 library for building [Model Context Protocol (MCP)](https://modelconte
 | **stdio** | JVM, JS, Native | stdin/stdout transport for subprocess-based servers |
 | **http4s** | JVM, JS | Streamable HTTP + SSE transport via http4s Ember |
 | **explorer** | JS | Browser-based UI for exploring and testing MCP servers |
+| **openapi-mcp-proxy** | JVM | Tool to expose OpenAPI APIs as MCP servers |
 
 ## Quick Start
 
@@ -188,6 +189,42 @@ node modules/example-dns-mcp/target/scala-3.3.4/example-dns-mcp-fastopt/main.js
 
 ---
 
+### OpenAPI MCP Proxy (`modules/openapi-mcp-proxy`)
+
+Expose any OpenAPI-compliant REST API as an MCP server. This tool converts OpenAPI operations into MCP tools that AI agents can call.
+
+- **Automatic Tool Generation** - Converts OpenAPI operations into MCP tools with proper JSON schemas
+- **Multi-Agent Support** - Works with Claude Desktop, Cursor, and OpenCode via automatic config generation
+- **Interactive Management** - Interactive shell for browsing and selecting API operations
+- **Flexible Input** - Load specs from URLs or local files (JSON or YAML)
+
+**Build:**
+
+```bash
+sbt openapiMcpProxy/assembly
+# Creates ./openapi-mcp-proxy.jar
+```
+
+**Usage:**
+
+```bash
+# List available operations
+openapi-mcp-proxy list https://api.example.com/openapi.json
+
+# Register with your agent
+openapi-mcp-proxy mcp add --agent claude-desktop https://api.example.com/openapi.json listUsers getUserById
+
+# Or add all operations
+openapi-mcp-proxy mcp add --agent opencode https://api.example.com/openapi.json '*'
+
+# Interactive mode
+openapi-mcp-proxy mcp add --agent cursor https://api.example.com/openapi.json
+```
+
+See the [full documentation](#openapi-mcp-proxy-details) below for more details.
+
+---
+
 ## MCP Explorer
 
 The **Explorer** is a browser-based UI for interacting with any HTTP MCP server. It lets you browse tools, resources, resource templates, and prompts, call them interactively, and inspect results — useful for development and debugging.
@@ -352,6 +389,173 @@ sbt test
 # Link Scala.js examples
 sbt exampleDns/fastLinkJS
 ```
+
+---
+
+## OpenAPI MCP Proxy Details
+
+The OpenAPI MCP Proxy tool converts any OpenAPI-compliant REST API into an MCP server that AI agents can interact with.
+
+### Features
+
+- **Automatic Tool Generation** - Converts OpenAPI operations into MCP tools with proper JSON schemas
+- **Multi-Agent Support** - Works with Claude Desktop, Cursor, and OpenCode via automatic config generation
+- **Interactive Management** - Interactive shell for browsing and selecting API operations
+- **Flexible Input** - Load specs from URLs (`https://api.example.com/openapi.json`) or local files
+- **Full HTTP Support** - Handles GET, POST, PUT, DELETE, PATCH with path params, query params, headers, and request bodies
+
+### Installation
+
+```bash
+# Build the executable JAR
+sbt openapiMcpProxy/assembly
+
+# The JAR is created as ./openapi-mcp-proxy.jar
+# Make it executable and add to your PATH
+chmod +x openapi-mcp-proxy.jar
+mv openapi-mcp-proxy.jar /usr/local/bin/openapi-mcp-proxy
+```
+
+### Commands
+
+| Command | Description |
+|---------|-------------|
+| `list <spec>` | List all available operationIds with their HTTP method and path |
+| `proxy <spec> <operationIds...>` | Run the MCP stdio proxy for selected operations |
+| `mcp add [--agent] <spec> [operationIds...]` | Register operations in agent config |
+| `mcp del [--agent] <name>` | Remove a server entry from config |
+| `mcp manage [--agent]` | Interactive shell for managing config entries |
+
+**Supported Agents:**
+- `claude` - Claude Code (`.mcp.json`)
+- `claude-desktop` - Claude Desktop app (macOS only)
+- `cursor` - Cursor IDE (`.cursor/mcp.json`)
+- `opencode` - OpenCode (`opencode.json`)
+
+### Quick Start
+
+#### 1. List Available Operations
+
+See what endpoints are available in an OpenAPI spec:
+
+```bash
+openapi-mcp-proxy list https://api.example.com/openapi.json
+# or
+openapi-mcp-proxy list ./my-api-spec.yaml
+```
+
+Output:
+```
+  GET    /users       listUsers
+  POST   /users       createUser
+  GET    /users/{id}  getUserById
+  DELETE /users/{id}  deleteUser
+```
+
+#### 2. Register with Your AI Agent
+
+**Option A: Use the built-in config manager (recommended)**
+
+```bash
+# Add specific operations for Claude Desktop
+openapi-mcp-proxy mcp add --agent claude-desktop https://api.example.com/openapi.json listUsers getUserById
+
+# Add all operations (with confirmation if >10 endpoints)
+openapi-mcp-proxy mcp add --agent claude-desktop https://api.example.com/openapi.json '*'
+
+# Interactive mode - browse and select operations
+openapi-mcp-proxy mcp add --agent cursor https://api.example.com/openapi.json
+
+# Manage existing entries
+openapi-mcp-proxy mcp manage --agent opencode
+```
+
+**Option B: Manual configuration**
+
+**Claude Desktop** (`~/Library/Application Support/Claude/claude_desktop_config.json`):
+```json
+{
+  "mcpServers": {
+    "openapi-my-api": {
+      "command": "openapi-mcp-proxy",
+      "args": ["proxy", "https://api.example.com/openapi.json", "listUsers", "getUserById"]
+    }
+  }
+}
+```
+
+**OpenCode** (`opencode.json`):
+```json
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "openapi-my-api": {
+      "type": "local",
+      "command": ["openapi-mcp-proxy", "proxy", "./my-api.yaml", "searchItems", "createOrder"]
+    }
+  }
+}
+```
+
+**Cursor** (`.cursor/mcp.json`):
+```json
+{
+  "mcpServers": {
+    "my-api": {
+      "command": "openapi-mcp-proxy",
+      "args": ["proxy", "https://api.example.com/openapi.json", "listUsers"]
+    }
+  }
+}
+```
+
+### How It Works
+
+1. **Spec Loading** - Loads OpenAPI 3.x specs from URL or file (JSON or YAML)
+2. **Schema Conversion** - Converts OpenAPI schemas to MCP-compatible JSON schemas
+3. **Tool Generation** - Each selected operation becomes an MCP tool with:
+   - Input schema from path/query/header parameters and request body
+   - Output schema from 200/201/default response
+   - Description from operation summary
+4. **Request Execution** - When called, constructs and executes HTTP requests using http4s
+
+### Example: EVE Online ESI API
+
+The repository includes an example configuration for the EVE Online ESI API. See `.mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "eve-online": {
+      "command": "openapi-mcp-proxy",
+      "args": ["proxy", "https://esi.evetech.net/latest/swagger.json", 
+        "get_characters_character_id", 
+        "get_corporations_corporation_id",
+        "post_universe_ids"]
+    }
+  }
+}
+```
+
+### Configuration Management
+
+The `mcp` subcommands handle different config file formats automatically:
+
+| Agent | Config File | Format |
+|-------|-------------|--------|
+| Claude | `.mcp.json` | `{ "mcpServers": {...} }` |
+| Claude Desktop | `~/Library/Application Support/Claude/claude_desktop_config.json` | `{ "mcpServers": {...} }` |
+| Cursor | `.cursor/mcp.json` | `{ "mcpServers": {...} }` |
+| OpenCode | `opencode.json` | `{ "$schema": "...", "mcp": {...} }` |
+
+Server names are auto-derived from the spec title (e.g., "EVE Swagger Interface" → `openapi-eve-swagger-interface`).
+
+### Tips
+
+- **Start small** - Add only the operations you need to avoid bloating the context window
+- **Use wildcards carefully** - Adding `*` includes all operations; you'll be warned if >10 endpoints
+- **Mix and match** - Can run multiple openapi-mcp-proxy instances for different APIs
+- **Security** - The proxy executes HTTP requests as-is; ensure your API has proper auth if needed
 
 ## License
 
