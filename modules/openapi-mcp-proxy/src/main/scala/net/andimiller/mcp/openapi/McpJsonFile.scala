@@ -59,13 +59,21 @@ object McpJsonFile:
         IO.pure(false)
     }
 
-  /** Derive a server name from the spec source (URL host or filename). */
-  def deriveServerName(specSource: String): String =
-    val raw =
+  /** Derive a server name, preferring the OpenAPI spec title when available. */
+  def deriveServerName(specSource: String, specTitle: Option[String] = None): String =
+    val raw = specTitle.map(normaliseTitle).filter(_.nonEmpty).getOrElse {
       if specSource.startsWith("http") then
         scala.util.Try(new java.net.URI(specSource).getHost).getOrElse(specSource)
       else
         val name = Paths.get(specSource).getFileName.toString
         val dot = name.lastIndexOf('.')
         if dot > 0 then name.substring(0, dot) else name
+    }
     s"openapi-$raw"
+
+  private def normaliseTitle(title: String): String =
+    title.toLowerCase
+      .replaceAll("[^a-z0-9]+", "-")
+      .replaceAll("-+", "-")
+      .stripPrefix("-")
+      .stripSuffix("-")

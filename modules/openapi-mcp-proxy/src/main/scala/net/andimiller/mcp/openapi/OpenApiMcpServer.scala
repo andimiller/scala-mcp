@@ -143,7 +143,7 @@ object OpenApiMcpServer extends CommandIOApp(
           case Right(ops) if ops.isEmpty =>
             console.errorln("No operations selected.").as(ExitCode(1))
           case Right(ops) =>
-            val serverName = McpJsonFile.deriveServerName(specSource)
+            val serverName = McpJsonFile.deriveServerName(specSource, Option(spec.info.title).filter(_.nonEmpty))
             val fileName = fmt.filePath.toString
             McpJsonFile.addEntry(fmt, serverName, specSource, ops) *>
               console.errorln(s"Wrote $fileName server '$serverName' with ${ops.size} operation(s)").as(ExitCode.Success)
