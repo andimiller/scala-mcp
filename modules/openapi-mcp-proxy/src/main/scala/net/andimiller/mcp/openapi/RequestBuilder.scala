@@ -3,27 +3,13 @@ package net.andimiller.mcp.openapi
 import cats.effect.IO
 import cats.syntax.all.*
 import io.circe.Json
+import net.andimiller.mcp.core.protocol.ToolResult
 import org.http4s.{EntityDecoder, Header, Headers, Method, Request, Uri}
 import org.http4s.circe.*
 import org.http4s.client.Client
-import net.andimiller.mcp.core.protocol.ToolResult
-import sttp.apispec.openapi.{Operation, ParameterIn}
-
-import scala.collection.immutable.ListMap
 
 object RequestBuilder:
 
-  /** Information about a resolved operation needed for request construction. */
-  case class ResolvedOperation(
-      pathParams: List[ResolvedParam],
-      queryParams: List[ResolvedParam],
-      headerParams: List[ResolvedParam],
-      hasBody: Boolean
-  )
-
-  case class ResolvedParam(name: String, required: Boolean)
-
-  /** Execute an HTTP request for a tool call. */
   def execute(
       client: Client[IO],
       baseUrl: String,
@@ -34,25 +20,21 @@ object RequestBuilder:
   ): IO[ToolResult] =
     val args = arguments.asObject.getOrElse(io.circe.JsonObject.empty)
 
-    // 1. Substitute path parameters
     val path = operation.pathParams.foldLeft(pathPattern) { (p, param) =>
       val value = args(param.name).flatMap(jsonToString).getOrElse("")
       p.replace(s"{${param.name}}", value)
     }
 
-    // 2. Build query string
     val queryPairs = operation.queryParams.flatMap { param =>
       args(param.name).flatMap(jsonToQueryValue).map(v => param.name -> v)
     }
 
-    // 3. Build headers
     val extraHeaders = operation.headerParams.flatMap { param =>
       args(param.name).flatMap(jsonToString).map { v =>
         Header.Raw(org.typelevel.ci.CIString(param.name), v)
       }
     }
 
-    // 4. Request body
     val bodyJson = if operation.hasBody then args("body") else None
 
     for
@@ -90,7 +72,6 @@ object RequestBuilder:
   private def jsonToQueryValue(json: Json): Option[String] =
     jsonToString(json)
 
-  /** Wrap array responses in an object to match the schema wrapping done by SchemaConverter.wrapIfArray. */
   private def wrapIfArray(json: Json): Json =
     if json.isArray then Json.obj("items" -> json)
     else json

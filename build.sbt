@@ -145,14 +145,33 @@ buildExplorer := {
   log.info("Explorer build complete.")
 }
 
+lazy val openapi = crossProject(JVMPlatform, JSPlatform, NativePlatform)
+  .in(file("modules/openapi"))
+  .settings(commonSettings)
+  .settings(
+    name := "mcp-openapi",
+    libraryDependencies ++= Seq(
+      "com.softwaremill.sttp.apispec" %%% "openapi-model" % "0.11.10",
+      "com.softwaremill.sttp.apispec" %%% "openapi-circe" % "0.11.10",
+      "org.scalameta"                  %%% "munit"             % "1.0.0"  % Test,
+      "org.typelevel"                  %%% "munit-cats-effect" % "2.2.0"  % Test
+    )
+  )
+  .jvmSettings(
+    libraryDependencies ++= Seq(
+      "io.circe"                      %% "circe-yaml"           % "1.15.0"  % Test,
+      "com.softwaremill.sttp.tapir"   %% "tapir-core"           % "1.11.40" % Test,
+      "com.softwaremill.sttp.tapir"   %% "tapir-openapi-docs"  % "1.11.40" % Test
+    )
+  )
+  .dependsOn(core)
+
 lazy val openapiMcpProxy = project
   .in(file("modules/openapi-mcp-proxy"))
   .settings(commonSettings)
   .settings(
     name := "openapi-mcp-proxy",
     libraryDependencies ++= Seq(
-      "com.softwaremill.sttp.apispec" %% "openapi-model"      % "0.11.10",
-      "com.softwaremill.sttp.apispec" %% "openapi-circe"      % "0.11.10",
       "io.circe"                      %% "circe-yaml"         % "1.15.0",
       "org.http4s"                    %% "http4s-ember-client" % "0.23.33",
       "org.http4s"                    %% "http4s-circe"       % "0.23.33",
@@ -173,7 +192,7 @@ lazy val openapiMcpProxy = project
         oldStrategy(x)
     }
   )
-  .dependsOn(core.jvm, stdio.jvm)
+  .dependsOn(core.jvm, stdio.jvm, openapi.jvm)
 
 lazy val root = project
   .in(file("."))
@@ -189,5 +208,6 @@ lazy val root = project
     http4s.jvm, http4s.js,
     examplePomodoro, exampleDns,
     explorer,
+    openapi.jvm, openapi.js, openapi.native,
     openapiMcpProxy
   )

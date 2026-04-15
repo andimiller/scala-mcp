@@ -11,7 +11,6 @@ import sttp.apispec.openapi.circe.given
 
 class OpenApiToolBuilderSuite extends CatsEffectSuite:
 
-  // A minimal Petstore-like OpenAPI spec for testing
   val petStoreSpec: String =
     """
     |openapi: "3.1.0"
@@ -105,7 +104,6 @@ class OpenApiToolBuilderSuite extends CatsEffectSuite:
     |          type: string
     |""".stripMargin
 
-  // Dummy client that won't be called in schema tests
   val dummyClient: Client[IO] = Client.fromHttpApp(HttpApp[IO](_ => IO.pure(Response[IO](Status.Ok))))
 
   def parseSpec(yaml: String): IO[OpenAPI] =
@@ -114,7 +112,7 @@ class OpenApiToolBuilderSuite extends CatsEffectSuite:
       spec <- IO.fromEither(json.as[OpenAPI])
     yield spec
 
-  test("builds tools for specified operationIds") {
+  test("builds ToolHandlers for specified operationIds") {
     for
       spec  <- parseSpec(petStoreSpec)
       tools = OpenApiToolBuilder.buildTools(spec, List("listPets", "getPetById", "createPet"), dummyClient, "https://petstore.example.com/v1")
@@ -130,7 +128,6 @@ class OpenApiToolBuilderSuite extends CatsEffectSuite:
       val tool = tools.find(_.name == "listPets").get
       val props = tool.inputSchema.hcursor.downField("properties")
       assert(props.downField("limit").focus.isDefined, "should have 'limit' property")
-      // limit is not required
       val required = tool.inputSchema.hcursor.downField("required").as[List[String]].getOrElse(Nil)
       assert(!required.contains("limit"), "limit should not be required")
   }
@@ -227,60 +224,7 @@ class OpenApiToolBuilderSuite extends CatsEffectSuite:
         ops.map(_._1).toSet,
         Set("listPets", "createPet", "getPetById", "healthCheck")
       )
-      // Verify method and path for a known operation
       val listPets = ops.find(_._1 == "listPets").get
       assertEquals(listPets._2, "GET")
       assertEquals(listPets._3, "/pets")
-  }
-
-
-class SchemaConverterSuite extends CatsEffectSuite:
-
-  import scala.collection.immutable.ListMap
-  import sttp.apispec.{Schema, SchemaType, SchemaLike}
-
-  test("resolveSchemaLike resolves a simple $ref") {
-    val petSchema = Schema(
-      `type` = Some(List(SchemaType.Object)),
-      properties = ListMap("name" -> Schema(`type` = Some(List(SchemaType.String))))
-    )
-    val refSchema = Schema($ref = Some("#/components/schemas/Pet"))
-    val components = ListMap[String, SchemaLike]("Pet" -> petSchema)
-
-    val resolved = SchemaConverter.resolveSchemaLike(refSchema, components)
-    assertEquals(resolved, petSchema)
-  }
-
-  test("resolveSchemaLike resolves nested refs") {
-    val innerSchema = Schema(`type` = Some(List(SchemaType.String)))
-    val middleSchema = Schema($ref = Some("#/components/schemas/Inner"))
-    val outerSchema = Schema($ref = Some("#/components/schemas/Middle"))
-    val components = ListMap[String, SchemaLike](
-      "Inner" -> innerSchema,
-      "Middle" -> middleSchema
-    )
-
-    val resolved = SchemaConverter.resolveSchemaLike(outerSchema, components)
-    assertEquals(resolved, innerSchema)
-  }
-
-  test("resolveSchemaLike handles missing ref gracefully") {
-    val refSchema = Schema($ref = Some("#/components/schemas/DoesNotExist"))
-    val components = ListMap.empty[String, SchemaLike]
-
-    val resolved = SchemaConverter.resolveSchemaLike(refSchema, components)
-    assertEquals(resolved, refSchema) // Returns unresolved
-  }
-
-  test("wrapIfArray wraps array schemas") {
-    val arraySchema = Json.obj("type" -> Json.fromString("array"), "items" -> Json.obj("type" -> Json.fromString("string")))
-    val wrapped = SchemaConverter.wrapIfArray(arraySchema)
-    val typ = wrapped.hcursor.downField("type").as[String].getOrElse("")
-    assertEquals(typ, "object")
-  }
-
-  test("wrapIfArray leaves object schemas unchanged") {
-    val objectSchema = Json.obj("type" -> Json.fromString("object"))
-    val result = SchemaConverter.wrapIfArray(objectSchema)
-    assertEquals(result, objectSchema)
   }

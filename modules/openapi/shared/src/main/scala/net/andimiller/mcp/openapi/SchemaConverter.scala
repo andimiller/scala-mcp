@@ -2,7 +2,7 @@ package net.andimiller.mcp.openapi
 
 import io.circe.Json
 import io.circe.syntax.*
-import sttp.apispec.{Schema, SchemaLike, AnySchema, SchemaType}
+import sttp.apispec.{ExampleSingleValue, ExampleMultipleValue, ExampleValue, Schema, SchemaLike, AnySchema, SchemaType}
 import sttp.apispec.openapi.{Reference, ReferenceOr}
 import sttp.apispec.openapi.circe.given
 
@@ -12,7 +12,6 @@ object SchemaConverter:
 
   private val MaxRefDepth = 20
 
-  /** Resolve a SchemaLike, following $ref if present, against component schemas. */
   def resolveSchemaLike(
       schemaLike: SchemaLike,
       components: ListMap[String, SchemaLike],
@@ -28,7 +27,6 @@ object SchemaConverter:
             case None           => s
         case other => other
 
-  /** Resolve a ReferenceOr[T] where T is Parameter. */
   def resolveParameter(
       ref: ReferenceOr[sttp.apispec.openapi.Parameter],
       components: ListMap[String, ReferenceOr[sttp.apispec.openapi.Parameter]]
@@ -41,7 +39,6 @@ object SchemaConverter:
           case Right(p) => Some(p)
           case Left(_)  => None
 
-  /** Resolve a ReferenceOr[RequestBody]. */
   def resolveRequestBody(
       ref: ReferenceOr[sttp.apispec.openapi.RequestBody],
       components: ListMap[String, ReferenceOr[sttp.apispec.openapi.RequestBody]]
@@ -54,7 +51,6 @@ object SchemaConverter:
           case Right(b) => Some(b)
           case Left(_)  => None
 
-  /** Resolve a ReferenceOr[Response]. */
   def resolveResponse(
       ref: ReferenceOr[sttp.apispec.openapi.Response],
       components: ListMap[String, ReferenceOr[sttp.apispec.openapi.Response]]
@@ -67,7 +63,6 @@ object SchemaConverter:
           case Right(r) => Some(r)
           case Left(_)  => None
 
-  /** Convert a SchemaLike to JSON, resolving all $ref within it recursively. */
   def schemaToJson(
       schemaLike: SchemaLike,
       components: ListMap[String, SchemaLike]
@@ -76,38 +71,37 @@ object SchemaConverter:
     val json = resolved.asJson.deepDropNullValues
     resolveRefsInJson(json, components)
 
-  /** Walk a JSON tree and inline any {"$ref": "#/components/schemas/..."} objects. */
   private def resolveRefsInJson(
       json: Json,
       components: ListMap[String, SchemaLike],
       depth: Int = 0
   ): Json =
     if depth > MaxRefDepth then json
-    else json.foldWith(new Json.Folder[Json]:
-      def onNull: Json = Json.Null
-      def onBoolean(value: Boolean): Json = Json.fromBoolean(value)
-      def onNumber(value: io.circe.JsonNumber): Json = Json.fromJsonNumber(value)
-      def onString(value: String): Json = Json.fromString(value)
-      def onArray(value: Vector[Json]): Json =
-        Json.fromValues(value.map(resolveRefsInJson(_, components, depth)))
-      def onObject(value: io.circe.JsonObject): Json =
-        value("$ref").flatMap(_.asString) match
-          case Some(ref) if ref.startsWith("#/components/schemas/") =>
-            val name = ref.stripPrefix("#/components/schemas/")
-            components.get(name) match
-              case Some(schema) =>
-                val inlined = resolveSchemaLike(schema, components, depth).asJson.deepDropNullValues
-                resolveRefsInJson(inlined, components, depth + 1)
-              case None => Json.fromJsonObject(value)
-          case _ =>
-            Json.fromJsonObject(
-              io.circe.JsonObject.fromIterable(
-                value.toIterable.map((k, v) => k -> resolveRefsInJson(v, components, depth))
+    else
+      json.foldWith(new Json.Folder[Json]:
+        def onNull: Json = Json.Null
+        def onBoolean(value: Boolean): Json = Json.fromBoolean(value)
+        def onNumber(value: io.circe.JsonNumber): Json = Json.fromJsonNumber(value)
+        def onString(value: String): Json = Json.fromString(value)
+        def onArray(value: Vector[Json]): Json =
+          Json.fromValues(value.map(resolveRefsInJson(_, components, depth)))
+        def onObject(value: io.circe.JsonObject): Json =
+          value("$ref").flatMap(_.asString) match
+            case Some(ref) if ref.startsWith("#/components/schemas/") =>
+              val name = ref.stripPrefix("#/components/schemas/")
+              components.get(name) match
+                case Some(schema) =>
+                  val inlined = resolveSchemaLike(schema, components, depth).asJson.deepDropNullValues
+                  resolveRefsInJson(inlined, components, depth + 1)
+                case None => Json.fromJsonObject(value)
+            case _ =>
+              Json.fromJsonObject(
+                io.circe.JsonObject.fromIterable(
+                  value.toIterable.map((k, v) => k -> resolveRefsInJson(v, components, depth))
+                )
               )
-            )
-    )
+      )
 
-  /** Wrap an array-type schema in an object (Claude Code rejects array outputSchema). */
   def wrapIfArray(schema: Json): Json =
     val isArray = schema.hcursor.downField("type").as[String].toOption.contains("array")
     if isArray then
@@ -119,3 +113,17 @@ object SchemaConverter:
         "required" -> Json.arr(Json.fromString("items"))
       )
     else schema
+
+  def exampleValueToJson(ev: ExampleValue): Json = ev match
+    case ExampleSingleValue(v)   => anyToJson(v)
+    case ExampleMultipleValue(vs) => Json.arr(vs.map(anyToJson)*)
+
+  private def anyToJson(v: Any): Json = v match
+    case s: String  => Json.fromString(s)
+    case n: Int     => Json.fromInt(n)
+    case n: Long    => Json.fromLong(n)
+    case n: Double  => Json.fromDoubleOrNull(n)
+    case n: Float   => Json.fromFloatOrNull(n)
+    case b: Boolean => Json.fromBoolean(b)
+    case j: Json    => j
+    case other      => Json.fromString(other.toString)
