@@ -6,7 +6,7 @@ val scala3Version = "3.3.4"
 lazy val commonSettings = Seq(
   scalaVersion := scala3Version,
   organization := "net.andimiller.mcp",
-  version := "0.1.0-SNAPSHOT",
+  version := "0.5.0",
   scalacOptions ++= Seq(
     "-deprecation",
     "-feature",
@@ -16,9 +16,34 @@ lazy val commonSettings = Seq(
   )
 )
 
+lazy val publishSettings = Seq(
+  useGpg               := true,
+  pomIncludeRepository := { _ => false },
+  publishMavenStyle    := true,
+  publishTo            := {
+    val centralSnapshots = "https://central.sonatype.com/repository/maven-snapshots/"
+    if (isSnapshot.value) Some("central-snapshots" at centralSnapshots)
+    else localStaging.value
+  },
+  licenses             := Seq("MIT" -> url("https://opensource.org/licenses/MIT")),
+  scmInfo              := Some(
+    ScmInfo(url("https://github.com/andimiller/scala-mcp"), "scm:git@github.com:andimiller/scala-mcp.git")
+  ),
+  homepage             := Some(url("https://github.com/andimiller/scala-mcp")),
+  developers           := List(
+    Developer(
+      id = "andimiller",
+      name = "Andi Miller",
+      email = "andi@andimiller.net",
+      url = url("http://andimiller.net")
+    )
+  )
+)
+
 lazy val core = crossProject(JVMPlatform, JSPlatform, NativePlatform)
   .in(file("modules/core"))
   .settings(commonSettings)
+  .settings(publishSettings)
   .settings(
     name := "mcp-core",
     libraryDependencies ++= Seq(
@@ -45,6 +70,7 @@ lazy val core = crossProject(JVMPlatform, JSPlatform, NativePlatform)
 lazy val stdio = crossProject(JVMPlatform, JSPlatform, NativePlatform)
   .in(file("modules/stdio"))
   .settings(commonSettings)
+  .settings(publishSettings)
   .settings(
     name := "mcp-stdio"
   )
@@ -53,6 +79,7 @@ lazy val stdio = crossProject(JVMPlatform, JSPlatform, NativePlatform)
 lazy val http4s = crossProject(JVMPlatform, JSPlatform)
   .in(file("modules/http4s"))
   .settings(commonSettings)
+  .settings(publishSettings)
   .settings(
     name := "mcp-http4s",
     libraryDependencies ++= Seq(
@@ -79,6 +106,7 @@ lazy val exampleDice = crossProject(JVMPlatform, JSPlatform, NativePlatform)
   .settings(commonSettings)
   .settings(
     name := "example-dice-mcp",
+    publish / skip := true,
     libraryDependencies ++= Seq(
       "org.typelevel" %%% "cats-parse" % "1.1.0",
       "org.typelevel" %%% "cats-effect-std" % "3.7.0",
@@ -92,6 +120,7 @@ lazy val examplePomodoro = project
   .settings(commonSettings)
   .settings(
     name := "example-pomodoro-mcp",
+    publish / skip := true,
     libraryDependencies ++= Seq(
       "ch.qos.logback" % "logback-classic" % "1.5.6"
     )
@@ -104,6 +133,7 @@ lazy val exampleDns = project
   .settings(commonSettings)
   .settings(
     name := "example-dns-mcp",
+    publish / skip := true,
     scalaJSLinkerConfig ~= { _.withModuleKind(ModuleKind.CommonJSModule) },
     scalaJSUseMainModuleInitializer := true
   )
@@ -116,6 +146,7 @@ lazy val explorer = project
   .settings(
     scalaVersion := "3.6.4",
     name := "mcp-explorer",
+    publish / skip := true,
     scalaJSLinkerConfig ~= { _.withModuleKind(ModuleKind.ESModule) },
     scalaJSUseMainModuleInitializer := true,
     Compile / mainClass := Some("net.andimiller.mcp.explorer.Main"),
@@ -148,6 +179,7 @@ buildExplorer := {
 lazy val openapi = crossProject(JVMPlatform, JSPlatform, NativePlatform)
   .in(file("modules/openapi"))
   .settings(commonSettings)
+  .settings(publishSettings)
   .settings(
     name := "mcp-openapi",
     libraryDependencies ++= Seq(
@@ -171,6 +203,7 @@ lazy val openapiMcpProxy = project
   .settings(commonSettings)
   .settings(
     name := "openapi-mcp-proxy",
+    publish / skip := true,
     libraryDependencies ++= Seq(
       "io.circe"                      %% "circe-yaml"         % "1.15.0",
       "org.http4s"                    %% "http4s-ember-client" % "0.23.33",
