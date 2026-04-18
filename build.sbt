@@ -127,6 +127,18 @@ lazy val examplePomodoro = project
   )
   .dependsOn(core.jvm, http4s.jvm)
 
+lazy val exampleNotebook = project
+  .in(file("modules/example-shared-notebook-mcp"))
+  .settings(commonSettings)
+  .settings(
+    name := "example-shared-notebook-mcp",
+    publish / skip := true,
+    libraryDependencies ++= Seq(
+      "ch.qos.logback" % "logback-classic" % "1.5.6"
+    )
+  )
+  .dependsOn(core.jvm, http4s.jvm)
+
 lazy val exampleDns = project
   .in(file("modules/example-dns-mcp"))
   .enablePlugins(ScalaJSPlugin)
@@ -239,7 +251,7 @@ lazy val root = project
     stdio.jvm, stdio.js, stdio.native,
     exampleDice.jvm, exampleDice.js, exampleDice.native,
     http4s.jvm, http4s.js,
-    examplePomodoro, exampleDns,
+    examplePomodoro, exampleDns, exampleNotebook,
     explorer,
     openapi.jvm, openapi.js, openapi.native,
     openapiMcpProxy
