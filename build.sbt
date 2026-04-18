@@ -49,9 +49,11 @@ lazy val core = crossProject(JVMPlatform, JSPlatform, NativePlatform)
     libraryDependencies ++= Seq(
       "org.typelevel" %%% "cats-effect" % "3.7.0",
       "co.fs2" %%% "fs2-core" % "3.13.0",
-      "io.circe" %%% "circe-core" % "0.14.10",
-      "io.circe" %%% "circe-generic" % "0.14.10",
-      "io.circe" %%% "circe-parser" % "0.14.10",
+      "io.circe" %%% "circe-core" % "0.14.14",
+      "io.circe" %%% "circe-generic" % "0.14.14",
+      "io.circe" %%% "circe-parser" % "0.14.14",
+      "com.softwaremill.sttp.apispec" %%% "apispec-model" % "0.11.10",
+      "com.softwaremill.sttp.apispec" %%% "jsonschema-circe" % "0.11.10",
       "com.lihaoyi" %%% "sourcecode" % "0.4.2",
       "org.scalameta" %%% "munit" % "1.0.0" % Test,
       "org.typelevel" %%% "munit-cats-effect" % "2.2.0" % Test

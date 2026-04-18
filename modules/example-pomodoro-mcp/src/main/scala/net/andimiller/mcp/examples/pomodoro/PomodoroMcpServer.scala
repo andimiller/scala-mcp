@@ -48,40 +48,45 @@ object PomodoroMcpServer extends HttpMcpStatefulResourceApp[Unit, PomodoroTimer]
   // ── tools ─────────────────────────────────────────────────────────
 
   override def tools(r: Unit, timer: PomodoroTimer) = List(
-    Tool.buildNamed[IO, StartTimerRequest, MessageResponse](
-      "start_timer",
-      "Start a new pomodoro timer"
-    ) { req =>
-      timer.start(req.duration_minutes, req.label).map(MessageResponse(_))
-    },
+    Tool.builder[IO]
+      .name("start_timer")
+      .description("Start a new pomodoro timer")
+      .in[StartTimerRequest]
+      .run { req =>
+        timer.start(req.duration_minutes, req.label).map(MessageResponse(_))
+      },
 
-    Tool.buildNamed[IO, EmptyRequest, MessageResponse](
-      "pause_timer",
-      "Pause the running pomodoro timer"
-    ) { _ =>
-      timer.pause().map(MessageResponse(_))
-    },
+    Tool.builder[IO]
+      .name("pause_timer")
+      .description("Pause the running pomodoro timer")
+      .in[EmptyRequest]
+      .run { _ =>
+        timer.pause().map(MessageResponse(_))
+      },
 
-    Tool.buildNamed[IO, EmptyRequest, MessageResponse](
-      "resume_timer",
-      "Resume a paused pomodoro timer"
-    ) { _ =>
-      timer.resume().map(MessageResponse(_))
-    },
+    Tool.builder[IO]
+      .name("resume_timer")
+      .description("Resume a paused pomodoro timer")
+      .in[EmptyRequest]
+      .run { _ =>
+        timer.resume().map(MessageResponse(_))
+      },
 
-    Tool.buildNamed[IO, EmptyRequest, MessageResponse](
-      "stop_timer",
-      "Stop/cancel the current pomodoro timer"
-    ) { _ =>
-      timer.stop().map(MessageResponse(_))
-    },
+    Tool.builder[IO]
+      .name("stop_timer")
+      .description("Stop/cancel the current pomodoro timer")
+      .in[EmptyRequest]
+      .run { _ =>
+        timer.stop().map(MessageResponse(_))
+      },
 
-    Tool.buildNamed[IO, EmptyRequest, StatusResponse](
-      "get_status",
-      "Get the current pomodoro timer status"
-    ) { _ =>
-      timer.status.map(StatusResponse(_))
-    }
+    Tool.builder[IO]
+      .name("get_status")
+      .description("Get the current pomodoro timer status")
+      .in[EmptyRequest]
+      .run { _ =>
+        timer.status.map(StatusResponse(_))
+      }
   )
 
   // ── resources ─────────────────────────────────────────────────────

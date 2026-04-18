@@ -1,224 +1,109 @@
 package net.andimiller.mcp.core.schema
 
-import io.circe.{Json, JsonObject}
+import io.circe.Json
 import io.circe.syntax.*
+import sttp.apispec.*
+import sttp.apispec.circe.given
+import scala.collection.immutable.ListMap
 import scala.compiletime.*
 import scala.deriving.Mirror
 
-/** Annotation for field descriptions */
 case class description(value: String) extends scala.annotation.StaticAnnotation
 
-/** Annotation for field examples */
 case class example(value: Any) extends scala.annotation.StaticAnnotation
 
-/** JSON Schema value representation */
-sealed trait JsonSchemaValue:
-  def toJson: Json
-
-/** Object schema with properties */
-case class ObjectSchema(
-  properties: Map[String, PropertySchema],
-  required: List[String] = Nil,
-  additionalProperties: Boolean = false
-) extends JsonSchemaValue:
-  def toJson: Json = Json.obj(
-    "type" -> "object".asJson,
-    "properties" -> Json.obj(
-      properties.map { case (name, prop) => name -> prop.toJson }.toSeq*
-    ),
-    "required" -> required.asJson,
-    "additionalProperties" -> additionalProperties.asJson
-  )
-
-/** Property schema with metadata */
-case class PropertySchema(
-  schema: JsonSchemaValue,
-  description: Option[String] = None,
-  examples: List[Json] = Nil
-) extends JsonSchemaValue:
-  def toJson: Json =
-    val base = schema.toJson.asObject.getOrElse(JsonObject.empty)
-    val withDesc = description.fold(base)(d => base.add("description", d.asJson))
-    val withExamples = if examples.nonEmpty then withDesc.add("examples", Json.arr(examples*)) else withDesc
-    Json.fromJsonObject(withExamples)
-
-/** String schema */
-case class StringSchema(
-  description: Option[String] = None,
-  enumValues: List[String] = Nil,
-  minLength: Option[Int] = None,
-  maxLength: Option[Int] = None
-) extends JsonSchemaValue:
-  def toJson: Json =
-    val base = Json.obj("type" -> "string".asJson)
-    val withDesc = description.fold(base.asObject.get)(d => base.asObject.get.add("description", d.asJson))
-    val withEnum = if enumValues.nonEmpty then withDesc.add("enum", enumValues.asJson) else withDesc
-    val withMin = minLength.fold(withEnum)(m => withEnum.add("minLength", m.asJson))
-    val withMax = maxLength.fold(withMin)(m => withMin.add("maxLength", m.asJson))
-    Json.fromJsonObject(withMax)
-
-/** Number schema */
-case class NumberSchema(
-  description: Option[String] = None,
-  minimum: Option[Double] = None,
-  maximum: Option[Double] = None
-) extends JsonSchemaValue:
-  def toJson: Json =
-    val base = Json.obj("type" -> "number".asJson)
-    val withDesc = description.fold(base.asObject.get)(d => base.asObject.get.add("description", d.asJson))
-    val withMin = minimum.fold(withDesc)(m => withDesc.add("minimum", m.asJson))
-    val withMax = maximum.fold(withMin)(m => withMin.add("maximum", m.asJson))
-    Json.fromJsonObject(withMax)
-
-/** Integer schema */
-case class IntegerSchema(
-  description: Option[String] = None,
-  minimum: Option[Int] = None,
-  maximum: Option[Int] = None
-) extends JsonSchemaValue:
-  def toJson: Json =
-    val base = Json.obj("type" -> "integer".asJson)
-    val withDesc = description.fold(base.asObject.get)(d => base.asObject.get.add("description", d.asJson))
-    val withMin = minimum.fold(withDesc)(m => withDesc.add("minimum", m.asJson))
-    val withMax = maximum.fold(withMin)(m => withMin.add("maximum", m.asJson))
-    Json.fromJsonObject(withMax)
-
-/** Boolean schema */
-case class BooleanSchema(
-  description: Option[String] = None
-) extends JsonSchemaValue:
-  def toJson: Json =
-    val base = Json.obj("type" -> "boolean".asJson)
-    description.fold(base)(d =>
-      Json.fromJsonObject(base.asObject.get.add("description", d.asJson))
-    )
-
-/** Array schema */
-case class ArraySchema(
-  items: JsonSchemaValue,
-  description: Option[String] = None,
-  minItems: Option[Int] = None,
-  maxItems: Option[Int] = None
-) extends JsonSchemaValue:
-  def toJson: Json =
-    val base = Json.obj(
-      "type" -> "array".asJson,
-      "items" -> items.toJson
-    )
-    val withDesc = description.fold(base.asObject.get)(d => base.asObject.get.add("description", d.asJson))
-    val withMin = minItems.fold(withDesc)(m => withDesc.add("minItems", m.asJson))
-    val withMax = maxItems.fold(withMin)(m => withMin.add("maxItems", m.asJson))
-    Json.fromJsonObject(withMax)
-
-/** Null schema */
-case class NullSchema() extends JsonSchemaValue:
-  def toJson: Json = Json.obj("type" -> "null".asJson)
-
-/** Union schema (oneOf) */
-case class UnionSchema(
-  schemas: List[JsonSchemaValue]
-) extends JsonSchemaValue:
-  def toJson: Json = Json.obj(
-    "oneOf" -> schemas.map(_.toJson).asJson
-  )
-
-/** Main JsonSchema type class */
 trait JsonSchema[A]:
-  def schema: JsonSchemaValue
+  def schema: Schema
 
 object JsonSchema:
-  // Summon instance
+
   def apply[A](using s: JsonSchema[A]): JsonSchema[A] = s
 
-  // Get schema value
-  def schemaFor[A](using s: JsonSchema[A]): JsonSchemaValue = s.schema
+  def schemaFor[A](using s: JsonSchema[A]): Schema = s.schema
 
-  // Get JSON representation
-  def toJson[A](using s: JsonSchema[A]): Json = s.schema.toJson
+  def toJson[A](using s: JsonSchema[A]): Json = s.schema.asJson
 
-  // Primitive instances
   given JsonSchema[String] with
-    def schema: JsonSchemaValue = StringSchema()
+    def schema: Schema = Schema(`type` = Some(List(SchemaType.String)))
 
   given JsonSchema[Int] with
-    def schema: JsonSchemaValue = IntegerSchema()
+    def schema: Schema = Schema(`type` = Some(List(SchemaType.Integer)))
 
   given JsonSchema[Long] with
-    def schema: JsonSchemaValue = IntegerSchema()
+    def schema: Schema = Schema(`type` = Some(List(SchemaType.Integer)))
 
   given JsonSchema[Double] with
-    def schema: JsonSchemaValue = NumberSchema()
+    def schema: Schema = Schema(`type` = Some(List(SchemaType.Number)))
 
   given JsonSchema[Float] with
-    def schema: JsonSchemaValue = NumberSchema()
+    def schema: Schema = Schema(`type` = Some(List(SchemaType.Number)))
 
   given JsonSchema[Boolean] with
-    def schema: JsonSchemaValue = BooleanSchema()
+    def schema: Schema = Schema(`type` = Some(List(SchemaType.Boolean)))
 
-  // Option support (uses inner type schema; field is already excluded from `required`)
   given [A](using s: JsonSchema[A]): JsonSchema[Option[A]] with
-    def schema: JsonSchemaValue = s.schema
+    def schema: Schema = s.schema
 
-  // List support
   given [A](using s: JsonSchema[A]): JsonSchema[List[A]] with
-    def schema: JsonSchemaValue = ArraySchema(s.schema)
+    def schema: Schema = Schema(`type` = Some(List(SchemaType.Array)), items = Some(s.schema: SchemaLike))
 
-  // Seq support
   given [A](using s: JsonSchema[A]): JsonSchema[Seq[A]] with
-    def schema: JsonSchemaValue = ArraySchema(s.schema)
+    def schema: Schema = Schema(`type` = Some(List(SchemaType.Array)), items = Some(s.schema: SchemaLike))
 
-  // Derive for case classes using Mirror
   inline def derived[A](using m: Mirror.Of[A]): JsonSchema[A] =
     inline m match
       case p: Mirror.ProductOf[A] => deriveProduct[A](p)
-      case s: Mirror.SumOf[A] => deriveSum[A](s)
+      case s: Mirror.SumOf[A]     => deriveSum[A](s)
 
   private inline def deriveProduct[A](p: Mirror.ProductOf[A]): JsonSchema[A] =
     new JsonSchema[A]:
-      def schema: JsonSchemaValue =
+      def schema: Schema =
         val labels = getLabels[p.MirroredElemLabels]
         val schemas = getSchemasForProduct[p.MirroredElemTypes]
         val descriptions = getDescriptions[A]
         val examples = getExamples[A]
 
-        val properties = labels.zip(schemas).map { case (name, schema) =>
-          val desc = descriptions.get(name)
-          val exs = examples.getOrElse(name, Nil)
-          name -> PropertySchema(schema, desc, exs)
-        }.toMap
+        val fields = labels.zip(schemas).map { (name, schema) =>
+          val enriched = schema.copy(
+            description = descriptions.get(name).orElse(schema.description),
+            examples = examples.get(name).orElse(schema.examples)
+          )
+          name -> (enriched: SchemaLike)
+        }
 
-        val requiredFields = getRequiredFields[p.MirroredElemTypes](labels)
+        val required = getRequiredFields[p.MirroredElemTypes](labels)
 
-        ObjectSchema(properties, requiredFields, additionalProperties = false)
+        Schema(
+          `type` = Some(List(SchemaType.Object)),
+          properties = ListMap(fields*),
+          required = required,
+          additionalProperties = Some(AnySchema.Nothing)
+        )
 
   private inline def deriveSum[A](s: Mirror.SumOf[A]): JsonSchema[A] =
     new JsonSchema[A]:
-      def schema: JsonSchemaValue =
+      def schema: Schema =
         val schemas = getSchemasForSum[s.MirroredElemTypes]
-        UnionSchema(schemas)
+        Schema(oneOf = schemas)
 
-  // Helper to get labels from tuple type
   private inline def getLabels[T <: Tuple]: List[String] =
     inline erasedValue[T] match
       case _: EmptyTuple => Nil
       case _: (t *: ts) =>
         constValue[t].asInstanceOf[String] :: getLabels[ts]
 
-  // Helper to get schemas for product types
-  private inline def getSchemasForProduct[T <: Tuple]: List[JsonSchemaValue] =
+  private inline def getSchemasForProduct[T <: Tuple]: List[Schema] =
     inline erasedValue[T] match
       case _: EmptyTuple => Nil
       case _: (t *: ts) =>
         summonInline[JsonSchema[t]].schema :: getSchemasForProduct[ts]
 
-  // Helper to get schemas for sum types
-  private inline def getSchemasForSum[T <: Tuple]: List[JsonSchemaValue] =
+  private inline def getSchemasForSum[T <: Tuple]: List[SchemaLike] =
     inline erasedValue[T] match
       case _: EmptyTuple => Nil
       case _: (t *: ts) =>
-        summonInline[JsonSchema[t]].schema :: getSchemasForSum[ts]
+        (summonInline[JsonSchema[t]].schema: SchemaLike) :: getSchemasForSum[ts]
 
-  // Helper to get required fields (non-Option types)
   private inline def getRequiredFields[T <: Tuple](labels: List[String]): List[String] =
     inline erasedValue[T] match
       case _: EmptyTuple => Nil
@@ -228,34 +113,36 @@ object JsonSchema:
   private inline def getDescriptions[A]: Map[String, String] =
     ${ JsonSchemaMacros.getDescriptionsImpl[A] }
 
-  private inline def getExamples[A]: Map[String, List[Json]] =
+  private inline def getExamples[A]: Map[String, List[ExampleValue]] =
     ${ JsonSchemaMacros.getExamplesImpl[A] }
 
-  // Builder-style API for manual schema construction
   object obj:
-    def apply(properties: (String, JsonSchemaValue)*): ObjectSchema =
-      ObjectSchema(
-        properties.map { case (name, schema) => name -> PropertySchema(schema) }.toMap,
-        required = properties.map(_._1).toList
+    def apply(fields: (String, Schema)*): Schema =
+      Schema(
+        `type` = Some(List(SchemaType.Object)),
+        properties = ListMap(fields.map { (name, schema) => name -> (schema: SchemaLike) }*),
+        required = fields.map(_._1).toList,
+        additionalProperties = Some(AnySchema.Nothing)
       )
 
   object string:
-    def apply(): StringSchema = StringSchema()
-    def withDescription(desc: String): StringSchema = StringSchema(Some(desc))
-    def withEnum(values: String*): StringSchema = StringSchema(enumValues = values.toList)
+    def apply(): Schema = Schema(`type` = Some(List(SchemaType.String)))
+    def withDescription(desc: String): Schema = Schema(`type` = Some(List(SchemaType.String)), description = Some(desc))
+    def withEnum(values: String*): Schema = Schema(`type` = Some(List(SchemaType.String)), `enum` = Some(values.map(ExampleSingleValue(_)).toList))
 
   object integer:
-    def apply(): IntegerSchema = IntegerSchema()
-    def withDescription(desc: String): IntegerSchema = IntegerSchema(Some(desc))
-    def withRange(min: Int, max: Int): IntegerSchema = IntegerSchema(minimum = Some(min), maximum = Some(max))
+    def apply(): Schema = Schema(`type` = Some(List(SchemaType.Integer)))
+    def withDescription(desc: String): Schema = Schema(`type` = Some(List(SchemaType.Integer)), description = Some(desc))
+    def withRange(min: Int, max: Int): Schema = Schema(`type` = Some(List(SchemaType.Integer)), minimum = Some(BigDecimal(min)), maximum = Some(BigDecimal(max)))
 
   object number:
-    def apply(): NumberSchema = NumberSchema()
-    def withDescription(desc: String): NumberSchema = NumberSchema(Some(desc))
+    def apply(): Schema = Schema(`type` = Some(List(SchemaType.Number)))
+    def withDescription(desc: String): Schema = Schema(`type` = Some(List(SchemaType.Number)), description = Some(desc))
 
   object boolean:
-    def apply(): BooleanSchema = BooleanSchema()
-    def withDescription(desc: String): BooleanSchema = BooleanSchema(Some(desc))
+    def apply(): Schema = Schema(`type` = Some(List(SchemaType.Boolean)))
+    def withDescription(desc: String): Schema = Schema(`type` = Some(List(SchemaType.Boolean)), description = Some(desc))
 
   object array:
-    def apply(items: JsonSchemaValue): ArraySchema = ArraySchema(items)
+    def apply(items: Schema): Schema =
+      Schema(`type` = Some(List(SchemaType.Array)), items = Some(items: SchemaLike))

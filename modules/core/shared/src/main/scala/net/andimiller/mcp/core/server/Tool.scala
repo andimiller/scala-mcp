@@ -6,181 +6,100 @@ import io.circe.{Decoder, Encoder, Json}
 import io.circe.syntax.*
 import net.andimiller.mcp.core.protocol.*
 import net.andimiller.mcp.core.schema.JsonSchema
-import sourcecode.Name
 
-/**
- * Tool builder and helper functions for creating tool handlers.
- */
 object Tool:
 
-  /**
-   * Create a simple tool handler from a function with automatic schema derivation.
-   *
-   * Example:
-   * {{{
-   * case class AddRequest(a: Int, b: Int) derives JsonSchema, Decoder
-   * case class AddResponse(sum: Int) derives Encoder
-   *
-   * val addTool = Tool.build { (req: AddRequest) =>
-   *   IO.pure(AddResponse(req.a + req.b))
-   * }(using Name("add"))
-   * }}}
-   */
-  inline def build[F[_]: Async, A, R](
-    handler: A => F[R]
-  )(using
-    toolName: Name,
-    schema: JsonSchema[A],
-    decoder: Decoder[A],
-    encoder: Encoder.AsObject[R],
-    outputSchemaInstance: JsonSchema[R]
-  ): ToolHandler[F] =
-    new ToolHandler[F]:
-      def name: String = toolName.value
-      def description: String = s"Tool: ${toolName.value}"
-      def inputSchema: Json = JsonSchema.toJson[A]
-      def outputSchema: Json = JsonSchema.toJson[R]
-      def handle(arguments: Json): F[ToolResult] =
-        arguments.as[A] match
-          case Right(input) =>
-            handler(input).map { result =>
-              ToolResult.structured(result.asJson)
-            }
-          case Left(error) =>
-            Async[F].pure(ToolResult.error(s"Invalid arguments: ${error.getMessage}"))
+  def builder[F[_]: Async]: ToolBuilder.Empty[F] = new ToolBuilder.Empty[F]
 
-  /**
-   * Create a tool handler with explicit name and description.
-   */
-  inline def buildNamed[F[_]: Async, A, R](
-    toolName: String,
-    toolDescription: String
-  )(
-    handler: A => F[R]
-  )(using
-    schema: JsonSchema[A],
-    decoder: Decoder[A],
-    encoder: Encoder.AsObject[R],
-    outputSchemaInstance: JsonSchema[R]
-  ): ToolHandler[F] =
+final class ToolBuilder[F[_]: Async] private (
+  val toolName: String,
+  val toolDescription: String,
+  val inputSchemaJson: Option[Json],
+  val outputSchemaJson: Option[Json]
+):
+
+  private def copy(
+    toolName: String = this.toolName,
+    toolDescription: String = this.toolDescription,
+    inputSchemaJson: Option[Json] = this.inputSchemaJson,
+    outputSchemaJson: Option[Json] = this.outputSchemaJson
+  ): ToolBuilder[F] =
+    new ToolBuilder[F](toolName, toolDescription, inputSchemaJson, outputSchemaJson)
+
+  def description(d: String): ToolBuilder[F] =
+    copy(toolDescription = d)
+
+  def inputSchema(json: Json): ToolBuilder[F] =
+    copy(inputSchemaJson = Some(json))
+
+  def outputSchema(json: Json): ToolBuilder[F] =
+    copy(outputSchemaJson = Some(json))
+
+  def in[A](using JsonSchema[A], Decoder[A]): ToolBuilder.In[F, A] =
+    ToolBuilder.In(toolName, toolDescription, JsonSchema.toJson[A], outputSchemaJson)
+
+  def logic[A](handler: A => F[ToolResult])(using JsonSchema[A], Decoder[A]): ToolHandler[F] =
+    val finalOutput = outputSchemaJson.getOrElse(Json.obj())
     new ToolHandler[F]:
       def name: String = toolName
       def description: String = toolDescription
       def inputSchema: Json = JsonSchema.toJson[A]
-      def outputSchema: Json = JsonSchema.toJson[R]
+      def outputSchema: Json = finalOutput
       def handle(arguments: Json): F[ToolResult] =
         arguments.as[A] match
-          case Right(input) =>
-            handler(input).map { result =>
-              ToolResult.structured(result.asJson)
-            }
-          case Left(error) =>
-            Async[F].pure(ToolResult.error(s"Invalid arguments: ${error.getMessage}"))
+          case Right(input)  => handler(input)
+          case Left(error)   => Async[F].pure(ToolResult.error(s"Invalid arguments: ${error.getMessage}"))
 
-  /**
-   * Create a tool that returns ToolResult directly (for more control over output).
-   */
-  inline def buildDirect[F[_]: Async, A](
-    toolName: String,
-    toolDescription: String,
-    outputSchemaJson: Json
-  )(
-    handler: A => F[ToolResult]
-  )(using
-    schema: JsonSchema[A],
-    decoder: Decoder[A]
-  ): ToolHandler[F] =
-    new ToolHandler[F]:
-      def name: String = toolName
-      def description: String = toolDescription
-      def inputSchema: Json = JsonSchema.toJson[A]
-      def outputSchema: Json = outputSchemaJson
-      def handle(arguments: Json): F[ToolResult] =
-        arguments.as[A] match
-          case Right(input) =>
-            handler(input)
-          case Left(error) =>
-            Async[F].pure(ToolResult.error(s"Invalid arguments: ${error.getMessage}"))
+object ToolBuilder:
 
-  /**
-   * Fluent builder for tools (alternative to the inline helpers).
-   */
-  def builder[F[_]: Async]: ToolBuilder[F] = new ToolBuilder[F]
+  final class Empty[F[_]: Async]:
+    def name(n: String): ToolBuilder[F] = new ToolBuilder[F](n, s"Tool: $n", None, None)
 
-/**
- * Fluent builder for constructing tool handlers step by step.
- */
-class ToolBuilder[F[_]: Async]:
-  private var toolName: Option[String] = None
-  private var toolDescription: Option[String] = None
-  private var toolSchema: Option[Json] = None
-  private var toolOutputSchema: Option[Json] = None
+  final class In[F[_]: Async, A] private[ToolBuilder] (
+    val toolName: String,
+    val toolDescription: String,
+    val inSchema: Json,
+    val outSchemaJson: Option[Json]
+  ):
 
-  def name(n: String): this.type =
-    toolName = Some(n)
-    this
+    private def copy(
+      toolName: String = this.toolName,
+      toolDescription: String = this.toolDescription,
+      inSchema: Json = this.inSchema,
+      outSchemaJson: Option[Json] = this.outSchemaJson
+    ): In[F, A] =
+      new In(toolName, toolDescription, inSchema, outSchemaJson)
 
-  def description(d: String): this.type =
-    toolDescription = Some(d)
-    this
+    def description(d: String): In[F, A] =
+      copy(toolDescription = d)
 
-  def schema(s: Json): this.type =
-    toolSchema = Some(s)
-    this
+    def out[R: Encoder.AsObject: JsonSchema]: In[F, A] =
+      copy(outSchemaJson = Some(JsonSchema.toJson[R]))
 
-  def schemaFrom[A](using schema: JsonSchema[A]): this.type =
-    toolSchema = Some(JsonSchema.toJson[A])
-    this
+    def run[R](handler: A => F[R])(using Decoder[A], Encoder.AsObject[R], JsonSchema[R]): ToolHandler[F] =
+      val finalOutput = outSchemaJson.getOrElse(JsonSchema.toJson[R])
+      new ToolHandler[F]:
+        def name: String = toolName
+        def description: String = toolDescription
+        def inputSchema: Json = inSchema
+        def outputSchema: Json = finalOutput
+        def handle(arguments: Json): F[ToolResult] =
+          arguments.as[A] match
+            case Right(input) =>
+              handler(input).map { result =>
+                ToolResult.structured(result.asJson)
+              }
+            case Left(error) =>
+              Async[F].pure(ToolResult.error(s"Invalid arguments: ${error.getMessage}"))
 
-  def outputSchema(s: Json): this.type =
-    toolOutputSchema = Some(s)
-    this
-
-  def outputSchemaFrom[R](using schema: JsonSchema[R]): this.type =
-    toolOutputSchema = Some(JsonSchema.toJson[R])
-    this
-
-  def handler[A: Decoder, R: Encoder.AsObject: JsonSchema](f: A => F[R]): ToolHandler[F] =
-    require(toolName.isDefined, "Tool name is required")
-    require(toolSchema.isDefined, "Tool schema is required")
-
-    val finalName = toolName.get
-    val finalDescription = toolDescription.getOrElse(s"Tool: $finalName")
-    val finalSchema = toolSchema.get
-    val finalOutputSchema = toolOutputSchema.getOrElse(JsonSchema.toJson[R])
-
-    new ToolHandler[F]:
-      def name: String = finalName
-      def description: String = finalDescription
-      def inputSchema: Json = finalSchema
-      def outputSchema: Json = finalOutputSchema
-      def handle(arguments: Json): F[ToolResult] =
-        arguments.as[A] match
-          case Right(input) =>
-            f(input).map { result =>
-              ToolResult.structured(result.asJson)
-            }
-          case Left(error) =>
-            Async[F].pure(ToolResult.error(s"Invalid arguments: ${error.getMessage}"))
-
-  def handlerDirect[A: Decoder](f: A => F[ToolResult]): ToolHandler[F] =
-    require(toolName.isDefined, "Tool name is required")
-    require(toolSchema.isDefined, "Tool schema is required")
-    require(toolOutputSchema.isDefined, "Tool output schema is required")
-
-    val finalName = toolName.get
-    val finalDescription = toolDescription.getOrElse(s"Tool: $finalName")
-    val finalSchema = toolSchema.get
-    val finalOutputSchema = toolOutputSchema.get
-
-    new ToolHandler[F]:
-      def name: String = finalName
-      def description: String = finalDescription
-      def inputSchema: Json = finalSchema
-      def outputSchema: Json = finalOutputSchema
-      def handle(arguments: Json): F[ToolResult] =
-        arguments.as[A] match
-          case Right(input) =>
-            f(input)
-          case Left(error) =>
-            Async[F].pure(ToolResult.error(s"Invalid arguments: ${error.getMessage}"))
+    def handle(handler: A => F[ToolResult])(using Decoder[A]): ToolHandler[F] =
+      val finalOutput = outSchemaJson.getOrElse(Json.obj())
+      new ToolHandler[F]:
+        def name: String = toolName
+        def description: String = toolDescription
+        def inputSchema: Json = inSchema
+        def outputSchema: Json = finalOutput
+        def handle(arguments: Json): F[ToolResult] =
+          arguments.as[A] match
+            case Right(input)  => handler(input)
+            case Left(error)  => Async[F].pure(ToolResult.error(s"Invalid arguments: ${error.getMessage}"))

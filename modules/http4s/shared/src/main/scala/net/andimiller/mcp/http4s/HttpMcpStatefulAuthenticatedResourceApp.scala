@@ -3,8 +3,6 @@ package net.andimiller.mcp.http4s
 import cats.Eq
 import cats.effect.{IO, IOApp, Resource}
 import com.comcast.ip4s.*
-import io.circe.{Decoder, Encoder}
-import net.andimiller.mcp.core.schema.JsonSchema
 import net.andimiller.mcp.core.server.*
 import org.http4s.{Header, Request, Response, Status}
 import org.typelevel.ci.*
@@ -93,11 +91,7 @@ trait HttpMcpStatefulAuthenticatedResourceApp[R, S, U: Eq] extends IOApp.Simple:
   /**
    * Helper method to build a tool handler.
    */
-  def tool[Req: JsonSchema: Decoder, Res: JsonSchema: Encoder.AsObject](
-    name: String,
-    description: String
-  )(handler: Req => IO[Res]): ToolHandler[IO] =
-    Tool.buildNamed[IO, Req, Res](name, description)(handler)
+  def tool: ToolBuilder.Empty[IO] = Tool.builder[IO]
 
   final def run: IO[Unit] =
     mkResources.flatMap { r =>

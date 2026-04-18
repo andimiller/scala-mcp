@@ -93,58 +93,70 @@ object SharedNotebookMcpServer extends HttpMcpStatefulAuthenticatedResourceApp[N
   // ── tools ─────────────────────────────────────────────────────────
 
   override def tools(r: Notebook[IO], s: Unit, user: UserContext) = List(
-    Tool.buildNamed[IO, WriteNoteRequest, NoteResponse](
-      "write_note",
-      "Create or update a note. If you already have a note with the same title, it will be updated."
-    ) { req =>
-      r.writeNote(user.username, req.title, req.content).map { note =>
-        NoteResponse(note.id, note.title, note.content, note.owner, note.sharedWith.toList)
+    Tool.builder[IO]
+      .name("write_note")
+      .description("Create or update a note. If you already have a note with the same title, it will be updated.")
+      .in[WriteNoteRequest]
+      .out[NoteResponse]
+      .run { req =>
+        r.writeNote(user.username, req.title, req.content).map { note =>
+          NoteResponse(note.id, note.title, note.content, note.owner, note.sharedWith.toList)
+        }
+      },
+
+    Tool.builder[IO]
+      .name("read_note")
+      .description("Read a note by ID. You can read notes you own or that are shared with you.")
+      .in[ReadNoteRequest]
+      .out[NoteResponse]
+      .run { req =>
+        r.readNote(req.note_id, user.username).flatMap {
+          case Some(note) => IO.pure(NoteResponse(note.id, note.title, note.content, note.owner, note.sharedWith.toList))
+          case None        => IO.raiseError(new Exception(s"Note '${req.note_id}' not found or not accessible"))
+        }
+      },
+
+    Tool.builder[IO]
+      .name("share_note")
+      .description("Share one of your notes with another user. Only the owner can share.")
+      .in[ShareNoteRequest]
+      .out[MessageResponse]
+      .run { req =>
+        r.shareNote(req.note_id, user.username, req.username).map {
+          case Right(_) => MessageResponse(s"Note '${req.note_id}' shared with ${req.username}")
+          case Left(err) => MessageResponse(err)
+        }
+      },
+
+    Tool.builder[IO]
+      .name("unshare_note")
+      .description("Revoke sharing of one of your notes from a user. Only the owner can unshare.")
+      .in[UnshareNoteRequest]
+      .out[MessageResponse]
+      .run { req =>
+        r.unshareNote(req.note_id, user.username, req.username).map {
+          case Right(_) => MessageResponse(s"Note '${req.note_id}' unshared from ${req.username}")
+          case Left(err) => MessageResponse(err)
+        }
+      },
+
+    Tool.builder[IO]
+      .name("list_my_notes")
+      .description("List all notes you own")
+      .in[EmptyRequest]
+      .out[NoteListResponse]
+      .run { _ =>
+        r.listMyNotes(user.username).map(ns => NoteListResponse(ns.map(n => NoteSummary(n.id, n.title, n.owner))))
+      },
+
+    Tool.builder[IO]
+      .name("list_shared_notes")
+      .description("List notes that other users have shared with you")
+      .in[EmptyRequest]
+      .out[NoteListResponse]
+      .run { _ =>
+        r.listSharedWithMe(user.username).map(ns => NoteListResponse(ns.map(n => NoteSummary(n.id, n.title, n.owner))))
       }
-    },
-
-    Tool.buildNamed[IO, ReadNoteRequest, NoteResponse](
-      "read_note",
-      "Read a note by ID. You can read notes you own or that are shared with you."
-    ) { req =>
-      r.readNote(req.note_id, user.username).flatMap {
-        case Some(note) => IO.pure(NoteResponse(note.id, note.title, note.content, note.owner, note.sharedWith.toList))
-        case None        => IO.raiseError(new Exception(s"Note '${req.note_id}' not found or not accessible"))
-      }
-    },
-
-    Tool.buildNamed[IO, ShareNoteRequest, MessageResponse](
-      "share_note",
-      "Share one of your notes with another user. Only the owner can share."
-    ) { req =>
-      r.shareNote(req.note_id, user.username, req.username).map {
-        case Right(_) => MessageResponse(s"Note '${req.note_id}' shared with ${req.username}")
-        case Left(err) => MessageResponse(err)
-      }
-    },
-
-    Tool.buildNamed[IO, UnshareNoteRequest, MessageResponse](
-      "unshare_note",
-      "Revoke sharing of one of your notes from a user. Only the owner can unshare."
-    ) { req =>
-      r.unshareNote(req.note_id, user.username, req.username).map {
-        case Right(_) => MessageResponse(s"Note '${req.note_id}' unshared from ${req.username}")
-        case Left(err) => MessageResponse(err)
-      }
-    },
-
-    Tool.buildNamed[IO, EmptyRequest, NoteListResponse](
-      "list_my_notes",
-      "List all notes you own"
-    ) { _ =>
-      r.listMyNotes(user.username).map(ns => NoteListResponse(ns.map(n => NoteSummary(n.id, n.title, n.owner))))
-    },
-
-    Tool.buildNamed[IO, EmptyRequest, NoteListResponse](
-      "list_shared_notes",
-      "List notes that other users have shared with you"
-    ) { _ =>
-      r.listSharedWithMe(user.username).map(ns => NoteListResponse(ns.map(n => NoteSummary(n.id, n.title, n.owner))))
-    }
   )
 
   // ── resource templates ────────────────────────────────────────────

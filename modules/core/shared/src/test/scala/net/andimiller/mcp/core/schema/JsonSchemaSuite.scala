@@ -2,6 +2,8 @@ package net.andimiller.mcp.core.schema
 
 import munit.FunSuite
 import io.circe.Json
+import io.circe.syntax.*
+import sttp.apispec.*
 
 class JsonSchemaSuite extends FunSuite:
 
@@ -24,6 +26,63 @@ class JsonSchemaSuite extends FunSuite:
     @example("2d20 + 5")
     dice: String,
     verbose: Boolean
+  ) derives JsonSchema
+
+  case class WithIntExamples(
+    @description("The user's age in years")
+    @example(25)
+    @example(30)
+    age: Int
+  ) derives JsonSchema
+
+  case class WithDoubleExamples(
+    @description("Temperature in celsius")
+    @example(36.6)
+    @example(98.6)
+    temp: Double
+  ) derives JsonSchema
+
+  case class WithBooleanExamples(
+    @description("Whether to enable verbose output")
+    @example(true)
+    @example(false)
+    verbose: Boolean
+  ) derives JsonSchema
+
+  case class WithOptionAnnotation(
+    @description("Optional nickname")
+    @example("Bob")
+    nickname: Option[String]
+  ) derives JsonSchema
+
+  case class WithListAnnotation(
+    @description("Tags for the item")
+    @example("important")
+    tags: List[String]
+  ) derives JsonSchema
+
+  case class Inner(x: Int) derives JsonSchema
+  case class WithNestedAnnotation(
+    @description("The inner object")
+    inner: Inner
+  ) derives JsonSchema
+
+  case class SingleExample(
+    @example("hello")
+    word: String
+  ) derives JsonSchema
+
+  case class MixedTypes(
+    @example("hello") name: String,
+    @example(42) count: Int,
+    @example(3.14) ratio: Double,
+    @example(true) enabled: Boolean
+  ) derives JsonSchema
+
+  case class MixedAnnotations(
+    @description("First field") @example("a") first: String,
+    second: Int,
+    @example("x") @example("y") @example("z") third: String
   ) derives JsonSchema
 
   test("fields without annotations produce clean JSON") {
@@ -57,17 +116,9 @@ class JsonSchemaSuite extends FunSuite:
     val examples = dice.downField("examples").as[List[String]]
     assertEquals(examples, Right(List("1d6", "2d20 + 5")))
 
-    // verbose field should have no description or examples
     val verboseObj = json.hcursor.downField("properties").downField("verbose").focus.get
     assertEquals(verboseObj, Json.obj("type" -> Json.fromString("boolean")))
   }
-
-  case class WithIntExamples(
-    @description("The user's age in years")
-    @example(25)
-    @example(30)
-    age: Int
-  ) derives JsonSchema
 
   test("@example with Int literals produces JSON numbers") {
     val json = JsonSchema.toJson[WithIntExamples]
@@ -78,13 +129,6 @@ class JsonSchemaSuite extends FunSuite:
     assertEquals(examples, Json.arr(Json.fromInt(25), Json.fromInt(30)))
   }
 
-  case class WithDoubleExamples(
-    @description("Temperature in celsius")
-    @example(36.6)
-    @example(98.6)
-    temp: Double
-  ) derives JsonSchema
-
   test("@example with Double literals produces JSON numbers") {
     val json = JsonSchema.toJson[WithDoubleExamples]
     val temp = json.hcursor.downField("properties").downField("temp")
@@ -93,13 +137,6 @@ class JsonSchemaSuite extends FunSuite:
     val examples = temp.downField("examples").focus.get
     assertEquals(examples, Json.arr(Json.fromDoubleOrNull(36.6), Json.fromDoubleOrNull(98.6)))
   }
-
-  case class WithBooleanExamples(
-    @description("Whether to enable verbose output")
-    @example(true)
-    @example(false)
-    verbose: Boolean
-  ) derives JsonSchema
 
   test("@example with Boolean literals produces JSON booleans") {
     val json = JsonSchema.toJson[WithBooleanExamples]
@@ -110,28 +147,15 @@ class JsonSchemaSuite extends FunSuite:
     assertEquals(examples, Json.arr(Json.fromBoolean(true), Json.fromBoolean(false)))
   }
 
-  case class WithOptionAnnotation(
-    @description("Optional nickname")
-    @example("Bob")
-    nickname: Option[String]
-  ) derives JsonSchema
-
   test("annotations on Option fields") {
     val json = JsonSchema.toJson[WithOptionAnnotation]
     val nickname = json.hcursor.downField("properties").downField("nickname")
     assertEquals(nickname.downField("description").as[String], Right("Optional nickname"))
     assertEquals(nickname.downField("examples").as[List[String]], Right(List("Bob")))
-    // Option fields use the inner type schema (not required, no oneOf)
     assertEquals(nickname.downField("type").as[String], Right("string"))
-    val required = json.hcursor.downField("required").as[List[String]]
-    assertEquals(required, Right(Nil))
+    val requiredField = json.hcursor.downField("required")
+    assert(requiredField.failed, "Option-only fields should not produce a 'required' key")
   }
-
-  case class WithListAnnotation(
-    @description("Tags for the item")
-    @example("important")
-    tags: List[String]
-  ) derives JsonSchema
 
   test("annotations on List fields") {
     val json = JsonSchema.toJson[WithListAnnotation]
@@ -141,12 +165,6 @@ class JsonSchemaSuite extends FunSuite:
     assertEquals(tags.downField("examples").as[List[String]], Right(List("important")))
   }
 
-  case class Inner(x: Int) derives JsonSchema
-  case class WithNestedAnnotation(
-    @description("The inner object")
-    inner: Inner
-  ) derives JsonSchema
-
   test("annotations on nested case class fields") {
     val json = JsonSchema.toJson[WithNestedAnnotation]
     val inner = json.hcursor.downField("properties").downField("inner")
@@ -154,23 +172,11 @@ class JsonSchemaSuite extends FunSuite:
     assertEquals(inner.downField("type").as[String], Right("object"))
   }
 
-  case class SingleExample(
-    @example("hello")
-    word: String
-  ) derives JsonSchema
-
   test("single @example produces single-element array") {
     val json = JsonSchema.toJson[SingleExample]
     val examples = json.hcursor.downField("properties").downField("word").downField("examples").as[List[String]]
     assertEquals(examples, Right(List("hello")))
   }
-
-  case class MixedTypes(
-    @example("hello") name: String,
-    @example(42) count: Int,
-    @example(3.14) ratio: Double,
-    @example(true) enabled: Boolean
-  ) derives JsonSchema
 
   test("@example with mixed types produces correct JSON types") {
     val json = JsonSchema.toJson[MixedTypes]
@@ -194,24 +200,27 @@ class JsonSchemaSuite extends FunSuite:
     )
   }
 
-  case class MixedAnnotations(
-    @description("First field") @example("a") first: String,
-    second: Int,
-    @example("x") @example("y") @example("z") third: String
-  ) derives JsonSchema
-
   test("mixed annotations across multiple fields") {
     val json = JsonSchema.toJson[MixedAnnotations]
     val props = json.hcursor.downField("properties")
 
-    // first: has both description and example
     assertEquals(props.downField("first").downField("description").as[String], Right("First field"))
     assertEquals(props.downField("first").downField("examples").as[List[String]], Right(List("a")))
 
-    // second: no annotations at all
     assertEquals(props.downField("second").focus.get, Json.obj("type" -> Json.fromString("integer")))
 
-    // third: examples only, three values, no description
     assert(props.downField("third").downField("description").failed)
     assertEquals(props.downField("third").downField("examples").as[List[String]], Right(List("x", "y", "z")))
+  }
+
+  test("additionalProperties is false for derived objects") {
+    val json = JsonSchema.toJson[NoAnnotations]
+    val addlProps = json.hcursor.downField("additionalProperties").as[Boolean]
+    assertEquals(addlProps, Right(false))
+  }
+
+  test("required fields are listed correctly") {
+    val json = JsonSchema.toJson[WithDescription]
+    val required = json.hcursor.downField("required").as[List[String]]
+    assertEquals(required, Right(List("name", "age")))
   }

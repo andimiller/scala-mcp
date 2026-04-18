@@ -53,8 +53,10 @@ object DiceMcpServer extends StdioMcpResourceIOApp[DiceMcpServer.DiceResources]:
 
   // Define the tools provided by this server
   override def tools(r: DiceResources) = List(
-    tool("roll_dice", "Roll dice using standard notation (e.g., '1d6', '2d20 + 5', '3d4 - 2')") {
-      (request: RollDiceRequest) =>
+    tool.name("roll_dice")
+      .description("Roll dice using standard notation (e.g., '1d6', '2d20 + 5', '3d4 - 2')")
+      .in[RollDiceRequest]
+      .run { request =>
         given Random[IO] = r.random
         val roller = DiceRoller[IO]
         val count = request.rolls.getOrElse(1)
@@ -72,7 +74,7 @@ object DiceMcpServer extends StdioMcpResourceIOApp[DiceMcpServer.DiceResources]:
             }
           ))
         }
-    }
+      }
   )
 
   // Define the resources provided by this server

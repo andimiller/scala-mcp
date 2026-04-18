@@ -364,7 +364,7 @@ object MyServer extends HttpMcpStatefulResourceApp[SharedState, SessionState]:
 
 ## JSON Schema Derivation
 
-The library provides automatic JSON Schema derivation using Scala 3's `derives` clause, with optional annotations:
+The library provides automatic JSON Schema derivation using Scala 3's `derives` clause, powered by the [sttp-apispec](https://github.com/softwaremill/sttp-apispec) `Schema` type. Annotations allow adding descriptions and examples:
 
 ```scala
 case class SearchRequest(

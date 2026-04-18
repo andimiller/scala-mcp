@@ -42,28 +42,28 @@ object DnsMcpServer extends HttpMcpApp[Dns[IO]]:
   // ── tools ─────────────────────────────────────────────────────────
 
   override def tools(dns: Dns[IO], sink: NotificationSink[IO]): List[ToolHandler[IO]] = List(
-    tool[ResolveDnsRequest, DnsResponse](
-      "resolve_dns",
-      "Resolve DNS records for a hostname. Supports A, AAAA, MX, TXT, CNAME, and NS record types."
-    ) { req =>
-      val rrtype = req.record_type.map(_.toUpperCase).getOrElse("A")
-      val lookup = rrtype match
-        case "A"     => dns.resolveA(req.hostname)
-        case "AAAA"  => dns.resolveAAAA(req.hostname)
-        case "MX"    => dns.resolveMx(req.hostname).map(_.map((ex, pri) => s"$pri $ex"))
-        case "TXT"   => dns.resolveTxt(req.hostname)
-        case "CNAME" => dns.resolveCname(req.hostname)
-        case "NS"    => dns.resolveNs(req.hostname)
-        case other   => IO.raiseError(new Exception(s"Unsupported record type: $other"))
-      lookup.map(DnsResponse(_))
-    },
+    tool.name("resolve_dns")
+      .description("Resolve DNS records for a hostname. Supports A, AAAA, MX, TXT, CNAME, and NS record types.")
+      .in[ResolveDnsRequest]
+      .run { req =>
+        val rrtype = req.record_type.map(_.toUpperCase).getOrElse("A")
+        val lookup = rrtype match
+          case "A"     => dns.resolveA(req.hostname)
+          case "AAAA"  => dns.resolveAAAA(req.hostname)
+          case "MX"    => dns.resolveMx(req.hostname).map(_.map((ex, pri) => s"$pri $ex"))
+          case "TXT"   => dns.resolveTxt(req.hostname)
+          case "CNAME" => dns.resolveCname(req.hostname)
+          case "NS"    => dns.resolveNs(req.hostname)
+          case other   => IO.raiseError(new Exception(s"Unsupported record type: $other"))
+        lookup.map(DnsResponse(_))
+      },
 
-    tool[ReverseDnsRequest, DnsResponse](
-      "reverse_dns",
-      "Perform a reverse DNS lookup for an IP address, returning associated hostnames."
-    ) { req =>
-      dns.reverse(req.ip).map(DnsResponse(_))
-    }
+    tool.name("reverse_dns")
+      .description("Perform a reverse DNS lookup for an IP address, returning associated hostnames.")
+      .in[ReverseDnsRequest]
+      .run { req =>
+        dns.reverse(req.ip).map(DnsResponse(_))
+      }
   )
 
   // ── resources ─────────────────────────────────────────────────────
