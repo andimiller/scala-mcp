@@ -1,16 +1,26 @@
 package net.andimiller.mcp.core.server
 
-import cats.effect.IO
-import io.circe.{Decoder, Encoder}
-import net.andimiller.mcp.core.schema.JsonSchema
-import net.andimiller.mcp.core.protocol.*
+import cats.effect.kernel.Async
 
-abstract class McpDsl extends McpDslCompat
+trait McpDsl[F[_]: Async]:
 
-trait McpDslCompat:
+  def tool: ToolBuilder.PlainEmpty[F] = Tool.builder[F]
 
-  def tool: ToolBuilder.Empty[IO] = Tool.builder[IO]
+  def contextualTool[Ctx]: ToolBuilder.ContextualEmpty[F, Ctx] = Tool.contextual[F, Ctx]
 
-  def resource: McpResource.type = McpResource
+  def resource: ResourceBuilder.PlainEmpty[F] = McpResource.builder[F]
 
-  def prompt: Prompt.type = Prompt
+  def contextualResource[Ctx]: ResourceBuilder.ContextualEmpty[F, Ctx] = McpResource.contextual[F, Ctx]
+
+  def resourceTemplate: ResourceTemplateBuilder.PlainEmpty[F] = ResourceTemplate.builder[F]
+
+  def contextualResourceTemplate[Ctx]: ResourceTemplateBuilder.ContextualEmpty[F, Ctx] = ResourceTemplate.contextual[F, Ctx]
+
+  def prompt: PromptBuilder.PlainEmpty[F] = Prompt.builder[F]
+
+  def contextualPrompt[Ctx]: PromptBuilder.ContextualEmpty[F, Ctx] = Prompt.contextual[F, Ctx]
+
+  object path:
+    def static(prefix: String): UriPath[Unit]   = UriPath.static(prefix)
+    def named(name: String): UriPath[String]     = UriPath.named(name)
+    def rest: UriPath[String]                    = UriPath.rest

@@ -4,33 +4,20 @@ import cats.effect.kernel.Async
 import cats.syntax.functor.*
 import net.andimiller.mcp.core.protocol.*
 
-/**
- * Fluent builder for constructing MCP servers.
- *
- * Example:
- * {{{
- * val server = ServerBuilder[IO]("my-server", "1.0.0")
- *   .withTool(myToolHandler)
- *   .withResource(myResourceHandler)
- *   .enableToolNotifications
- *   .build
- * }}}
- */
 class ServerBuilder[F[_]: Async](
-  name: String,
-  version: String,
-  toolHandlers: List[ToolHandler[F]] = Nil,
-  resourceHandlers: List[ResourceHandler[F]] = Nil,
-  resourceTemplateHandlers: List[ResourceTemplateHandler[F]] = Nil,
-  promptHandlers: List[PromptHandler[F]] = Nil,
-  toolCapabilities: Option[ToolCapabilities] = None,
-  resourceCapabilities: Option[ResourceCapabilities] = None,
-  promptCapabilities: Option[PromptCapabilities] = None,
-  loggingCapabilities: Option[LoggingCapabilities] = None
+    name: String,
+    version: String,
+    toolHandlers: List[Tool.Resolved[F]] = Nil,
+    resourceHandlers: List[McpResource.Resolved[F]] = Nil,
+    resourceTemplateHandlers: List[ResourceTemplate.Resolved[F]] = Nil,
+    promptHandlers: List[Prompt.Resolved[F]] = Nil,
+    toolCapabilities: Option[ToolCapabilities] = None,
+    resourceCapabilities: Option[ResourceCapabilities] = None,
+    promptCapabilities: Option[PromptCapabilities] = None,
+    loggingCapabilities: Option[LoggingCapabilities] = None
 ):
 
-  /** Add a tool handler to the server */
-  def withTool(handler: ToolHandler[F]): ServerBuilder[F] =
+  def withTool(handler: Tool.Resolved[F]): ServerBuilder[F] =
     new ServerBuilder[F](
       name, version,
       toolHandlers :+ handler,
@@ -39,12 +26,13 @@ class ServerBuilder[F[_]: Async](
       resourceCapabilities, promptCapabilities, loggingCapabilities
     )
 
-  /** Add multiple tool handlers to the server */
-  def withTools(handlers: ToolHandler[F]*): ServerBuilder[F] =
+  def withTool[A, R](tool: Tool[F, Unit, A, R])(using Async[F]): ServerBuilder[F] =
+    withTool(tool.provide(()))
+
+  def withTools(handlers: Tool.Resolved[F]*): ServerBuilder[F] =
     handlers.foldLeft(this)((builder, handler) => builder.withTool(handler))
 
-  /** Add a resource handler to the server */
-  def withResource(handler: ResourceHandler[F]): ServerBuilder[F] =
+  def withResource(handler: McpResource.Resolved[F]): ServerBuilder[F] =
     new ServerBuilder[F](
       name, version,
       toolHandlers,
@@ -55,8 +43,10 @@ class ServerBuilder[F[_]: Async](
       promptCapabilities, loggingCapabilities
     )
 
-  /** Add a resource template handler to the server */
-  def withResourceTemplate(handler: ResourceTemplateHandler[F]): ServerBuilder[F] =
+  def withResource(resource: McpResource[F, Unit]): ServerBuilder[F] =
+    withResource(resource.resolve)
+
+  def withResourceTemplate(handler: ResourceTemplate.Resolved[F]): ServerBuilder[F] =
     new ServerBuilder[F](
       name, version,
       toolHandlers,
@@ -67,16 +57,16 @@ class ServerBuilder[F[_]: Async](
       promptCapabilities, loggingCapabilities
     )
 
-  /** Add multiple resource template handlers to the server */
-  def withResourceTemplates(handlers: ResourceTemplateHandler[F]*): ServerBuilder[F] =
+  def withResourceTemplate(rt: ResourceTemplate[F, Unit]): ServerBuilder[F] =
+    withResourceTemplate(rt.resolve)
+
+  def withResourceTemplates(handlers: ResourceTemplate.Resolved[F]*): ServerBuilder[F] =
     handlers.foldLeft(this)((builder, handler) => builder.withResourceTemplate(handler))
 
-  /** Add multiple resource handlers to the server */
-  def withResources(handlers: ResourceHandler[F]*): ServerBuilder[F] =
+  def withResources(handlers: McpResource.Resolved[F]*): ServerBuilder[F] =
     handlers.foldLeft(this)((builder, handler) => builder.withResource(handler))
 
-  /** Add a prompt handler to the server */
-  def withPrompt(handler: PromptHandler[F]): ServerBuilder[F] =
+  def withPrompt(handler: Prompt.Resolved[F]): ServerBuilder[F] =
     new ServerBuilder[F](
       name, version,
       toolHandlers, resourceHandlers, resourceTemplateHandlers,
@@ -86,11 +76,12 @@ class ServerBuilder[F[_]: Async](
       loggingCapabilities
     )
 
-  /** Add multiple prompt handlers to the server */
-  def withPrompts(handlers: PromptHandler[F]*): ServerBuilder[F] =
+  def withPrompt(prompt: Prompt[F, Unit]): ServerBuilder[F] =
+    withPrompt(prompt.resolve)
+
+  def withPrompts(handlers: Prompt.Resolved[F]*): ServerBuilder[F] =
     handlers.foldLeft(this)((builder, handler) => builder.withPrompt(handler))
 
-  /** Enable tool list change notifications */
   def enableToolNotifications: ServerBuilder[F] =
     new ServerBuilder[F](
       name, version,
@@ -99,7 +90,6 @@ class ServerBuilder[F[_]: Async](
       resourceCapabilities, promptCapabilities, loggingCapabilities
     )
 
-  /** Enable resource subscriptions */
   def enableResourceSubscriptions: ServerBuilder[F] =
     new ServerBuilder[F](
       name, version,
@@ -109,7 +99,6 @@ class ServerBuilder[F[_]: Async](
       promptCapabilities, loggingCapabilities
     )
 
-  /** Enable resource list change notifications */
   def enableResourceNotifications: ServerBuilder[F] =
     new ServerBuilder[F](
       name, version,
@@ -119,7 +108,6 @@ class ServerBuilder[F[_]: Async](
       promptCapabilities, loggingCapabilities
     )
 
-  /** Enable prompt list change notifications */
   def enablePromptNotifications: ServerBuilder[F] =
     new ServerBuilder[F](
       name, version,
@@ -129,7 +117,6 @@ class ServerBuilder[F[_]: Async](
       loggingCapabilities
     )
 
-  /** Enable logging support */
   def enableLogging: ServerBuilder[F] =
     new ServerBuilder[F](
       name, version,
@@ -138,7 +125,6 @@ class ServerBuilder[F[_]: Async](
       Some(LoggingCapabilities())
     )
 
-  /** Build the server */
   def build: F[Server[F]] =
     val info = Implementation(name, version)
     val capabilities = ServerCapabilities(
@@ -158,6 +144,5 @@ class ServerBuilder[F[_]: Async](
     ).widen[Server[F]]
 
 object ServerBuilder:
-  /** Create a new server builder with the given name and version */
   def apply[F[_]: Async](name: String, version: String): ServerBuilder[F] =
     new ServerBuilder[F](name, version)

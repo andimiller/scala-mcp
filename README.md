@@ -52,12 +52,11 @@ import net.andimiller.mcp.core.server.Tool
 case class GreetRequest(name: String) derives JsonSchema, Decoder
 case class GreetResponse(message: String) derives JsonSchema, Encoder.AsObject
 
-val greetTool = Tool.buildNamed[IO, GreetRequest, GreetResponse](
-  "greet",
-  "Greet someone by name"
-) { req =>
-  IO.pure(GreetResponse(s"Hello, ${req.name}!"))
-}
+val greetTool = Tool.builder[IO]
+  .name("greet")
+  .description("Greet someone by name")
+  .in[GreetRequest]
+  .run(req => IO.pure(GreetResponse(s"Hello, ${req.name}!")))
 ```
 
 ## Examples
@@ -80,7 +79,7 @@ A cross-platform stdio MCP server demonstrating tools, resources, and prompts.
 - **Resources**: `dice://rules/standard` (static reference), `dice://history` (recent rolls)
 - **Prompt**: `explain_notation` — explains dice notation to the user
 
-Uses `StdioMcpResourceIOApp` for zero-boilerplate stdio server setup.
+Uses `IOApp.Simple` with `McpDsl`, `ServerBuilder`, and `StdioTransport`.
 
 **Build and run (JVM):**
 
@@ -125,7 +124,7 @@ Or with a pre-built Native binary:
 
 ### Pomodoro MCP Server (`modules/example-pomodoro-mcp`)
 
-A JVM HTTP server demonstrating dynamic resources with subscription notifications, server-initiated logging, and argument-based prompts. Uses `HttpMcpStatefulResourceApp` with per-session state — each client session gets its own `PomodoroTimer` wired to the notification sink.
+A JVM HTTP server demonstrating dynamic resources with subscription notifications, server-initiated logging, and argument-based prompts. Uses `McpHttp.streaming` with per-session state — each client session gets its own `PomodoroTimer` wired to the notification sink.
 
 - **Tools**: `start_timer`, `pause_timer`, `resume_timer`, `stop_timer`, `get_status`
 - **Resources**: `pomodoro://status` (subscribable), `pomodoro://history`, `pomodoro://timers/{name}` (template)
@@ -233,11 +232,11 @@ The Explorer is a Scala.js + [Tyrian](https://tyrian.indigoengine.io/) app style
 
 ### Enabling the Explorer
 
-Any `HttpMcpApp` or `HttpMcpStatefulResourceApp` server can serve the Explorer by setting:
+Any HTTP server built with `McpHttp.basic` or `McpHttp.streaming` can serve the Explorer:
 
 ```scala
-override def explorerEnabled = true
-override def rootRedirectToExplorer = true  // optional: redirect / to /explorer/index.html
+McpHttp.streaming[IO]
+  .withExplorer(redirectToRoot = true) // serves at /explorer, optionally redirects / there
 ```
 
 The Explorer is served at `/explorer/index.html` and defaults the connection URL to the current origin + `/mcp`.
@@ -259,24 +258,25 @@ This compiles the Scala.js app and runs Parcel to bundle the JS and CSS into `mo
 ### Tool Creation
 
 ```scala
-// Named helper with explicit name and description
-val tool = Tool.buildNamed[IO, MyRequest, MyResponse](
-  "my_tool",
-  "Tool description"
-) { req => IO.pure(MyResponse(...)) }
-
-// Fluent builder
-val tool = Tool.builder[IO]
+// Fluent builder (returns Tool[F, Unit, A, R], call .resolve to get Tool.Resolved[F])
+val myTool = Tool.builder[IO]
   .name("my_tool")
   .description("Tool description")
-  .schemaFrom[MyRequest]
-  .handler { (req: MyRequest) => IO.pure(MyResponse(...)) }
+  .in[MyRequest]
+  .run(req => IO.pure(MyResponse(...)))
+
+// Contextual tool (needs a context value to resolve)
+val ctxTool = Tool.contextual[IO, MyCtx]
+  .name("my_tool")
+  .description("Tool description")
+  .in[MyRequest]
+  .run((ctx, req) => ctx.doSomething(req))
 ```
 
 ### Resource Creation
 
 ```scala
-// Static resource
+// Static resource (factory method)
 McpResource.static[IO](
   resourceUri = "file:///config.json",
   resourceName = "Config File",
@@ -284,17 +284,46 @@ McpResource.static[IO](
   resourceMimeType = Some("application/json")
 )
 
-// Dynamic resource (re-read on each access)
+// Dynamic resource (factory method)
 McpResource.dynamic[IO](
   resourceUri = "app://status",
   resourceName = "Server Status",
   reader = () => IO.pure(s"Status at ${Instant.now}")
 )
+
+// Fluent builder
+McpResource.builder[IO]
+  .uri("app://status")
+  .name("Server Status")
+  .mimeType("text/plain")
+  .read(() => IO.pure(s"Status at ${Instant.now}"))
+
+// Contextual resource (resolved per-session with a context value)
+McpResource.contextual[IO, MyCtx]
+  .uri("app://status")
+  .name("Server Status")
+  .read(ctx => ctx.getStatus)
+```
+
+### Resource Template Creation
+
+```scala
+ResourceTemplate.builder[IO]
+  .uriTemplate("app://items/{id}")
+  .name("Item by ID")
+  .mimeType("application/json")
+  .read { uri =>
+    Option.when(uri.startsWith("app://items/")) {
+      val id = uri.stripPrefix("app://items/")
+      lookupItem(id).map(item => ResourceContent.text(uri, item.toJson, Some("application/json")))
+    }
+  }
 ```
 
 ### Prompt Creation
 
 ```scala
+// Factory method
 Prompt.dynamic[IO](
   promptName = "code_review",
   promptDescription = Some("Code review prompt"),
@@ -306,60 +335,56 @@ Prompt.dynamic[IO](
     IO.pure(List(PromptMessage.user(s"Please review this code: $code")))
   }
 )
+
+// Fluent builder
+Prompt.builder[IO]
+  .name("code_review")
+  .description("Code review prompt")
+  .argument("code", Some("Code to review"), required = true)
+  .generate { args =>
+    val code = args.get("code").flatMap(_.asString).getOrElse("")
+    IO.pure(List(PromptMessage.user(s"Please review this code: $code")))
+  }
 ```
 
 ### Server Construction
 
+#### Stdio Server
+
 ```scala
-ServerBuilder[IO]("my-server", "1.0.0")
-  .withTools(tool1, tool2)
-  .withResources(resource1)
-  .withPrompts(prompt1)
+object MyServer extends IOApp.Simple, McpDsl[IO]:
+  def run: IO[Unit] =
+    ServerBuilder[IO]("my-server", "1.0.0")
+      .withTool(tool.name("greet").in[GreetRequest].run(req => IO.pure(GreetResponse(...))))
+      .withResource(McpResource.static[IO](...))
+      .withPrompt(Prompt.static[IO](...))
+      .build
+      .flatMap(StdioTransport.run[IO])
+```
+
+#### HTTP Server (basic)
+
+```scala
+McpHttp.basic[IO]
+  .name("my-server").version("1.0.0")
+  .withTool(...)
+  .withResource(...)
+  .withExplorer(redirectToRoot = true)
+  .serve.useForever
+```
+
+#### HTTP Server (streaming with per-session state)
+
+```scala
+McpHttp.streaming[IO]
+  .name("my-server").version("1.0.0")
+  .stateful[MyTimer](sink => MyTimer.create(sink))
+  .withContextualTool(contextualTool[MyTimer].name("start").in[Req].run((timer, req) => ...))
+  .withContextualResource(contextualResource[MyTimer].uri("app://status").read(timer => timer.status))
+  .withContextualPrompt(contextualPrompt[MyTimer].name("review").generate((timer, args) => ...))
+  .withExplorer(redirectToRoot = true)
   .enableResourceSubscriptions
-  .enableLogging
-  .build
-```
-
-### Convenience Base Traits
-
-For stdio servers, extend `StdioMcpResourceIOApp`:
-
-```scala
-object MyServer extends StdioMcpResourceIOApp[MyResources]:
-  def serverName    = "my-server"
-  def serverVersion = "1.0.0"
-  def mkResources   = Resource.eval(...)
-  def tools(r: MyResources)     = List(...)
-  def resources(r: MyResources) = List(...)
-  def prompts(r: MyResources)   = List(...)
-```
-
-For HTTP servers, extend `HttpMcpApp`:
-
-```scala
-object MyServer extends HttpMcpApp[MyResources]:
-  def serverName    = "my-server"
-  def serverVersion = "1.0.0"
-  override def port = port"9000"
-  override def explorerEnabled = true
-  def mkResources   = Resource.eval(...)
-  def tools(r: MyResources, sink: NotificationSink[IO])     = List(...)
-  def resources(r: MyResources, sink: NotificationSink[IO]) = List(...)
-  def prompts(r: MyResources, sink: NotificationSink[IO])   = List(...)
-```
-
-For HTTP servers that need per-session state (e.g. a timer or cache created from the notification sink), extend `HttpMcpStatefulResourceApp`:
-
-```scala
-object MyServer extends HttpMcpStatefulResourceApp[SharedState, SessionState]:
-  def serverName    = "my-server"
-  def serverVersion = "1.0.0"
-  def mkResources   = Resource.eval(...)  // shared state, created once
-  def mkSessionResources(r: SharedState, sink: NotificationSink[IO]) =
-    SessionState.create(sink)             // per-session state
-  def tools(r: SharedState, s: SessionState)     = List(...)
-  def resources(r: SharedState, s: SessionState) = List(...)
-  def prompts(r: SharedState, s: SessionState)   = List(...)
+  .serve.useForever
 ```
 
 ## JSON Schema Derivation

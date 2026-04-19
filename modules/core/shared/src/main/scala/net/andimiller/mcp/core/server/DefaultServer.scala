@@ -12,10 +12,10 @@ import net.andimiller.mcp.core.protocol.*
 class DefaultServer[F[_]: Async](
   val info: Implementation,
   val capabilities: ServerCapabilities,
-  toolHandlers: Map[String, ToolHandler[F]],
-  resourceHandlers: Map[String, ResourceHandler[F]],
-  resourceTemplateHandlers: List[ResourceTemplateHandler[F]],
-  promptHandlers: Map[String, PromptHandler[F]],
+  toolHandlers: Map[String, Tool.Resolved[F]],
+  resourceHandlers: Map[String, McpResource.Resolved[F]],
+  resourceTemplateHandlers: List[ResourceTemplate.Resolved[F]],
+  promptHandlers: Map[String, Prompt.Resolved[F]],
   subscriptions: Ref[F, Set[String]]
 ) extends Server[F]:
 
@@ -111,10 +111,10 @@ object DefaultServer:
   def apply[F[_]: Async](
     info: Implementation,
     capabilities: ServerCapabilities,
-    toolHandlers: List[ToolHandler[F]] = Nil,
-    resourceHandlers: List[ResourceHandler[F]] = Nil,
-    resourceTemplateHandlers: List[ResourceTemplateHandler[F]] = Nil,
-    promptHandlers: List[PromptHandler[F]] = Nil
+    toolHandlers: List[Tool.Resolved[F]] = Nil,
+    resourceHandlers: List[McpResource.Resolved[F]] = Nil,
+    resourceTemplateHandlers: List[ResourceTemplate.Resolved[F]] = Nil,
+    promptHandlers: List[Prompt.Resolved[F]] = Nil
   ): F[DefaultServer[F]] =
     for
       subscriptions <- Ref.of[F, Set[String]](Set.empty)
