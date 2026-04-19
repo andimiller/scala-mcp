@@ -11,10 +11,7 @@ class ServerBuilder[F[_]: Async](
     resourceHandlers: List[McpResource.Resolved[F]] = Nil,
     resourceTemplateHandlers: List[ResourceTemplate.Resolved[F]] = Nil,
     promptHandlers: List[Prompt.Resolved[F]] = Nil,
-    toolCapabilities: Option[ToolCapabilities] = None,
-    resourceCapabilities: Option[ResourceCapabilities] = None,
-    promptCapabilities: Option[PromptCapabilities] = None,
-    loggingCapabilities: Option[LoggingCapabilities] = None
+    capabilities: CapabilityTracker = CapabilityTracker.empty
 ):
 
   def withTool(handler: Tool.Resolved[F]): ServerBuilder[F] =
@@ -22,8 +19,7 @@ class ServerBuilder[F[_]: Async](
       name, version,
       toolHandlers :+ handler,
       resourceHandlers, resourceTemplateHandlers, promptHandlers,
-      toolCapabilities.orElse(Some(ToolCapabilities())),
-      resourceCapabilities, promptCapabilities, loggingCapabilities
+      capabilities.withToolAdded
     )
 
   def withTool[A, R](tool: Tool[F, Unit, A, R])(using Async[F]): ServerBuilder[F] =
@@ -38,9 +34,7 @@ class ServerBuilder[F[_]: Async](
       toolHandlers,
       resourceHandlers :+ handler,
       resourceTemplateHandlers, promptHandlers,
-      toolCapabilities,
-      resourceCapabilities.orElse(Some(ResourceCapabilities())),
-      promptCapabilities, loggingCapabilities
+      capabilities.withResourceAdded
     )
 
   def withResource(resource: McpResource[F, Unit]): ServerBuilder[F] =
@@ -52,9 +46,7 @@ class ServerBuilder[F[_]: Async](
       toolHandlers,
       resourceHandlers,
       resourceTemplateHandlers :+ handler, promptHandlers,
-      toolCapabilities,
-      resourceCapabilities.orElse(Some(ResourceCapabilities())),
-      promptCapabilities, loggingCapabilities
+      capabilities.withResourceAdded
     )
 
   def withResourceTemplate(rt: ResourceTemplate[F, Unit]): ServerBuilder[F] =
@@ -71,9 +63,7 @@ class ServerBuilder[F[_]: Async](
       name, version,
       toolHandlers, resourceHandlers, resourceTemplateHandlers,
       promptHandlers :+ handler,
-      toolCapabilities, resourceCapabilities,
-      promptCapabilities.orElse(Some(PromptCapabilities())),
-      loggingCapabilities
+      capabilities.withPromptAdded
     )
 
   def withPrompt(prompt: Prompt[F, Unit]): ServerBuilder[F] =
@@ -86,57 +76,43 @@ class ServerBuilder[F[_]: Async](
     new ServerBuilder[F](
       name, version,
       toolHandlers, resourceHandlers, resourceTemplateHandlers, promptHandlers,
-      Some(ToolCapabilities(listChanged = Some(true))),
-      resourceCapabilities, promptCapabilities, loggingCapabilities
+      capabilities.withToolNotifications
     )
 
   def enableResourceSubscriptions: ServerBuilder[F] =
     new ServerBuilder[F](
       name, version,
       toolHandlers, resourceHandlers, resourceTemplateHandlers, promptHandlers,
-      toolCapabilities,
-      Some(ResourceCapabilities(subscribe = Some(true))),
-      promptCapabilities, loggingCapabilities
+      capabilities.withResourceSubscriptions
     )
 
   def enableResourceNotifications: ServerBuilder[F] =
     new ServerBuilder[F](
       name, version,
       toolHandlers, resourceHandlers, resourceTemplateHandlers, promptHandlers,
-      toolCapabilities,
-      Some(resourceCapabilities.getOrElse(ResourceCapabilities()).copy(listChanged = Some(true))),
-      promptCapabilities, loggingCapabilities
+      capabilities.withResourceNotifications
     )
 
   def enablePromptNotifications: ServerBuilder[F] =
     new ServerBuilder[F](
       name, version,
       toolHandlers, resourceHandlers, resourceTemplateHandlers, promptHandlers,
-      toolCapabilities, resourceCapabilities,
-      Some(PromptCapabilities(listChanged = Some(true))),
-      loggingCapabilities
+      capabilities.withPromptNotifications
     )
 
   def enableLogging: ServerBuilder[F] =
     new ServerBuilder[F](
       name, version,
       toolHandlers, resourceHandlers, resourceTemplateHandlers, promptHandlers,
-      toolCapabilities, resourceCapabilities, promptCapabilities,
-      Some(LoggingCapabilities())
+      capabilities.withLogging
     )
 
   def build: F[Server[F]] =
     val info = Implementation(name, version)
-    val capabilities = ServerCapabilities(
-      tools = toolCapabilities,
-      resources = resourceCapabilities,
-      prompts = promptCapabilities,
-      logging = loggingCapabilities
-    )
 
     DefaultServer[F](
       info = info,
-      capabilities = capabilities,
+      capabilities = capabilities.toServerCapabilities,
       toolHandlers = toolHandlers,
       resourceHandlers = resourceHandlers,
       resourceTemplateHandlers = resourceTemplateHandlers,

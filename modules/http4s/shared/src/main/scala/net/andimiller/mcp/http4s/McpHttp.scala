@@ -9,7 +9,7 @@ import io.circe.parser.decode
 import io.circe.syntax.*
 import net.andimiller.mcp.core.codecs.CirceCodecs.given
 import net.andimiller.mcp.core.protocol.jsonrpc.Message
-import net.andimiller.mcp.core.server.{NotificationSink, RequestHandler, Server as McpServer, ServerBuilder}
+import net.andimiller.mcp.core.server.{CapabilityTracker, NotificationSink, RequestHandler, Server as McpServer, ServerBuilder}
 import org.http4s.*
 import org.http4s.dsl.Http4sDsl
 import org.http4s.headers.{`Content-Type`, Location}
@@ -31,10 +31,7 @@ object McpHttp:
       mResources = Vector.empty,
       mResourceTemplates = Vector.empty,
       mPrompts = Vector.empty,
-      mToolCaps = None,
-      mResourceCaps = None,
-      mPromptCaps = None,
-      mLoggingCaps = None
+      mCaps = CapabilityTracker.empty
     )
 
   def streaming[F[_]: Async]: StreamingMcpHttpBuilder[F, Unit] =
@@ -53,10 +50,7 @@ object McpHttp:
       mContextResourceTemplateResolvers = Vector.empty,
       mPlainPrompts = Vector.empty,
       mContextPromptResolvers = Vector.empty,
-      mToolCaps = None,
-      mResourceCaps = None,
-      mPromptCaps = None,
-      mLoggingCaps = None
+      mCaps = CapabilityTracker.empty
     )
 
   // ── Simple HTTP transport (no sessions, no SSE) ──────────────────

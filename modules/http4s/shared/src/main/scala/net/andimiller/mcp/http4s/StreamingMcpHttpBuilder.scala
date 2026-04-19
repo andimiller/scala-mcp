@@ -32,10 +32,7 @@ class StreamingMcpHttpBuilder[F[_]: Async, Ctx] private[http4s] (
     val mContextResourceTemplateResolvers: Vector[Any => ResourceTemplate.Resolved[F]],
     val mPlainPrompts: Vector[Prompt.Resolved[F]],
     val mContextPromptResolvers: Vector[Any => Prompt.Resolved[F]],
-    val mToolCaps: Option[ToolCapabilities],
-    val mResourceCaps: Option[ResourceCapabilities],
-    val mPromptCaps: Option[PromptCapabilities],
-    val mLoggingCaps: Option[LoggingCapabilities]
+    val mCaps: CapabilityTracker
 ):
 
   private def copy[Ctx2](
@@ -53,10 +50,7 @@ class StreamingMcpHttpBuilder[F[_]: Async, Ctx] private[http4s] (
       mContextResourceTemplateResolvers: Vector[Any => ResourceTemplate.Resolved[F]] = this.mContextResourceTemplateResolvers,
       mPlainPrompts: Vector[Prompt.Resolved[F]] = this.mPlainPrompts,
       mContextPromptResolvers: Vector[Any => Prompt.Resolved[F]] = this.mContextPromptResolvers,
-      mToolCaps: Option[ToolCapabilities] = this.mToolCaps,
-      mResourceCaps: Option[ResourceCapabilities] = this.mResourceCaps,
-      mPromptCaps: Option[PromptCapabilities] = this.mPromptCaps,
-      mLoggingCaps: Option[LoggingCapabilities] = this.mLoggingCaps
+      mCaps: CapabilityTracker = this.mCaps
   ): StreamingMcpHttpBuilder[F, Ctx2] =
     new StreamingMcpHttpBuilder[F, Ctx2](
       mName, mVersion, mConfig, mAuthInfo, mStatefulCreators, mAuthExtractor,
@@ -64,7 +58,7 @@ class StreamingMcpHttpBuilder[F[_]: Async, Ctx] private[http4s] (
       mPlainResources, mContextResourceResolvers,
       mPlainResourceTemplates, mContextResourceTemplateResolvers,
       mPlainPrompts, mContextPromptResolvers,
-      mToolCaps, mResourceCaps, mPromptCaps, mLoggingCaps
+      mCaps
     )
 
   // ── Config ──────────────────────────────────────────────────────────
@@ -91,10 +85,10 @@ class StreamingMcpHttpBuilder[F[_]: Async, Ctx] private[http4s] (
   // ── Plain tools ────────────────────────────────────────────────────
 
   def withTool(tool: Tool.Resolved[F]): StreamingMcpHttpBuilder[F, Ctx] =
-    copy(mPlainTools = mPlainTools :+ tool)
+    copy(mPlainTools = mPlainTools :+ tool, mCaps = mCaps.withToolAdded)
 
   def withTools(tools: Tool.Resolved[F]*): StreamingMcpHttpBuilder[F, Ctx] =
-    copy(mPlainTools = mPlainTools ++ tools)
+    copy(mPlainTools = mPlainTools ++ tools, mCaps = if tools.nonEmpty then mCaps.withToolAdded else mCaps)
 
   // ── Context tools ──────────────────────────────────────────────────
 
@@ -102,72 +96,72 @@ class StreamingMcpHttpBuilder[F[_]: Async, Ctx] private[http4s] (
     withContextualTool(tool, identity)
 
   def withContextualTool[C, A, R](tool: Tool[F, C, A, R], extract: Ctx => C)(using Async[F]): StreamingMcpHttpBuilder[F, Ctx] =
-    copy(mContextToolResolvers = mContextToolResolvers :+ ((ctx: Any) => tool.provide(extract(ctx.asInstanceOf[Ctx]))))
+    copy(mContextToolResolvers = mContextToolResolvers :+ ((ctx: Any) => tool.provide(extract(ctx.asInstanceOf[Ctx]))), mCaps = mCaps.withToolAdded)
 
   // ── Plain resources ────────────────────────────────────────────────
 
   def withResource(handler: McpResource.Resolved[F]): StreamingMcpHttpBuilder[F, Ctx] =
-    copy(mPlainResources = mPlainResources :+ handler)
+    copy(mPlainResources = mPlainResources :+ handler, mCaps = mCaps.withResourceAdded)
 
   def withResource(resource: McpResource[F, Unit]): StreamingMcpHttpBuilder[F, Ctx] =
     withResource(resource.resolve)
 
   def withResources(handlers: McpResource.Resolved[F]*): StreamingMcpHttpBuilder[F, Ctx] =
-    copy(mPlainResources = mPlainResources ++ handlers)
+    copy(mPlainResources = mPlainResources ++ handlers, mCaps = if handlers.nonEmpty then mCaps.withResourceAdded else mCaps)
 
   // ── Context resources ──────────────────────────────────────────────
 
   def withContextualResource(resource: McpResource[F, Ctx]): StreamingMcpHttpBuilder[F, Ctx] =
-    copy(mContextResourceResolvers = mContextResourceResolvers :+ ((ctx: Any) => resource.provide(ctx.asInstanceOf[Ctx])))
+    copy(mContextResourceResolvers = mContextResourceResolvers :+ ((ctx: Any) => resource.provide(ctx.asInstanceOf[Ctx])), mCaps = mCaps.withResourceAdded)
 
   // ── Plain resource templates ────────────────────────────────────────
 
   def withResourceTemplate(handler: ResourceTemplate.Resolved[F]): StreamingMcpHttpBuilder[F, Ctx] =
-    copy(mPlainResourceTemplates = mPlainResourceTemplates :+ handler)
+    copy(mPlainResourceTemplates = mPlainResourceTemplates :+ handler, mCaps = mCaps.withResourceAdded)
 
   def withResourceTemplate(rt: ResourceTemplate[F, Unit]): StreamingMcpHttpBuilder[F, Ctx] =
     withResourceTemplate(rt.resolve)
 
   def withResourceTemplates(handlers: ResourceTemplate.Resolved[F]*): StreamingMcpHttpBuilder[F, Ctx] =
-    copy(mPlainResourceTemplates = mPlainResourceTemplates ++ handlers)
+    copy(mPlainResourceTemplates = mPlainResourceTemplates ++ handlers, mCaps = if handlers.nonEmpty then mCaps.withResourceAdded else mCaps)
 
   // ── Context resource templates ──────────────────────────────────────
 
   def withContextualResourceTemplate(rt: ResourceTemplate[F, Ctx]): StreamingMcpHttpBuilder[F, Ctx] =
-    copy(mContextResourceTemplateResolvers = mContextResourceTemplateResolvers :+ ((ctx: Any) => rt.provide(ctx.asInstanceOf[Ctx])))
+    copy(mContextResourceTemplateResolvers = mContextResourceTemplateResolvers :+ ((ctx: Any) => rt.provide(ctx.asInstanceOf[Ctx])), mCaps = mCaps.withResourceAdded)
 
   // ── Plain prompts ──────────────────────────────────────────────────
 
   def withPrompt(handler: Prompt.Resolved[F]): StreamingMcpHttpBuilder[F, Ctx] =
-    copy(mPlainPrompts = mPlainPrompts :+ handler)
+    copy(mPlainPrompts = mPlainPrompts :+ handler, mCaps = mCaps.withPromptAdded)
 
   def withPrompt(prompt: Prompt[F, Unit]): StreamingMcpHttpBuilder[F, Ctx] =
     withPrompt(prompt.resolve)
 
   def withPrompts(handlers: Prompt.Resolved[F]*): StreamingMcpHttpBuilder[F, Ctx] =
-    copy(mPlainPrompts = mPlainPrompts ++ handlers)
+    copy(mPlainPrompts = mPlainPrompts ++ handlers, mCaps = if handlers.nonEmpty then mCaps.withPromptAdded else mCaps)
 
   // ── Context prompts ────────────────────────────────────────────────
 
   def withContextualPrompt(prompt: Prompt[F, Ctx]): StreamingMcpHttpBuilder[F, Ctx] =
-    copy(mContextPromptResolvers = mContextPromptResolvers :+ ((ctx: Any) => prompt.provide(ctx.asInstanceOf[Ctx])))
+    copy(mContextPromptResolvers = mContextPromptResolvers :+ ((ctx: Any) => prompt.provide(ctx.asInstanceOf[Ctx])), mCaps = mCaps.withPromptAdded)
 
   // ── Capabilities ──────────────────────────────────────────────────
 
   def enableToolNotifications: StreamingMcpHttpBuilder[F, Ctx] =
-    copy(mToolCaps = Some(mToolCaps.getOrElse(ToolCapabilities()).copy(listChanged = Some(true))))
+    copy(mCaps = mCaps.withToolNotifications)
 
   def enableResourceSubscriptions: StreamingMcpHttpBuilder[F, Ctx] =
-    copy(mResourceCaps = Some(mResourceCaps.getOrElse(ResourceCapabilities()).copy(subscribe = Some(true))))
+    copy(mCaps = mCaps.withResourceSubscriptions)
 
   def enableResourceNotifications: StreamingMcpHttpBuilder[F, Ctx] =
-    copy(mResourceCaps = Some(mResourceCaps.getOrElse(ResourceCapabilities()).copy(listChanged = Some(true))))
+    copy(mCaps = mCaps.withResourceNotifications)
 
   def enablePromptNotifications: StreamingMcpHttpBuilder[F, Ctx] =
-    copy(mPromptCaps = Some(mPromptCaps.getOrElse(PromptCapabilities()).copy(listChanged = Some(true))))
+    copy(mCaps = mCaps.withPromptNotifications)
 
   def enableLogging: StreamingMcpHttpBuilder[F, Ctx] =
-    copy(mLoggingCaps = Some(LoggingCapabilities()))
+    copy(mCaps = mCaps.withLogging)
 
   // ── Build session ──────────────────────────────────────────────────
 
@@ -176,15 +170,9 @@ class StreamingMcpHttpBuilder[F[_]: Async, Ctx] private[http4s] (
     val resources = mPlainResources ++ mContextResourceResolvers.map(_(ctx))
     val resourceTemplates = mPlainResourceTemplates ++ mContextResourceTemplateResolvers.map(_(ctx))
     val prompts = mPlainPrompts ++ mContextPromptResolvers.map(_(ctx))
-    val capabilities = ServerCapabilities(
-      tools = mToolCaps,
-      resources = mResourceCaps,
-      prompts = mPromptCaps,
-      logging = mLoggingCaps
-    )
     DefaultServer[F](
       info = Implementation(mName, mVersion),
-      capabilities = capabilities,
+      capabilities = mCaps.toServerCapabilities,
       toolHandlers = tools.toList,
       resourceHandlers = resources.toList,
       resourceTemplateHandlers = resourceTemplates.toList,

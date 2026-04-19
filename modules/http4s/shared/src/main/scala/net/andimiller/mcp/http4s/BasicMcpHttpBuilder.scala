@@ -19,10 +19,7 @@ class BasicMcpHttpBuilder[F[_]: Async] private[http4s] (
     val mResources: Vector[McpResource.Resolved[F]],
     val mResourceTemplates: Vector[ResourceTemplate.Resolved[F]],
     val mPrompts: Vector[Prompt.Resolved[F]],
-    val mToolCaps: Option[ToolCapabilities],
-    val mResourceCaps: Option[ResourceCapabilities],
-    val mPromptCaps: Option[PromptCapabilities],
-    val mLoggingCaps: Option[LoggingCapabilities]
+    val mCaps: CapabilityTracker
 ):
 
   private def copy(
@@ -33,14 +30,10 @@ class BasicMcpHttpBuilder[F[_]: Async] private[http4s] (
       mResources: Vector[McpResource.Resolved[F]] = this.mResources,
       mResourceTemplates: Vector[ResourceTemplate.Resolved[F]] = this.mResourceTemplates,
       mPrompts: Vector[Prompt.Resolved[F]] = this.mPrompts,
-      mToolCaps: Option[ToolCapabilities] = this.mToolCaps,
-      mResourceCaps: Option[ResourceCapabilities] = this.mResourceCaps,
-      mPromptCaps: Option[PromptCapabilities] = this.mPromptCaps,
-      mLoggingCaps: Option[LoggingCapabilities] = this.mLoggingCaps
+      mCaps: CapabilityTracker = this.mCaps
   ): BasicMcpHttpBuilder[F] =
     new BasicMcpHttpBuilder[F](
-      mName, mVersion, mConfig, mTools, mResources, mResourceTemplates, mPrompts,
-      mToolCaps, mResourceCaps, mPromptCaps, mLoggingCaps
+      mName, mVersion, mConfig, mTools, mResources, mResourceTemplates, mPrompts, mCaps
     )
 
   // ── Config ──────────────────────────────────────────────────────────
@@ -55,54 +48,54 @@ class BasicMcpHttpBuilder[F[_]: Async] private[http4s] (
   // ── Handlers ─────────────────────────────────────────────────────────
 
   def withTool(tool: Tool.Resolved[F]): BasicMcpHttpBuilder[F] =
-    copy(mTools = mTools :+ tool)
+    copy(mTools = mTools :+ tool, mCaps = mCaps.withToolAdded)
 
   def withTools(tools: Tool.Resolved[F]*): BasicMcpHttpBuilder[F] =
-    copy(mTools = mTools ++ tools)
+    copy(mTools = mTools ++ tools, mCaps = if tools.nonEmpty then mCaps.withToolAdded else mCaps)
 
   def withResource(handler: McpResource.Resolved[F]): BasicMcpHttpBuilder[F] =
-    copy(mResources = mResources :+ handler)
+    copy(mResources = mResources :+ handler, mCaps = mCaps.withResourceAdded)
 
   def withResource(resource: McpResource[F, Unit]): BasicMcpHttpBuilder[F] =
     withResource(resource.resolve)
 
   def withResources(handlers: McpResource.Resolved[F]*): BasicMcpHttpBuilder[F] =
-    copy(mResources = mResources ++ handlers)
+    copy(mResources = mResources ++ handlers, mCaps = if handlers.nonEmpty then mCaps.withResourceAdded else mCaps)
 
   def withResourceTemplate(handler: ResourceTemplate.Resolved[F]): BasicMcpHttpBuilder[F] =
-    copy(mResourceTemplates = mResourceTemplates :+ handler)
+    copy(mResourceTemplates = mResourceTemplates :+ handler, mCaps = mCaps.withResourceAdded)
 
   def withResourceTemplate(rt: ResourceTemplate[F, Unit]): BasicMcpHttpBuilder[F] =
     withResourceTemplate(rt.resolve)
 
   def withResourceTemplates(handlers: ResourceTemplate.Resolved[F]*): BasicMcpHttpBuilder[F] =
-    copy(mResourceTemplates = mResourceTemplates ++ handlers)
+    copy(mResourceTemplates = mResourceTemplates ++ handlers, mCaps = if handlers.nonEmpty then mCaps.withResourceAdded else mCaps)
 
   def withPrompt(handler: Prompt.Resolved[F]): BasicMcpHttpBuilder[F] =
-    copy(mPrompts = mPrompts :+ handler)
+    copy(mPrompts = mPrompts :+ handler, mCaps = mCaps.withPromptAdded)
 
   def withPrompt(prompt: Prompt[F, Unit]): BasicMcpHttpBuilder[F] =
     withPrompt(prompt.resolve)
 
   def withPrompts(handlers: Prompt.Resolved[F]*): BasicMcpHttpBuilder[F] =
-    copy(mPrompts = mPrompts ++ handlers)
+    copy(mPrompts = mPrompts ++ handlers, mCaps = if handlers.nonEmpty then mCaps.withPromptAdded else mCaps)
 
   // ── Capabilities ─────────────────────────────────────────────────────
 
   def enableToolNotifications: BasicMcpHttpBuilder[F] =
-    copy(mToolCaps = Some(mToolCaps.getOrElse(ToolCapabilities()).copy(listChanged = Some(true))))
+    copy(mCaps = mCaps.withToolNotifications)
 
   def enableResourceSubscriptions: BasicMcpHttpBuilder[F] =
-    copy(mResourceCaps = Some(mResourceCaps.getOrElse(ResourceCapabilities()).copy(subscribe = Some(true))))
+    copy(mCaps = mCaps.withResourceSubscriptions)
 
   def enableResourceNotifications: BasicMcpHttpBuilder[F] =
-    copy(mResourceCaps = Some(mResourceCaps.getOrElse(ResourceCapabilities()).copy(listChanged = Some(true))))
+    copy(mCaps = mCaps.withResourceNotifications)
 
   def enablePromptNotifications: BasicMcpHttpBuilder[F] =
-    copy(mPromptCaps = Some(mPromptCaps.getOrElse(PromptCapabilities()).copy(listChanged = Some(true))))
+    copy(mCaps = mCaps.withPromptNotifications)
 
   def enableLogging: BasicMcpHttpBuilder[F] =
-    copy(mLoggingCaps = Some(LoggingCapabilities()))
+    copy(mCaps = mCaps.withLogging)
 
   // ── Terminal operations ─────────────────────────────────────────────
 
@@ -110,15 +103,9 @@ class BasicMcpHttpBuilder[F[_]: Async] private[http4s] (
     McpHttp.routes(buildServer)
 
   private[http4s] def buildServer: F[Server[F]] =
-    val capabilities = ServerCapabilities(
-      tools = mToolCaps,
-      resources = mResourceCaps,
-      prompts = mPromptCaps,
-      logging = mLoggingCaps
-    )
     DefaultServer[F](
       info = Implementation(mName, mVersion),
-      capabilities = capabilities,
+      capabilities = mCaps.toServerCapabilities,
       toolHandlers = mTools.toList,
       resourceHandlers = mResources.toList,
       resourceTemplateHandlers = mResourceTemplates.toList,
