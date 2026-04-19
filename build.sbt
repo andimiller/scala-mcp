@@ -6,7 +6,7 @@ val scala3Version = "3.3.4"
 lazy val commonSettings = Seq(
   scalaVersion := scala3Version,
   organization := "net.andimiller.mcp",
-  version := "0.5.0",
+  version := "0.6.0",
   scalacOptions ++= Seq(
     "-deprecation",
     "-feature",
