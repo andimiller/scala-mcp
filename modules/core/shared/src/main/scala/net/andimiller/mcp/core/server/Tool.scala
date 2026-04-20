@@ -5,6 +5,8 @@ import io.circe.{Decoder, Encoder, Json}
 import io.circe.syntax.*
 import net.andimiller.mcp.core.protocol.*
 import net.andimiller.mcp.core.schema.JsonSchema
+import sttp.apispec.Schema
+import sttp.apispec.circe.given
 
 class Tool[F[_], Ctx, A, R](
     val name: String,
@@ -42,6 +44,15 @@ object Tool:
   def contextual[F[_]: Async, Ctx]: ToolBuilder.ContextualEmpty[F, Ctx] =
     new ToolBuilder.ContextualEmpty[F, Ctx]
 
+  extension (td: ToolDefinition)
+    def toResolved[F[_]](handler: Json => F[ToolResult]): Resolved[F] =
+      new Resolved[F]:
+        val name = td.name
+        val description = td.description
+        val inputSchema = td.inputSchema
+        val outputSchema = td.outputSchema
+        def handle(arguments: Json) = handler(arguments)
+
   extension [F[_]: Async, A, R](tool: Tool[F, Unit, A, R])
     def resolve: Resolved[F] = tool.provide(())
 
@@ -76,6 +87,12 @@ object ToolBuilder:
 
     def outputSchema(json: Json): PlainBuilder[F] =
       copy(outputSchemaJson = Some(json))
+
+    def inputSchema(schema: Schema): PlainBuilder[F] =
+      copy(inputSchemaJson = Some(schema.asJson))
+
+    def outputSchema(schema: Schema): PlainBuilder[F] =
+      copy(outputSchemaJson = Some(schema.asJson))
 
     def in[A](using JsonSchema[A], Decoder[A]): PlainIn[F, A] =
       new PlainIn[F, A](toolName, toolDescription, JsonSchema.toJson[A], outputSchemaJson)
@@ -167,6 +184,12 @@ object ToolBuilder:
 
     def outputSchema(json: Json): ContextualBuilder[F, Ctx] =
       copy(outputSchemaJson = Some(json), isStructured = Some(true))
+
+    def inputSchema(schema: Schema): ContextualBuilder[F, Ctx] =
+      copy(inputSchemaJson = Some(schema.asJson))
+
+    def outputSchema(schema: Schema): ContextualBuilder[F, Ctx] =
+      copy(outputSchemaJson = Some(schema.asJson), isStructured = Some(true))
 
     def in[A](using JsonSchema[A], Decoder[A]): ContextualIn[F, Ctx, A] =
       new ContextualIn[F, Ctx, A](toolName, toolDescription, JsonSchema.toJson[A], outputSchemaJson, isStructured)

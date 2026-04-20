@@ -4,6 +4,7 @@ import cats.effect.IO
 import io.circe.Json
 import net.andimiller.mcp.core.protocol.ToolResult
 import net.andimiller.mcp.core.server.Tool
+import net.andimiller.mcp.core.server.Tool.toResolved
 import org.http4s.Method
 import org.http4s.client.Client
 import sttp.apispec.openapi.OpenAPI
@@ -22,11 +23,6 @@ object OpenApiToolBuilder:
     val operations = OpenApiOperation.build(spec, operationIds)
     operations.map { op =>
       val method = Method.fromString(op.method).getOrElse(Method.GET)
-      new Tool.Resolved[IO]:
-        def name: String = op.definition.name
-        def description: String = op.definition.description
-        def inputSchema: Json = op.definition.inputSchema
-        def outputSchema: Json = op.definition.outputSchema
-        def handle(arguments: Json): IO[ToolResult] =
-          RequestBuilder.execute(client, baseUrl, method, op.pathPattern, op.resolvedOperation, arguments)
+      op.definition.toResolved[IO](args =>
+        RequestBuilder.execute(client, baseUrl, method, op.pathPattern, op.resolvedOperation, args))
     }
