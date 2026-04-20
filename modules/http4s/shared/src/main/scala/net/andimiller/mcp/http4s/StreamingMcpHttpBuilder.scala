@@ -1,13 +1,14 @@
 package net.andimiller.mcp.http4s
 
 import cats.Eq
-import cats.effect.kernel.Async
-import cats.effect.{IO, Resource}
+import cats.effect.IO
+import cats.effect.kernel.{Async, Ref, Resource}
 import cats.effect.std.UUIDGen
 import cats.syntax.all.*
 import com.comcast.ip4s.*
 import net.andimiller.mcp.core.protocol.*
 import net.andimiller.mcp.core.server.*
+import net.andimiller.mcp.core.state.SessionRefs
 import org.http4s.*
 import org.http4s.ember.server.EmberServerBuilder
 import org.http4s.server.Router
@@ -23,6 +24,7 @@ class StreamingMcpHttpBuilder[F[_]: Async, Ctx] private[http4s] (
     val mConfig: McpHttpConfig,
     val mAuthInfo: Option[StreamingMcpHttpBuilder.AuthInfo[F]],
     val mStatefulCreators: Vector[NotificationSink[F] => F[Any]],
+    val mStatefulExternalCreators: Vector[(NotificationSink[F], SessionRefs[F]) => F[Any]],
     val mAuthExtractor: Option[Request[F] => F[Option[Any]]],
     val mPlainTools: Vector[Tool.Resolved[F]],
     val mContextToolResolvers: Vector[Any => Tool.Resolved[F]],
@@ -32,7 +34,11 @@ class StreamingMcpHttpBuilder[F[_]: Async, Ctx] private[http4s] (
     val mContextResourceTemplateResolvers: Vector[Any => ResourceTemplate.Resolved[F]],
     val mPlainPrompts: Vector[Prompt.Resolved[F]],
     val mContextPromptResolvers: Vector[Any => Prompt.Resolved[F]],
-    val mCaps: CapabilityTracker
+    val mCaps: CapabilityTracker,
+    val mSessionStore: Option[SessionStore[F]],
+    val mSinkFactory: Option[String => Resource[F, NotificationSink[F]]],
+    val mSessionRefsFactory: Option[String => SessionRefs[F]],
+    val mSessionStoreFactory: Option[SessionStoreFactory[F]]
 ):
 
   private def copy[Ctx2](
@@ -41,6 +47,7 @@ class StreamingMcpHttpBuilder[F[_]: Async, Ctx] private[http4s] (
       mConfig: McpHttpConfig = this.mConfig,
       mAuthInfo: Option[StreamingMcpHttpBuilder.AuthInfo[F]] = this.mAuthInfo,
       mStatefulCreators: Vector[NotificationSink[F] => F[Any]] = this.mStatefulCreators,
+      mStatefulExternalCreators: Vector[(NotificationSink[F], SessionRefs[F]) => F[Any]] = this.mStatefulExternalCreators,
       mAuthExtractor: Option[Request[F] => F[Option[Any]]] = this.mAuthExtractor,
       mPlainTools: Vector[Tool.Resolved[F]] = this.mPlainTools,
       mContextToolResolvers: Vector[Any => Tool.Resolved[F]] = this.mContextToolResolvers,
@@ -50,15 +57,20 @@ class StreamingMcpHttpBuilder[F[_]: Async, Ctx] private[http4s] (
       mContextResourceTemplateResolvers: Vector[Any => ResourceTemplate.Resolved[F]] = this.mContextResourceTemplateResolvers,
       mPlainPrompts: Vector[Prompt.Resolved[F]] = this.mPlainPrompts,
       mContextPromptResolvers: Vector[Any => Prompt.Resolved[F]] = this.mContextPromptResolvers,
-      mCaps: CapabilityTracker = this.mCaps
+      mCaps: CapabilityTracker = this.mCaps,
+      mSessionStore: Option[SessionStore[F]] = this.mSessionStore,
+      mSinkFactory: Option[String => Resource[F, NotificationSink[F]]] = this.mSinkFactory,
+      mSessionRefsFactory: Option[String => SessionRefs[F]] = this.mSessionRefsFactory,
+      mSessionStoreFactory: Option[SessionStoreFactory[F]] = this.mSessionStoreFactory
   ): StreamingMcpHttpBuilder[F, Ctx2] =
     new StreamingMcpHttpBuilder[F, Ctx2](
-      mName, mVersion, mConfig, mAuthInfo, mStatefulCreators, mAuthExtractor,
+      mName, mVersion, mConfig, mAuthInfo, mStatefulCreators, mStatefulExternalCreators, mAuthExtractor,
       mPlainTools, mContextToolResolvers,
       mPlainResources, mContextResourceResolvers,
       mPlainResourceTemplates, mContextResourceTemplateResolvers,
       mPlainPrompts, mContextPromptResolvers,
-      mCaps
+      mCaps,
+      mSessionStore, mSinkFactory, mSessionRefsFactory, mSessionStoreFactory
     )
 
   // ── Config ──────────────────────────────────────────────────────────
@@ -70,11 +82,29 @@ class StreamingMcpHttpBuilder[F[_]: Async, Ctx] private[http4s] (
   def withExplorer(redirectToRoot: Boolean = false): StreamingMcpHttpBuilder[F, Ctx] =
     copy(mConfig = mConfig.copy(explorerEnabled = true, rootRedirectToExplorer = redirectToRoot))
 
+  // ── Session store / factory configuration ──────────────────────────
+
+  def withSessionStore(store: SessionStore[F]): StreamingMcpHttpBuilder[F, Ctx] =
+    copy(mSessionStore = Some(store))
+
+  def withNotificationSinkFactory(f: String => Resource[F, NotificationSink[F]]): StreamingMcpHttpBuilder[F, Ctx] =
+    copy(mSinkFactory = Some(f))
+
+  def withSessionRefsFactory(f: String => SessionRefs[F]): StreamingMcpHttpBuilder[F, Ctx] =
+    copy(mSessionRefsFactory = Some(f))
+
+  def withSessionStoreFactory(factory: SessionStoreFactory[F]): StreamingMcpHttpBuilder[F, Ctx] =
+    copy(mSessionStoreFactory = Some(factory))
+
   // ── Context accumulation ──────────────────────────────────────────
 
   def stateful[S](create: NotificationSink[F] => F[S]): StreamingMcpHttpBuilder[F, Append[S, Ctx]] =
     val widened: NotificationSink[F] => F[Any] = sink => create(sink).map(_.asInstanceOf[Any])
     copy[Append[S, Ctx]](mStatefulCreators = mStatefulCreators :+ widened)
+
+  def statefulExternal[S](create: (NotificationSink[F], SessionRefs[F]) => F[S]): StreamingMcpHttpBuilder[F, Append[S, Ctx]] =
+    val widened: (NotificationSink[F], SessionRefs[F]) => F[Any] = (sink, refs) => create(sink, refs).map(_.asInstanceOf[Any])
+    copy[Append[S, Ctx]](mStatefulExternalCreators = mStatefulExternalCreators :+ widened)
 
   def authenticated[U: Eq](extract: Request[F] => F[Option[U]], onUnauthorized: Response[F]): StreamingMcpHttpBuilder[F, Append[U, Ctx]] =
     val eqAny: Eq[Any] = Eq.instance[Any]((a, b) => summon[Eq[U]].eqv(a.asInstanceOf[U], b.asInstanceOf[U]))
@@ -179,34 +209,93 @@ class StreamingMcpHttpBuilder[F[_]: Async, Ctx] private[http4s] (
       promptHandlers = prompts.toList
     ).widen[Server[F]]
 
-  private def createStatefulContext(sink: NotificationSink[F]): F[Any] =
-    mStatefulCreators.foldM((): Any) { (ctx, creator) =>
+  private def createStatefulContext(sink: NotificationSink[F], sessionRefs: SessionRefs[F]): F[Any] =
+    val afterStateful = mStatefulCreators.foldM((): Any) { (ctx, creator) =>
       creator(sink).map { value => StreamingMcpHttpBuilder.prependContext(value, ctx) }
+    }
+    mStatefulExternalCreators.foldLeft(afterStateful) { (ctxF, creator) =>
+      ctxF.flatMap { ctx =>
+        creator(sink, sessionRefs).map { value => StreamingMcpHttpBuilder.prependContext(value, ctx) }
+      }
     }
 
   private[http4s] def newSessionFactory: NotificationSink[F] => F[Server[F]] =
     (sink: NotificationSink[F]) =>
-      createStatefulContext(sink).flatMap(resolveAll)
+      createStatefulContext(sink, SessionRefs.inMemory[F]).flatMap(resolveAll)
+
+  private[http4s] def newSessionFactoryWithRefs(sessionId: String): NotificationSink[F] => F[Server[F]] =
+    (sink: NotificationSink[F]) =>
+      val refs = mSessionRefsFactory.fold(SessionRefs.inMemory[F])(_(sessionId))
+      createStatefulContext(sink, refs).flatMap(resolveAll)
 
   private[http4s] def newAuthenticatedSessionFactory: (Any, NotificationSink[F]) => F[Server[F]] =
     (user: Any, sink: NotificationSink[F]) =>
-      createStatefulContext(sink).map { statefulCtx =>
+      createStatefulContext(sink, SessionRefs.inMemory[F]).map { statefulCtx =>
+        StreamingMcpHttpBuilder.prependContext(user, statefulCtx)
+      }.flatMap(resolveAll)
+
+  private[http4s] def newAuthenticatedSessionFactoryWithRefs(sessionId: String): (Any, NotificationSink[F]) => F[Server[F]] =
+    (user: Any, sink: NotificationSink[F]) =>
+      val refs = mSessionRefsFactory.fold(SessionRefs.inMemory[F])(_(sessionId))
+      createStatefulContext(sink, refs).map { statefulCtx =>
         StreamingMcpHttpBuilder.prependContext(user, statefulCtx)
       }.flatMap(resolveAll)
 
   // ── Terminal operations ─────────────────────────────────────────────
 
+  private def hasExternalFactories: Boolean =
+    mSessionStore.isDefined || mSinkFactory.isDefined || mSessionRefsFactory.isDefined || mSessionStoreFactory.isDefined
+
   def routes(using UUIDGen[F]): Resource[F, HttpRoutes[F]] =
     mAuthInfo match
       case Some(info) =>
         val extractReq: Request[F] => F[Option[Any]] = mAuthExtractor.getOrElse(_ => Async[F].pure(None))
-        StreamableHttpTransport.authenticatedRoutes[F, Any](
-          extractReq,
-          (user: Any, sink: NotificationSink[F]) => newAuthenticatedSessionFactory(user, sink),
-          Async[F].pure(info.onForbidden)
-        )(using Async[F], summon[UUIDGen[F]], info.eqAny)
+        val storeR = mSessionStore match
+          case Some(store: AuthenticatedSessionStore[F, Any] @unchecked) => Resource.pure[F, AuthenticatedSessionStore[F, Any]](store)
+          case _ => Resource.eval(AuthenticatedSessionStore.inMemory[F, Any])
+        storeR.flatMap { store =>
+          if mSinkFactory.isDefined || mSessionRefsFactory.isDefined || mSessionStoreFactory.isDefined then
+            val sinkF: String => Resource[F, NotificationSink[F]] =
+              mSinkFactory.getOrElse(_ => NotificationSink.create[F])
+            val serverF: (String, Any, NotificationSink[F]) => F[Server[F]] =
+              (id, user, sink) => newAuthenticatedSessionFactoryWithRefs(id)(user, sink)
+            StreamableHttpTransport.authenticatedRoutes[F, Any](
+              extractReq, serverF, Async[F].pure(info.onForbidden), sinkF, store
+            )(using Async[F], summon[UUIDGen[F]], info.eqAny)
+          else
+            StreamableHttpTransport.authenticatedRoutes[F, Any](
+              extractReq,
+              (user: Any, sink: NotificationSink[F]) => newAuthenticatedSessionFactory(user, sink),
+              Async[F].pure(info.onForbidden),
+              NotificationSink.create[F],
+              store
+            )(using Async[F], summon[UUIDGen[F]], info.eqAny)
+        }
       case None =>
-        StreamableHttpTransport.routes[F](newSessionFactory)
+        val storeR = mSessionStoreFactory match
+          case Some(factory) =>
+            val sinkF = mSinkFactory.getOrElse((_: String) => NotificationSink.create[F])
+            val reconstruct: String => F[McpSession[F]] = (id: String) =>
+              for
+                sinkPair      <- sinkF(id).allocated
+                (sink, _)      = sinkPair
+                server        <- newSessionFactoryWithRefs(id)(sink)
+                handler        = new RequestHandler[F](server)
+                subscriptions <- Ref.of[F, Set[String]](Set.empty)
+              yield McpSession(id, handler, sink, subscriptions)
+            Resource.eval(factory.create(reconstruct))
+          case None =>
+            mSessionStore.fold(Resource.eval(SessionStore.inMemory[F]))(Resource.pure(_))
+        storeR.flatMap { store =>
+          if mSinkFactory.isDefined || mSessionRefsFactory.isDefined || mSessionStoreFactory.isDefined then
+            val sinkF: String => Resource[F, NotificationSink[F]] =
+              mSinkFactory.getOrElse(_ => NotificationSink.create[F])
+            val serverF: (String, NotificationSink[F]) => F[Server[F]] =
+              (id, sink) => newSessionFactoryWithRefs(id)(sink)
+            StreamableHttpTransport.routes(serverF, sinkF, store)
+          else
+            StreamableHttpTransport.routes(newSessionFactory, NotificationSink.create[F], store)
+        }
 
 object StreamingMcpHttpBuilder:
 
@@ -223,15 +312,11 @@ object StreamingMcpHttpBuilder:
   extension [Ctx](builder: StreamingMcpHttpBuilder[IO, Ctx])
     def serve: Resource[IO, org.http4s.server.Server] =
       given UUIDGen[IO] = UUIDGen.fromSync[IO]
-      builder.mAuthInfo match
-        case Some(info) =>
-          val extractIO: Request[IO] => IO[Option[Any]] =
-            builder.mAuthExtractor.getOrElse(_ => IO.pure(None))
-          McpHttp.serveStreamableAuthenticated[Any](
-            extractIO,
-            (user: Any, sink: NotificationSink[IO]) => builder.newAuthenticatedSessionFactory(user, sink),
-            info.onForbidden,
-            builder.mConfig
-          )(using info.eqAny)
-        case None =>
-          McpHttp.serveStreamable(builder.newSessionFactory, builder.mConfig)
+      builder.routes.flatMap { mcpRoutes =>
+        val app = McpHttp.buildApp(mcpRoutes, builder.mConfig)
+        EmberServerBuilder.default[IO]
+          .withHost(builder.mConfig.host)
+          .withPort(builder.mConfig.port)
+          .withHttpApp(app)
+          .build
+      }

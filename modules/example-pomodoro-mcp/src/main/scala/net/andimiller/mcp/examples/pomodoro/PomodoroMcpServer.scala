@@ -7,31 +7,30 @@ import io.circe.{Decoder, Encoder}
 import net.andimiller.mcp.core.protocol.{PromptArgument, PromptMessage, ResourceContent}
 import net.andimiller.mcp.core.schema.{JsonSchema, description}
 import net.andimiller.mcp.core.server.*
-import net.andimiller.mcp.http4s.McpHttp
+import net.andimiller.mcp.http4s.{McpHttp, StreamingMcpHttpBuilder}
+
+// ── request / response types ────────────────────────────────────────
+
+case class StartTimerRequest(
+  @description("Duration of the pomodoro in minutes")
+  duration_minutes: Int,
+  @description("Label for this pomodoro session")
+  label: String
+) derives JsonSchema, Decoder
+
+case class EmptyRequest() derives JsonSchema, Decoder
+case class StatusResponse(status: String) derives Encoder.AsObject, JsonSchema
+case class MessageResponse(message: String) derives Encoder.AsObject, JsonSchema
+
+// ── shared builder setup ────────────────────────────────────────────
 
 object PomodoroMcpServer extends IOApp.Simple, McpDsl[IO]:
 
-  // ── request / response types ──────────────────────────────────────
-
-  case class StartTimerRequest(
-    @description("Duration of the pomodoro in minutes")
-    duration_minutes: Int,
-    @description("Label for this pomodoro session")
-    label: String
-  ) derives JsonSchema, Decoder
-
-  case class EmptyRequest() derives JsonSchema, Decoder
-  case class StatusResponse(status: String) derives Encoder.AsObject, JsonSchema
-  case class MessageResponse(message: String) derives Encoder.AsObject, JsonSchema
-
-  // ── server ──────────────────────────────────────────────────────────
-
-  final def run: IO[Unit] =
-    McpHttp.streaming[IO]
-      .name("pomodoro-mcp")
-      .version("1.0.0")
-      .port(port"25000")
-      .withExplorer(redirectToRoot = true)
+  /** Wires all tools, resources, prompts and capabilities onto the given builder.
+    * Call `.stateful[PomodoroTimer]` internally so callers only need a `Unit`-context builder.
+    */
+  def configure(builder: StreamingMcpHttpBuilder[IO, Unit]): StreamingMcpHttpBuilder[IO, PomodoroTimer] =
+    builder
       .stateful[PomodoroTimer](sink => PomodoroTimer.create(sink))
       // ── tools (all need the timer) ──────────────────────────────────
       .withContextualTool(
@@ -150,5 +149,14 @@ object PomodoroMcpServer extends IOApp.Simple, McpDsl[IO]:
       )
       .enableResourceSubscriptions
       .enableLogging
-      .serve
-      .useForever
+
+  // ── server ──────────────────────────────────────────────────────────
+
+  final def run: IO[Unit] =
+    configure(
+      McpHttp.streaming[IO]
+        .name("pomodoro-mcp")
+        .version("1.0.0")
+        .port(port"25000")
+        .withExplorer(redirectToRoot = true)
+    ).serve.useForever

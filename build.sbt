@@ -127,7 +127,7 @@ lazy val examplePomodoro = project
       "ch.qos.logback" % "logback-classic" % "1.5.6"
     )
   )
-  .dependsOn(core.jvm, http4s.jvm)
+  .dependsOn(core.jvm, http4s.jvm, redis)
 
 lazy val exampleNotebook = project
   .in(file("modules/example-shared-notebook-mcp"))
@@ -140,6 +140,18 @@ lazy val exampleNotebook = project
     )
   )
   .dependsOn(core.jvm, http4s.jvm)
+
+lazy val exampleChat = project
+  .in(file("modules/example-chat-mcp"))
+  .settings(commonSettings)
+  .settings(
+    name := "example-chat-mcp",
+    publish / skip := true,
+    libraryDependencies ++= Seq(
+      "ch.qos.logback" % "logback-classic" % "1.5.6"
+    )
+  )
+  .dependsOn(core.jvm, http4s.jvm, redis)
 
 lazy val exampleDns = project
   .in(file("modules/example-dns-mcp"))
@@ -212,6 +224,19 @@ lazy val openapi = crossProject(JVMPlatform, JSPlatform, NativePlatform)
   )
   .dependsOn(core)
 
+lazy val redis = project
+  .in(file("modules/redis"))
+  .settings(commonSettings)
+  .settings(publishSettings)
+  .settings(
+    name := "mcp-redis",
+    libraryDependencies ++= Seq(
+      "dev.profunktor" %% "redis4cats-effects" % "2.0.3",
+      "dev.profunktor" %% "redis4cats-streams"  % "2.0.3"
+    )
+  )
+  .dependsOn(core.jvm, http4s.jvm)
+
 lazy val openapiMcpProxy = project
   .in(file("modules/openapi-mcp-proxy"))
   .settings(commonSettings)
@@ -253,7 +278,8 @@ lazy val root = project
     stdio.jvm, stdio.js, stdio.native,
     exampleDice.jvm, exampleDice.js, exampleDice.native,
     http4s.jvm, http4s.js,
-    examplePomodoro, exampleDns, exampleNotebook,
+    redis,
+    examplePomodoro, exampleChat, exampleDns, exampleNotebook,
     explorer,
     openapi.jvm, openapi.js, openapi.native,
     openapiMcpProxy

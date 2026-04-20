@@ -41,6 +41,7 @@ object McpHttp:
       mConfig = McpHttpConfig(),
       mAuthInfo = None,
       mStatefulCreators = Vector.empty,
+      mStatefulExternalCreators = Vector.empty,
       mAuthExtractor = None,
       mPlainTools = Vector.empty,
       mContextToolResolvers = Vector.empty,
@@ -50,7 +51,11 @@ object McpHttp:
       mContextResourceTemplateResolvers = Vector.empty,
       mPlainPrompts = Vector.empty,
       mContextPromptResolvers = Vector.empty,
-      mCaps = CapabilityTracker.empty
+      mCaps = CapabilityTracker.empty,
+      mSessionStore = None,
+      mSinkFactory = None,
+      mSessionRefsFactory = None,
+      mSessionStoreFactory = None
     )
 
   // ── Simple HTTP transport (no sessions, no SSE) ──────────────────
