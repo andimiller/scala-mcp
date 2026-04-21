@@ -622,8 +622,8 @@ Server names are auto-derived from the spec title (e.g., "EVE Swagger Interface"
 
 ## License
 
-[Add your license here]
+This library and associated code are available under the MIT license, see LICENSE file.
 
 ## Contributing
 
-[Add contribution guidelines here]
+Feel free to make Pull Requests on github, remember to clearly state the purpose of your change and run all tests.
