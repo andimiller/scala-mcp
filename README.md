@@ -21,6 +21,7 @@ A Scala 3 library for building [Model Context Protocol (MCP)](https://modelconte
 | **http4s** | JVM, JS | Streamable HTTP + SSE transport via http4s Ember |
 | **explorer** | JS | Browser-based UI for exploring and testing MCP servers |
 | **openapi-mcp-proxy** | JVM | Tool to expose OpenAPI APIs as MCP servers |
+| **golden-munit** | JVM, JS, Native | Golden testing framework for MCP server specs (munit) |
 
 ## Quick Start
 
@@ -250,6 +251,43 @@ sbt buildExplorer
 ```
 
 This compiles the Scala.js app and runs Parcel to bundle the JS and CSS into `modules/explorer/dist/`, which is then copied into the http4s classpath resources.
+
+---
+
+## Golden Testing
+
+The `mcp-golden-munit` module provides snapshot testing for MCP server specs. It captures your server's tools, resources, resource templates, prompts, and capabilities as a JSON golden file, then fails the test if the spec changes unexpectedly.
+
+### Adding the Dependency
+
+```scala
+libraryDependencies += "net.andimiller.mcp" %%% "mcp-golden-munit" % "0.1.0-SNAPSHOT" % Test
+```
+
+> **Scala.js note:** Your project must configure `scalaJSLinkerConfig ~= (_.withModuleKind(ModuleKind.CommonJSModule))` for the test to work on JS.
+
+### Writing a Golden Test
+
+Extend `McpGoldenSuite`, override `goldenFileName`, and implement `def server: IO[Server[IO]]`:
+
+```scala
+import cats.effect.IO
+import net.andimiller.mcp.core.server.Server
+import net.andimiller.mcp.golden.McpGoldenSuite
+
+class MyServerGoldenSuite extends McpGoldenSuite:
+  override def goldenFileName = "my-server.json"
+
+  def server: IO[Server[IO]] =
+    MyServer.buildServer() // return your Server[IO]
+```
+
+### How It Works
+
+1. **First run** — the golden file doesn't exist yet, so the test creates `src/test/resources/{goldenFileName}` containing the server's full spec as JSON.
+2. **Subsequent runs** — the test extracts the current spec and compares it against the golden file. Any difference fails the test with a diff.
+3. **Regenerating** — delete the golden file and rerun the test to create a fresh snapshot.
+4. **CI** — if the golden file is missing when the `CI` environment variable is set, the test fails immediately. Always run locally first to generate the file.
 
 ---
 

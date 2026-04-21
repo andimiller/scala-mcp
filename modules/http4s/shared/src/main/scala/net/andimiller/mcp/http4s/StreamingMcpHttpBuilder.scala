@@ -195,6 +195,12 @@ class StreamingMcpHttpBuilder[F[_]: Async, Ctx] private[http4s] (
 
   // ── Build session ──────────────────────────────────────────────────
 
+  /** Build a standalone Server[F] using noop notifications and in-memory session refs.
+    * Useful for golden testing where only catalog queries (listTools, etc.) are needed.
+    */
+  def buildServer: F[Server[F]] =
+    createStatefulContext(NotificationSink.noop[F], SessionRefs.inMemory[F]).flatMap(resolveAll)
+
   private def resolveAll(ctx: Any): F[Server[F]] =
     val tools = mPlainTools ++ mContextToolResolvers.map(_(ctx))
     val resources = mPlainResources ++ mContextResourceResolvers.map(_(ctx))

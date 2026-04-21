@@ -115,7 +115,10 @@ lazy val exampleDice = crossProject(JVMPlatform, JSPlatform, NativePlatform)
       "org.scalameta" %%% "munit" % "1.0.0" % Test
     )
   )
-  .dependsOn(core, stdio)
+  .jsSettings(
+    scalaJSLinkerConfig ~= { _.withModuleKind(ModuleKind.CommonJSModule) }
+  )
+  .dependsOn(core, stdio, goldenMunit % Test)
 
 lazy val examplePomodoro = project
   .in(file("modules/example-pomodoro-mcp"))
@@ -127,7 +130,7 @@ lazy val examplePomodoro = project
       "ch.qos.logback" % "logback-classic" % "1.5.6"
     )
   )
-  .dependsOn(core.jvm, http4s.jvm, redis)
+  .dependsOn(core.jvm, http4s.jvm, redis, goldenMunit.jvm % Test)
 
 lazy val exampleNotebook = project
   .in(file("modules/example-shared-notebook-mcp"))
@@ -201,6 +204,23 @@ buildExplorer := {
 
   log.info("Explorer build complete.")
 }
+
+lazy val goldenMunit = crossProject(JVMPlatform, JSPlatform, NativePlatform)
+  .in(file("modules/golden-munit"))
+  .settings(commonSettings)
+  .settings(publishSettings)
+  .settings(
+    name := "mcp-golden-munit",
+    libraryDependencies ++= Seq(
+      "org.scalameta" %%% "munit"            % "1.0.0",
+      "org.typelevel" %%% "munit-cats-effect" % "2.2.0",
+      "co.fs2"        %%% "fs2-io"           % "3.13.0"
+    )
+  )
+  .jsSettings(
+    scalaJSLinkerConfig ~= { _.withModuleKind(ModuleKind.CommonJSModule) }
+  )
+  .dependsOn(core)
 
 lazy val openapi = crossProject(JVMPlatform, JSPlatform, NativePlatform)
   .in(file("modules/openapi"))
@@ -281,6 +301,7 @@ lazy val root = project
     redis,
     examplePomodoro, exampleChat, exampleDns, exampleNotebook,
     explorer,
+    goldenMunit.jvm, goldenMunit.js, goldenMunit.native,
     openapi.jvm, openapi.js, openapi.native,
     openapiMcpProxy
   )
