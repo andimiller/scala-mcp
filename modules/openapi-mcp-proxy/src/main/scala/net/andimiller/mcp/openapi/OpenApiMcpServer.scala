@@ -17,7 +17,7 @@ import java.nio.file.{Files, Path, Paths}
 object OpenApiMcpServer extends CommandIOApp(
   name = "openapi-mcp-proxy",
   header = "Expose OpenAPI operations as MCP tools",
-  version = "0.1.0"
+  version = BuildInfo.version
 ):
 
   private val console = Console[IO]
@@ -93,7 +93,7 @@ object OpenApiMcpServer extends CommandIOApp(
             "http://localhost"
         )
         tools = OpenApiToolBuilder.buildTools(spec, operationIds, client, baseUrl)
-        server <- ServerBuilder[IO]("openapi-mcp", "0.1.0")
+        server <- ServerBuilder[IO]("openapi-mcp", BuildInfo.version)
           .withTools(tools*)
           .build
         _     <- StdioTransport.run[IO](server)

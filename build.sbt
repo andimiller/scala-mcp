@@ -6,7 +6,7 @@ val scala3Version = "3.3.4"
 lazy val commonSettings = Seq(
   scalaVersion := scala3Version,
   organization := "net.andimiller.mcp",
-  version := "0.6.0",
+  version := "0.7.0",
   scalacOptions ++= Seq(
     "-deprecation",
     "-feature",
@@ -259,8 +259,11 @@ lazy val redis = project
 
 lazy val openapiMcpProxy = project
   .in(file("modules/openapi-mcp-proxy"))
+  .enablePlugins(BuildInfoPlugin)
   .settings(commonSettings)
   .settings(
+    buildInfoKeys := Seq[BuildInfoKey](name, version),
+    buildInfoPackage := "net.andimiller.mcp.openapi",
     name := "openapi-mcp-proxy",
     publish / skip := true,
     libraryDependencies ++= Seq(
