@@ -257,6 +257,21 @@ lazy val redis = project
   )
   .dependsOn(core.jvm, http4s.jvm)
 
+lazy val tapir = project
+  .in(file("modules/tapir"))
+  .settings(commonSettings)
+  .settings(publishSettings)
+  .settings(
+    name := "mcp-tapir",
+    libraryDependencies ++= Seq(
+      "com.softwaremill.sttp.tapir" %% "tapir-core"         % "1.11.40",
+      "com.softwaremill.sttp.tapir" %% "tapir-apispec-docs" % "1.11.40",
+      "org.scalameta"               %% "munit"              % "1.0.0" % Test,
+      "org.typelevel"               %% "munit-cats-effect"  % "2.2.0" % Test
+    )
+  )
+  .dependsOn(core.jvm)
+
 lazy val openapiMcpProxy = project
   .in(file("modules/openapi-mcp-proxy"))
   .enablePlugins(BuildInfoPlugin)
@@ -302,6 +317,7 @@ lazy val root = project
     exampleDice.jvm, exampleDice.js, exampleDice.native,
     http4s.jvm, http4s.js,
     redis,
+    tapir,
     examplePomodoro, exampleChat, exampleDns, exampleNotebook,
     explorer,
     goldenMunit.jvm, goldenMunit.js, goldenMunit.native,

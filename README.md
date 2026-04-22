@@ -19,6 +19,7 @@ A Scala 3 library for building [Model Context Protocol (MCP)](https://modelconte
 | **core** | JVM, JS, Native | Protocol types, server abstraction, schema derivation, JSON codecs |
 | **stdio** | JVM, JS, Native | stdin/stdout transport for subprocess-based servers |
 | **http4s** | JVM, JS | Streamable HTTP + SSE transport via http4s Ember |
+| **tapir** | JVM | Bridge that turns any `sttp.tapir.Schema[A]` into a `JsonSchema[A]` |
 | **explorer** | JS | Browser-based UI for exploring and testing MCP servers |
 | **openapi-mcp-proxy** | JVM | Tool to expose OpenAPI APIs as MCP servers |
 | **golden-munit** | JVM, JS, Native | Golden testing framework for MCP server specs (munit) |
