@@ -33,12 +33,8 @@ class DefaultServer[F[_]: Async](
 
   override def callTool(request: CallToolRequest): F[CallToolResponse] =
     toolHandlers.get(request.name) match
-      case Some(handler) =>
-        handler.handle(request.arguments).map { result =>
-          CallToolResponse(content = result.content, structuredContent = result.structuredContent, isError = result.isError)
-        }
-      case None =>
-        Async[F].raiseError(new Exception(s"Tool not found: ${request.name}"))
+      case Some(handler) => handler.handle(request.arguments)
+      case None          => Async[F].raiseError(new Exception(s"Tool not found: ${request.name}"))
 
   override def listResources(request: ListResourcesRequest): F[ListResourcesResponse] =
     val resources = resourceHandlers.values.map { handler =>

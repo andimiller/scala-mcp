@@ -169,7 +169,7 @@ class OpenApiToolBuilderSuite extends CatsEffectSuite:
       tools = OpenApiToolBuilder.buildTools(spec, List("getPetById"), dummyClient, "https://petstore.example.com/v1")
     yield
       val tool = tools.find(_.name == "getPetById").get
-      val outputStr = tool.outputSchema.noSpaces
+      val outputStr = tool.outputSchema.get.noSpaces
       assert(!outputStr.contains("$ref"), s"outputSchema should have no $$ref: $outputStr")
   }
 
@@ -179,9 +179,10 @@ class OpenApiToolBuilderSuite extends CatsEffectSuite:
       tools = OpenApiToolBuilder.buildTools(spec, List("listPets"), dummyClient, "https://petstore.example.com/v1")
     yield
       val tool = tools.find(_.name == "listPets").get
-      val typ = tool.outputSchema.hcursor.downField("type").as[String].getOrElse("")
+      val out = tool.outputSchema.get
+      val typ = out.hcursor.downField("type").as[String].getOrElse("")
       assertEquals(typ, "object", "array outputSchema should be wrapped in object")
-      assert(tool.outputSchema.hcursor.downField("properties").downField("items").focus.isDefined,
+      assert(out.hcursor.downField("properties").downField("items").focus.isDefined,
         "wrapped schema should have 'items' property")
   }
 
@@ -191,7 +192,7 @@ class OpenApiToolBuilderSuite extends CatsEffectSuite:
       tools = OpenApiToolBuilder.buildTools(spec, List("healthCheck"), dummyClient, "https://petstore.example.com/v1")
     yield
       val tool = tools.find(_.name == "healthCheck").get
-      val typ = tool.outputSchema.hcursor.downField("type").as[String].getOrElse("")
+      val typ = tool.outputSchema.get.hcursor.downField("type").as[String].getOrElse("")
       assertEquals(typ, "object")
   }
 

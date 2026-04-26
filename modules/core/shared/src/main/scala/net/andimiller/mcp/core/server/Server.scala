@@ -2,6 +2,7 @@ package net.andimiller.mcp.core.server
 
 import cats.effect.kernel.Async
 import cats.syntax.all.*
+import fs2.Stream
 import net.andimiller.mcp.core.protocol.*
 import net.andimiller.mcp.core.transport.MessageChannel
 
@@ -50,24 +51,36 @@ trait Server[F[_]]:
 /**
  * Server session that processes messages over a transport channel.
  *
- * Delegates message handling to [[RequestHandler]] and bridges responses to the transport.
+ * Delegates inbound message handling to [[RequestHandler]] and forwards any server-initiated
+ * notifications/requests published to the [[ClientChannel]] back onto the transport. Inbound
+ * and outbound streams are merged so the same fiber drives both directions.
  */
 class ServerSession[F[_]: Async](
   server: Server[F],
-  channel: MessageChannel[F]
+  channel: MessageChannel[F],
+  clientChannel: ClientChannel[F]
 ):
-  private val handler = new RequestHandler[F](server)
+  private val handler = new RequestHandler[F](server, clientChannel.requester)
 
   /**
-   * Run the server session, processing incoming messages until the channel closes.
+   * Run the server session, processing incoming messages and forwarding server-initiated
+   * outbound traffic until the underlying transport closes.
+   *
+   * Inbound handling uses `parEvalMapUnordered` so a tool that awaits a server-initiated
+   * response (e.g. `elicitation/create`) does not block the inbound reader from accepting
+   * the very response it's waiting for — a deadlock that would otherwise be unavoidable
+   * with sequential `evalMap`.
    */
   def run: F[Unit] =
-    channel.incoming
-      .evalMap { message =>
+    val maxConcurrent = 16
+    val inbound: Stream[F, Unit] =
+      channel.incoming.parEvalMapUnordered(maxConcurrent) { message =>
         handler.handle(message).flatMap {
           case Some(response) => channel.send(response)
           case None           => Async[F].unit
         }
       }
-      .compile
-      .drain
+    val outbound: Stream[F, Unit] =
+      clientChannel.subscribe.evalMap(channel.send)
+
+    inbound.merge(outbound).compile.drain

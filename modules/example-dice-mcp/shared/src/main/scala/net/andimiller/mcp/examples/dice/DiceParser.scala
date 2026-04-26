@@ -4,16 +4,20 @@ import cats.parse.{Parser as P, Parser0 as P0, Numbers}
 import cats.parse.Rfc5234.{wsp, digit}
 
 /**
- * Dice notation parser for expressions like "1d6", "2d20 + 5", "3d4 - 2"
+ * Dice notation parser for expressions like "1d6", "2d20 + 5", "3d4 - 2", "2d6 + 1d2 - 1".
+ *
+ * An expression is a chain of *terms* (a dice roll or an integer constant) joined by `+`
+ * or `-`, evaluated left-to-right.
  */
 object DiceParser:
 
   case class DiceRoll(count: Int, sides: Int)
 
   sealed trait DiceExpr
-  case class Roll(dice: DiceRoll) extends DiceExpr
-  case class Add(left: DiceExpr, right: Int) extends DiceExpr
-  case class Subtract(left: DiceExpr, right: Int) extends DiceExpr
+  case class Roll(dice: DiceRoll)                     extends DiceExpr
+  case class Constant(value: Int)                     extends DiceExpr
+  case class Add(left: DiceExpr, right: DiceExpr)     extends DiceExpr
+  case class Subtract(left: DiceExpr, right: DiceExpr) extends DiceExpr
 
   // Parse a positive integer
   private val integer: P[Int] = Numbers.nonNegativeIntString.map(_.toInt)
@@ -27,21 +31,22 @@ object DiceParser:
   // Parse optional whitespace
   private val spaces: P0[Unit] = wsp.rep0.void
 
-  // Parse the base dice roll
-  private val baseDice: P[DiceExpr] = diceRoll.map(Roll.apply)
+  // A single term: a dice roll (preferred — backtracked so a bare integer also matches)
+  // or a constant integer.
+  private val term: P[DiceExpr] =
+    diceRoll.map(Roll.apply).backtrack | integer.map(Constant.apply)
 
-  // Parse modifier: "+ N" or "- N", with optional surrounding whitespace
-  private val modifier: P[DiceExpr => DiceExpr] =
-    ((spaces.with1 *> P.charIn('+', '-') <* spaces) ~ integer).map {
-      case ('+', n) => (expr: DiceExpr) => Add(expr, n)
-      case (_, n)   => (expr: DiceExpr) => Subtract(expr, n)
-    }
+  // An operator (`+` or `-`) followed by another term, with optional surrounding whitespace.
+  private val opAndTerm: P[(Char, DiceExpr)] =
+    (spaces.with1 *> P.charIn('+', '-') <* spaces) ~ term
 
-  // Parse a complete dice expression
+  // A chain of terms joined by + / -, evaluated left-associatively.
   private val diceExpr: P[DiceExpr] =
-    (baseDice ~ modifier.backtrack.?).map {
-      case (expr, Some(mod)) => mod(expr)
-      case (expr, None) => expr
+    (term ~ opAndTerm.backtrack.rep0).map { (head, tail) =>
+      tail.foldLeft(head) {
+        case (acc, ('+', rhs)) => Add(acc, rhs)
+        case (acc, (_, rhs))   => Subtract(acc, rhs)
+      }
     }
 
   /**

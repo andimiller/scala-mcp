@@ -23,8 +23,7 @@ class StreamingMcpHttpBuilder[F[_]: Async, Ctx] private[http4s] (
     val mVersion: String,
     val mConfig: McpHttpConfig,
     val mAuthInfo: Option[StreamingMcpHttpBuilder.AuthInfo[F]],
-    val mStatefulCreators: Vector[NotificationSink[F] => F[Any]],
-    val mStatefulExternalCreators: Vector[(NotificationSink[F], SessionRefs[F]) => F[Any]],
+    val mStatefulCreators: Vector[SessionContext[F] => F[Any]],
     val mAuthExtractor: Option[Request[F] => F[Option[Any]]],
     val mPlainTools: Vector[Tool.Resolved[F]],
     val mContextToolResolvers: Vector[Any => Tool.Resolved[F]],
@@ -46,8 +45,7 @@ class StreamingMcpHttpBuilder[F[_]: Async, Ctx] private[http4s] (
       mVersion: String = this.mVersion,
       mConfig: McpHttpConfig = this.mConfig,
       mAuthInfo: Option[StreamingMcpHttpBuilder.AuthInfo[F]] = this.mAuthInfo,
-      mStatefulCreators: Vector[NotificationSink[F] => F[Any]] = this.mStatefulCreators,
-      mStatefulExternalCreators: Vector[(NotificationSink[F], SessionRefs[F]) => F[Any]] = this.mStatefulExternalCreators,
+      mStatefulCreators: Vector[SessionContext[F] => F[Any]] = this.mStatefulCreators,
       mAuthExtractor: Option[Request[F] => F[Option[Any]]] = this.mAuthExtractor,
       mPlainTools: Vector[Tool.Resolved[F]] = this.mPlainTools,
       mContextToolResolvers: Vector[Any => Tool.Resolved[F]] = this.mContextToolResolvers,
@@ -64,7 +62,9 @@ class StreamingMcpHttpBuilder[F[_]: Async, Ctx] private[http4s] (
       mSessionStoreFactory: Option[SessionStoreFactory[F]] = this.mSessionStoreFactory
   ): StreamingMcpHttpBuilder[F, Ctx2] =
     new StreamingMcpHttpBuilder[F, Ctx2](
-      mName, mVersion, mConfig, mAuthInfo, mStatefulCreators, mStatefulExternalCreators, mAuthExtractor,
+      mName, mVersion, mConfig, mAuthInfo,
+      mStatefulCreators,
+      mAuthExtractor,
       mPlainTools, mContextToolResolvers,
       mPlainResources, mContextResourceResolvers,
       mPlainResourceTemplates, mContextResourceTemplateResolvers,
@@ -98,13 +98,18 @@ class StreamingMcpHttpBuilder[F[_]: Async, Ctx] private[http4s] (
 
   // ── Context accumulation ──────────────────────────────────────────
 
-  def stateful[S](create: NotificationSink[F] => F[S]): StreamingMcpHttpBuilder[F, Append[S, Ctx]] =
-    val widened: NotificationSink[F] => F[Any] = sink => create(sink).map(_.asInstanceOf[Any])
+  /**
+   * Register a per-session state creator. The creator receives a [[SessionContext]] —
+   * a bundle of `id`, `channel` (notifications + server-initiated requests), and `refs`
+   * (per-session named refs). Use the conveniences `ctx.sink` and `ctx.requester` for the
+   * common cases, or reach for `ctx.channel` directly to grab the full bidirectional channel.
+   *
+   * Multiple `.stateful` calls accumulate in declaration order and produce a tuple-shaped
+   * context type via `Append[S, Ctx]`.
+   */
+  def stateful[S](create: SessionContext[F] => F[S]): StreamingMcpHttpBuilder[F, Append[S, Ctx]] =
+    val widened: SessionContext[F] => F[Any] = ctx => create(ctx).map(_.asInstanceOf[Any])
     copy[Append[S, Ctx]](mStatefulCreators = mStatefulCreators :+ widened)
-
-  def statefulExternal[S](create: (NotificationSink[F], SessionRefs[F]) => F[S]): StreamingMcpHttpBuilder[F, Append[S, Ctx]] =
-    val widened: (NotificationSink[F], SessionRefs[F]) => F[Any] = (sink, refs) => create(sink, refs).map(_.asInstanceOf[Any])
-    copy[Append[S, Ctx]](mStatefulExternalCreators = mStatefulExternalCreators :+ widened)
 
   def authenticated[U: Eq](extract: Request[F] => F[Option[U]], onUnauthorized: Response[F]): StreamingMcpHttpBuilder[F, Append[U, Ctx]] =
     val eqAny: Eq[Any] = Eq.instance[Any]((a, b) => summon[Eq[U]].eqv(a.asInstanceOf[U], b.asInstanceOf[U]))
@@ -195,11 +200,16 @@ class StreamingMcpHttpBuilder[F[_]: Async, Ctx] private[http4s] (
 
   // ── Build session ──────────────────────────────────────────────────
 
-  /** Build a standalone Server[F] using noop notifications and in-memory session refs.
-    * Useful for golden testing where only catalog queries (listTools, etc.) are needed.
+  /** Build a standalone Server[F] using a no-op client channel and in-memory session refs.
+    * Useful for golden testing where only catalog queries (listTools, etc.) are needed —
+    * tools that issue server-initiated requests will get [[ServerRequester]]'s "not
+    * configured" response if exercised against this server.
     */
   def buildServer: F[Server[F]] =
-    createStatefulContext(NotificationSink.noop[F], SessionRefs.inMemory[F]).flatMap(resolveAll)
+    ClientChannel.noop[F].flatMap { cc =>
+      val ctx = SessionContext("noop", cc, SessionRefs.inMemory[F])
+      createStatefulContext(ctx).flatMap(resolveAll)
+    }
 
   private def resolveAll(ctx: Any): F[Server[F]] =
     val tools = mPlainTools ++ mContextToolResolvers.map(_(ctx))
@@ -215,42 +225,29 @@ class StreamingMcpHttpBuilder[F[_]: Async, Ctx] private[http4s] (
       promptHandlers = prompts.toList
     ).widen[Server[F]]
 
-  private def createStatefulContext(sink: NotificationSink[F], sessionRefs: SessionRefs[F]): F[Any] =
-    val afterStateful = mStatefulCreators.foldM((): Any) { (ctx, creator) =>
-      creator(sink).map { value => StreamingMcpHttpBuilder.prependContext(value, ctx) }
-    }
-    mStatefulExternalCreators.foldLeft(afterStateful) { (ctxF, creator) =>
-      ctxF.flatMap { ctx =>
-        creator(sink, sessionRefs).map { value => StreamingMcpHttpBuilder.prependContext(value, ctx) }
-      }
+  /** Run all registered `.stateful` creators against a single [[SessionContext]] in
+   *  declaration order, prepending each result onto the accumulated context tuple. */
+  private def createStatefulContext(ctx: SessionContext[F]): F[Any] =
+    mStatefulCreators.foldLeft(Async[F].pure(()): F[Any]) { (ctxF, creator) =>
+      ctxF.flatMap(acc => creator(ctx).map(value => StreamingMcpHttpBuilder.prependContext(value, acc)))
     }
 
-  private[http4s] def newSessionFactory: NotificationSink[F] => F[Server[F]] =
-    (sink: NotificationSink[F]) =>
-      createStatefulContext(sink, SessionRefs.inMemory[F]).flatMap(resolveAll)
+  private[http4s] def newSessionFactory(sessionId: String): SessionContext[F] => F[Server[F]] =
+    ctx => createStatefulContext(ctx).flatMap(resolveAll)
 
-  private[http4s] def newSessionFactoryWithRefs(sessionId: String): NotificationSink[F] => F[Server[F]] =
-    (sink: NotificationSink[F]) =>
-      val refs = mSessionRefsFactory.fold(SessionRefs.inMemory[F])(_(sessionId))
-      createStatefulContext(sink, refs).flatMap(resolveAll)
-
-  private[http4s] def newAuthenticatedSessionFactory: (Any, NotificationSink[F]) => F[Server[F]] =
-    (user: Any, sink: NotificationSink[F]) =>
-      createStatefulContext(sink, SessionRefs.inMemory[F]).map { statefulCtx =>
-        StreamingMcpHttpBuilder.prependContext(user, statefulCtx)
-      }.flatMap(resolveAll)
-
-  private[http4s] def newAuthenticatedSessionFactoryWithRefs(sessionId: String): (Any, NotificationSink[F]) => F[Server[F]] =
-    (user: Any, sink: NotificationSink[F]) =>
-      val refs = mSessionRefsFactory.fold(SessionRefs.inMemory[F])(_(sessionId))
-      createStatefulContext(sink, refs).map { statefulCtx =>
-        StreamingMcpHttpBuilder.prependContext(user, statefulCtx)
-      }.flatMap(resolveAll)
+  private[http4s] def newAuthenticatedSessionFactory(sessionId: String): (Any, SessionContext[F]) => F[Server[F]] =
+    (user, ctx) =>
+      createStatefulContext(ctx)
+        .map(statefulCtx => StreamingMcpHttpBuilder.prependContext(user, statefulCtx))
+        .flatMap(resolveAll)
 
   // ── Terminal operations ─────────────────────────────────────────────
 
-  private def hasExternalFactories: Boolean =
-    mSessionStore.isDefined || mSinkFactory.isDefined || mSessionRefsFactory.isDefined || mSessionStoreFactory.isDefined
+  private def sinkFactory: String => Resource[F, NotificationSink[F]] =
+    mSinkFactory.getOrElse(_ => NotificationSink.create[F])
+
+  private def refsFactory: String => SessionRefs[F] =
+    mSessionRefsFactory.getOrElse(_ => SessionRefs.inMemory[F])
 
   def routes(using UUIDGen[F]): Resource[F, HttpRoutes[F]] =
     mAuthInfo match
@@ -260,47 +257,33 @@ class StreamingMcpHttpBuilder[F[_]: Async, Ctx] private[http4s] (
           case Some(store: AuthenticatedSessionStore[F, Any] @unchecked) => Resource.pure[F, AuthenticatedSessionStore[F, Any]](store)
           case _ => Resource.eval(AuthenticatedSessionStore.inMemory[F, Any])
         storeR.flatMap { store =>
-          if mSinkFactory.isDefined || mSessionRefsFactory.isDefined || mSessionStoreFactory.isDefined then
-            val sinkF: String => Resource[F, NotificationSink[F]] =
-              mSinkFactory.getOrElse(_ => NotificationSink.create[F])
-            val serverF: (String, Any, NotificationSink[F]) => F[Server[F]] =
-              (id, user, sink) => newAuthenticatedSessionFactoryWithRefs(id)(user, sink)
-            StreamableHttpTransport.authenticatedRoutes[F, Any](
-              extractReq, serverF, Async[F].pure(info.onForbidden), sinkF, store
-            )(using Async[F], summon[UUIDGen[F]], info.eqAny)
-          else
-            StreamableHttpTransport.authenticatedRoutes[F, Any](
-              extractReq,
-              (user: Any, sink: NotificationSink[F]) => newAuthenticatedSessionFactory(user, sink),
-              Async[F].pure(info.onForbidden),
-              NotificationSink.create[F],
-              store
-            )(using Async[F], summon[UUIDGen[F]], info.eqAny)
+          val serverF: (String, Any, SessionContext[F]) => F[Server[F]] =
+            (id, user, ctx) => newAuthenticatedSessionFactory(id)(user, ctx)
+          StreamableHttpTransport.authenticatedRoutes[F, Any](
+            extractReq, serverF, Async[F].pure(info.onForbidden), sinkFactory, refsFactory, store
+          )(using Async[F], summon[UUIDGen[F]], info.eqAny)
         }
       case None =>
-        val storeR = mSessionStoreFactory match
+        val storeR: Resource[F, SessionStore[F]] = mSessionStoreFactory match
           case Some(factory) =>
-            val sinkF = mSinkFactory.getOrElse((_: String) => NotificationSink.create[F])
             val reconstruct: String => F[McpSession[F]] = (id: String) =>
               for
-                sinkPair      <- sinkF(id).allocated
+                sinkPair      <- sinkFactory(id).allocated
                 (sink, _)      = sinkPair
-                server        <- newSessionFactoryWithRefs(id)(sink)
-                handler        = new RequestHandler[F](server)
+                ccPair        <- ClientChannel.fromSink[F](sink).allocated
+                (cc, _)        = ccPair
+                ctx            = SessionContext(id, cc, refsFactory(id))
+                server        <- newSessionFactory(id)(ctx)
+                handler        = new RequestHandler[F](server, cc.requester)
                 subscriptions <- Ref.of[F, Set[String]](Set.empty)
-              yield McpSession(id, handler, sink, subscriptions)
+              yield McpSession(id, handler, cc, subscriptions)
             Resource.eval(factory.create(reconstruct))
           case None =>
             mSessionStore.fold(Resource.eval(SessionStore.inMemory[F]))(Resource.pure(_))
         storeR.flatMap { store =>
-          if mSinkFactory.isDefined || mSessionRefsFactory.isDefined || mSessionStoreFactory.isDefined then
-            val sinkF: String => Resource[F, NotificationSink[F]] =
-              mSinkFactory.getOrElse(_ => NotificationSink.create[F])
-            val serverF: (String, NotificationSink[F]) => F[Server[F]] =
-              (id, sink) => newSessionFactoryWithRefs(id)(sink)
-            StreamableHttpTransport.routes(serverF, sinkF, store)
-          else
-            StreamableHttpTransport.routes(newSessionFactory, NotificationSink.create[F], store)
+          val serverF: (String, SessionContext[F]) => F[Server[F]] =
+            (id, ctx) => newSessionFactory(id)(ctx)
+          StreamableHttpTransport.routes(serverF, sinkFactory, refsFactory, store)
         }
 
 object StreamingMcpHttpBuilder:

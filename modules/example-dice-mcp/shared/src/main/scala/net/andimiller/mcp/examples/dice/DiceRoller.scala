@@ -25,16 +25,19 @@ class DiceRoller[F[_]: MonadThrow: Random]:
             (total, breakdown)
           }
 
-      case DiceParser.Add(left, n) =>
-        roll(left).map { (leftResult, leftBreakdown) =>
-          val total = leftResult + n
-          (total, s"$leftBreakdown + $n = $total")
+      case DiceParser.Constant(n) =>
+        MonadThrow[F].pure((n, n.toString))
+
+      case DiceParser.Add(left, right) =>
+        (roll(left), roll(right)).tupled.map { case ((l, lb), (r, rb)) =>
+          val total = l + r
+          (total, s"$lb + $rb = $total")
         }
 
-      case DiceParser.Subtract(left, n) =>
-        roll(left).map { (leftResult, leftBreakdown) =>
-          val total = leftResult - n
-          (total, s"$leftBreakdown - $n = $total")
+      case DiceParser.Subtract(left, right) =>
+        (roll(left), roll(right)).tupled.map { case ((l, lb), (r, rb)) =>
+          val total = l - r
+          (total, s"$lb - $rb = $total")
         }
 
   /**
@@ -72,21 +75,19 @@ object DiceRoller:
    */
   def calculateMin(expr: DiceParser.DiceExpr): Int =
     expr match
-      case DiceParser.Roll(dice) =>
-        dice.count // minimum is rolling all 1s
-      case DiceParser.Add(left, n) =>
-        calculateMin(left) + n
-      case DiceParser.Subtract(left, n) =>
-        calculateMin(left) - n
+      case DiceParser.Roll(dice)        => dice.count // minimum is rolling all 1s
+      case DiceParser.Constant(n)       => n
+      case DiceParser.Add(left, right)  => calculateMin(left) + calculateMin(right)
+      // worst case for `a - b` is min(a) − max(b)
+      case DiceParser.Subtract(left, right) => calculateMin(left) - calculateMax(right)
 
   /**
    * Calculate the maximum possible value for a dice expression
    */
   def calculateMax(expr: DiceParser.DiceExpr): Int =
     expr match
-      case DiceParser.Roll(dice) =>
-        dice.count * dice.sides // maximum is rolling max on all dice
-      case DiceParser.Add(left, n) =>
-        calculateMax(left) + n
-      case DiceParser.Subtract(left, n) =>
-        calculateMax(left) - n
+      case DiceParser.Roll(dice)        => dice.count * dice.sides
+      case DiceParser.Constant(n)       => n
+      case DiceParser.Add(left, right)  => calculateMax(left) + calculateMax(right)
+      // best case for `a - b` is max(a) − min(b)
+      case DiceParser.Subtract(left, right) => calculateMax(left) - calculateMin(right)

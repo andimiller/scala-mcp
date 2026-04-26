@@ -14,11 +14,11 @@ import net.andimiller.mcp.core.protocol.jsonrpc.{JsonRpcError, Message, RequestI
  * Given a JSON-RPC [[Message]], produces an optional response:
  *  - Requests  → `Some(responseMessage)`
  *  - Notifications → `None`
- *  - Responses from client → `None` (ignored)
+ *  - Responses from client → routed to [[ServerRequester.completeResponse]], no outbound message
  *
  * This is transport-agnostic and can be shared between stdio and HTTP transports.
  */
-class RequestHandler[F[_]: Async](server: Server[F]):
+class RequestHandler[F[_]: Async](server: Server[F], requester: ServerRequester[F]):
 
   /**
    * Handle a single incoming message and optionally produce a response.
@@ -36,8 +36,11 @@ class RequestHandler[F[_]: Async](server: Server[F]):
         .as(None)
         .handleErrorWith(_ => None.pure[F])
 
-    case Message.Response(_, _, _, _) =>
-      None.pure[F]
+    case Message.Response(_, id, result, error) =>
+      val resolved: Either[JsonRpcError, Json] = error match
+        case Some(e) => Left(e)
+        case None    => Right(result.getOrElse(Json.obj()))
+      requester.completeResponse(id, resolved).as(None)
 
   /**
    * Handle a JSON-RPC request and return a response message.
@@ -120,7 +123,7 @@ class RequestHandler[F[_]: Async](server: Server[F]):
           capabilities = server.capabilities,
           serverInfo = server.info
         )
-        response.asJson.pure[F]
+        requester.setClientCapabilities(request.capabilities).as(response.asJson)
       case None =>
         Async[F].raiseError(new Exception("Missing or invalid initialize request"))
 

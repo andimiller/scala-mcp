@@ -9,7 +9,7 @@ import io.circe.parser.decode
 import io.circe.syntax.*
 import net.andimiller.mcp.core.codecs.CirceCodecs.given
 import net.andimiller.mcp.core.protocol.jsonrpc.Message
-import net.andimiller.mcp.core.server.{CapabilityTracker, NotificationSink, RequestHandler, Server as McpServer, ServerBuilder}
+import net.andimiller.mcp.core.server.{CapabilityTracker, NotificationSink, RequestHandler, Server as McpServer, ServerBuilder, ServerRequester, SessionContext}
 import org.http4s.*
 import org.http4s.dsl.Http4sDsl
 import org.http4s.headers.{`Content-Type`, Location}
@@ -41,7 +41,6 @@ object McpHttp:
       mConfig = McpHttpConfig(),
       mAuthInfo = None,
       mStatefulCreators = Vector.empty,
-      mStatefulExternalCreators = Vector.empty,
       mAuthExtractor = None,
       mPlainTools = Vector.empty,
       mContextToolResolvers = Vector.empty,
@@ -65,37 +64,38 @@ object McpHttp:
     import dsl.*
     HttpRoutes.of[F] {
       case req @ POST -> Root / "mcp" =>
-        server.flatMap { s =>
-          val handler = new RequestHandler[F](s)
-          req.bodyText.compile.string.flatMap { body =>
-            decode[Message](body) match
-              case Right(message) =>
-                handler.handle(message).flatMap {
-                  case Some(response) =>
-                    Ok(response.asJson.noSpaces)
-                      .map(_.withContentType(`Content-Type`(MediaType.application.json)))
-                  case None =>
-                    Accepted()
-                }
-              case Left(err) =>
-                BadRequest(s"Invalid JSON-RPC message: ${err.getMessage}")
-          }
-        }
+        for
+          s        <- server
+          requester <- ServerRequester.noop[F]
+          handler   = new RequestHandler[F](s, requester)
+          body     <- req.bodyText.compile.string
+          resp <- decode[Message](body) match
+                    case Right(message) =>
+                      handler.handle(message).flatMap {
+                        case Some(response) =>
+                          Ok(response.asJson.noSpaces)
+                            .map(_.withContentType(`Content-Type`(MediaType.application.json)))
+                        case None =>
+                          Accepted()
+                      }
+                    case Left(err) =>
+                      BadRequest(s"Invalid JSON-RPC message: ${err.getMessage}")
+        yield resp
     }
 
   // ── Streamable HTTP transport (sessions + SSE) ───────────────────
 
   def streamableRoutes[F[_]: Async: UUIDGen](
-    newSession: NotificationSink[F] => F[McpServer[F]]
+    newSession: SessionContext[F] => F[McpServer[F]]
   ): Resource[F, HttpRoutes[F]] =
-    StreamableHttpTransport.routes[F](newSession)
+    StreamableHttpTransport.routes[F]((_, ctx) => newSession(ctx))
 
   def authenticatedStreamableRoutes[F[_]: Async: UUIDGen, U: Eq](
     authenticate: Request[F] => F[Option[U]],
-    newSession: (U, NotificationSink[F]) => F[McpServer[F]],
+    newSession: (U, SessionContext[F]) => F[McpServer[F]],
     onUnauthorized: F[Response[F]]
   ): Resource[F, HttpRoutes[F]] =
-    StreamableHttpTransport.authenticatedRoutes[F, U](authenticate, newSession, onUnauthorized)
+    StreamableHttpTransport.authenticatedRoutes[F, U](authenticate, (_, user, ctx) => newSession(user, ctx), onUnauthorized)
 
   // ── Full server convenience (IO only) ──────────────────────────────
 
@@ -112,10 +112,10 @@ object McpHttp:
       .build
 
   def serveStreamable(
-    newSession: NotificationSink[IO] => IO[McpServer[IO]],
+    newSession: SessionContext[IO] => IO[McpServer[IO]],
     config: McpHttpConfig = McpHttpConfig()
   ): Resource[IO, org.http4s.server.Server] =
-    StreamableHttpTransport.routes[IO](newSession).flatMap { mcpRoutes =>
+    StreamableHttpTransport.routes[IO]((_, ctx) => newSession(ctx)).flatMap { mcpRoutes =>
       val app = buildApp(mcpRoutes, config)
       EmberServerBuilder.default[IO]
         .withHost(config.host)
@@ -126,11 +126,15 @@ object McpHttp:
 
   def serveStreamableAuthenticated[U: Eq](
     authenticate: Request[IO] => IO[Option[U]],
-    newSession: (U, NotificationSink[IO]) => IO[McpServer[IO]],
+    newSession: (U, SessionContext[IO]) => IO[McpServer[IO]],
     onUnauthorized: Response[IO],
     config: McpHttpConfig = McpHttpConfig()
   ): Resource[IO, org.http4s.server.Server] =
-    StreamableHttpTransport.authenticatedRoutes[IO, U](authenticate, newSession, IO(onUnauthorized)).flatMap { mcpRoutes =>
+    StreamableHttpTransport.authenticatedRoutes[IO, U](
+      authenticate,
+      (_, user, ctx) => newSession(user, ctx),
+      IO(onUnauthorized)
+    ).flatMap { mcpRoutes =>
       val app = buildApp(mcpRoutes, config)
       EmberServerBuilder.default[IO]
         .withHost(config.host)

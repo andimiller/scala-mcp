@@ -31,7 +31,7 @@ object PomodoroMcpServer extends IOApp.Simple, McpDsl[IO]:
     */
   def configure(builder: StreamingMcpHttpBuilder[IO, Unit]): StreamingMcpHttpBuilder[IO, PomodoroTimer] =
     builder
-      .stateful[PomodoroTimer](sink => PomodoroTimer.create(sink))
+      .stateful[PomodoroTimer](ctx => PomodoroTimer.create(ctx.sink))
       // ── tools (all need the timer) ──────────────────────────────────
       .withContextualTool(
         contextualTool[PomodoroTimer].name("start_timer")

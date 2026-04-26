@@ -36,27 +36,31 @@ object NotificationSink:
 
   /** Create a live NotificationSink backed by a Topic. */
   def create[F[_]: Concurrent]: Resource[F, NotificationSink[F]] =
-    Resource.eval(Topic[F, Message]).map { topic =>
-      new NotificationSink[F]:
-        def notify(method: String, params: Json): F[Unit] =
-          topic.publish1(Message.notification(method, Some(params))).void
+    Resource.eval(Topic[F, Message]).map(fromTopic[F])
 
-        def resourceUpdated(uri: String): F[Unit] =
-          notify("notifications/resources/updated", Json.obj("uri" -> uri.asJson))
+  /** Build a NotificationSink atop an externally-provided Topic. Used by ClientChannel
+   *  so the sink and the request channel share a single outbound Topic.
+   */
+  def fromTopic[F[_]: Concurrent](topic: Topic[F, Message]): NotificationSink[F] =
+    new NotificationSink[F]:
+      def notify(method: String, params: Json): F[Unit] =
+        topic.publish1(Message.notification(method, Some(params))).void
 
-        def resourceListChanged: F[Unit] =
-          notify("notifications/resources/list_changed", Json.obj())
+      def resourceUpdated(uri: String): F[Unit] =
+        notify("notifications/resources/updated", Json.obj("uri" -> uri.asJson))
 
-        def log(level: String, logger: String, data: Json): F[Unit] =
-          notify("notifications/message", Json.obj(
-            "level"  -> level.asJson,
-            "logger" -> logger.asJson,
-            "data"   -> data
-          ))
+      def resourceListChanged: F[Unit] =
+        notify("notifications/resources/list_changed", Json.obj())
 
-        def subscribe: Stream[F, Message] =
-          topic.subscribe(256)
-    }
+      def log(level: String, logger: String, data: Json): F[Unit] =
+        notify("notifications/message", Json.obj(
+          "level"  -> level.asJson,
+          "logger" -> logger.asJson,
+          "data"   -> data
+        ))
+
+      def subscribe: Stream[F, Message] =
+        topic.subscribe(256)
 
   /** A no-op sink for transports (like stdio) that don't support server-initiated notifications. */
   def noop[F[_]: Applicative]: NotificationSink[F] =

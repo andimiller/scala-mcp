@@ -109,6 +109,37 @@
         ],
         "type" : "object"
       }
+    },
+    {
+      "description" : "Build a dice expression interactively: choose dice + counts, then roll the lot",
+      "inputSchema" : {
+        "additionalProperties" : false,
+        "type" : "object"
+      },
+      "name" : "roll_interactive",
+      "outputSchema" : {
+        "additionalProperties" : false,
+        "properties" : {
+          "breakdown" : {
+            "description" : "Per-die breakdown of the roll",
+            "type" : "string"
+          },
+          "expression" : {
+            "description" : "The full dice expression that was rolled",
+            "type" : "string"
+          },
+          "result" : {
+            "description" : "Numeric total of the roll",
+            "type" : "integer"
+          }
+        },
+        "required" : [
+          "expression",
+          "result",
+          "breakdown"
+        ],
+        "type" : "object"
+      }
     }
   ]
 }

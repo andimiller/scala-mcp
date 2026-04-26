@@ -4,6 +4,7 @@ import cats.effect.IO
 import cats.syntax.all.*
 import io.circe.Json
 import net.andimiller.mcp.core.protocol.ToolResult
+import net.andimiller.mcp.core.protocol.content.Content
 import org.http4s.{EntityDecoder, Header, Headers, Method, Request, Uri}
 import org.http4s.circe.*
 import org.http4s.client.Client
@@ -17,7 +18,7 @@ object RequestBuilder:
       pathPattern: String,
       operation: ResolvedOperation,
       arguments: Json
-  ): IO[ToolResult] =
+  ): IO[ToolResult[Nothing]] =
     val args = arguments.asObject.getOrElse(io.circe.JsonObject.empty)
 
     val path = operation.pathParams.foldLeft(pathPattern) { (p, param) =>
@@ -56,9 +57,15 @@ object RequestBuilder:
         EntityDecoder.decodeText(response).map { body =>
           if response.status.isSuccess then
             io.circe.parser.parse(body) match
-              case Right(json) => ToolResult.structured(wrapIfArray(json))
-              case Left(_)     => ToolResult.text(body)
-          else ToolResult.error(s"HTTP ${response.status.code}: $body")
+              case Right(json) =>
+                val wrapped = wrapIfArray(json)
+                ToolResult.Raw(
+                  content = List(Content.Text(wrapped.noSpaces)),
+                  structuredContent = Some(wrapped),
+                  isError = false
+                )
+              case Left(_)     => ToolResult.Text(body)
+          else ToolResult.Error(s"HTTP ${response.status.code}: $body")
         }
       }
     yield result

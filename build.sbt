@@ -6,7 +6,7 @@ val scala3Version = "3.3.4"
 lazy val commonSettings = Seq(
   scalaVersion := scala3Version,
   organization := "net.andimiller.mcp",
-  version := "0.7.0",
+  version := "0.8.0",
   scalacOptions ++= Seq(
     "-deprecation",
     "-feature",
@@ -155,6 +155,19 @@ lazy val exampleChat = project
     )
   )
   .dependsOn(core.jvm, http4s.jvm, redis)
+
+lazy val exampleRpgCharacterCreator = project
+  .in(file("modules/example-rpg-character-creator"))
+  .settings(commonSettings)
+  .settings(
+    name := "example-rpg-character-creator",
+    publish / skip := true,
+    libraryDependencies ++= Seq(
+      "ch.qos.logback" % "logback-classic"  % "1.5.6",
+      "net.andimiller" %% "enumerive-circe" % "1.0.0"
+    )
+  )
+  .dependsOn(core.jvm, http4s.jvm, goldenMunit.jvm % Test)
 
 lazy val exampleDns = project
   .in(file("modules/example-dns-mcp"))
@@ -318,7 +331,7 @@ lazy val root = project
     http4s.jvm, http4s.js,
     redis,
     tapir,
-    examplePomodoro, exampleChat, exampleDns, exampleNotebook,
+    examplePomodoro, exampleChat, exampleDns, exampleNotebook, exampleRpgCharacterCreator,
     explorer,
     goldenMunit.jvm, goldenMunit.js, goldenMunit.native,
     openapi.jvm, openapi.js, openapi.native,

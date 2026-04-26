@@ -59,10 +59,19 @@ object ServerCapabilities:
 /** Sampling capabilities */
 case class SamplingCapabilities() derives Encoder.AsObject, Decoder
 
+/** Form-mode elicitation capability */
+case class FormElicitationCapability() derives Encoder.AsObject, Decoder
+
+/** Elicitation capabilities (client-side) */
+case class ElicitationCapabilities(
+  form: Option[FormElicitationCapability] = None
+) derives Encoder.AsObject, Decoder
+
 /** Client capabilities */
 case class ClientCapabilities(
   sampling: Option[SamplingCapabilities] = None,
-  roots: Option[RootsCapabilities] = None
+  roots: Option[RootsCapabilities] = None,
+  elicitation: Option[ElicitationCapabilities] = None
 ) derives Encoder.AsObject, Decoder
 
 object ClientCapabilities:

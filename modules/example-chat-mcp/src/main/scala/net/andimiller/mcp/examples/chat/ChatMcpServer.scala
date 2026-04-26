@@ -87,8 +87,8 @@ object ChatMcpServer extends IOApp.Simple, McpDsl[IO]:
             .port(port"27000")
             .withExplorer(redirectToRoot = true)
         )
-        .statefulExternal[ChatSession]((sink, refs) =>
-          ChatSession.create(sink, refs, service)
+        .stateful[ChatSession](ctx =>
+          ChatSession.create(ctx.sink, ctx.refs, service)
         )
         // ── tools ────────────────────────────────────────────────────
         .withContextualTool(

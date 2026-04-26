@@ -164,7 +164,7 @@ class OpenApiOperationSuite extends CatsEffectSuite:
       operations = OpenApiOperation.build(spec, List("getPetById"))
       op         = operations.find(_.definition.name == "getPetById").get
     yield
-      val outputStr = op.definition.outputSchema.noSpaces
+      val outputStr = op.definition.outputSchema.get.noSpaces
       assert(!outputStr.contains("$ref"), s"outputSchema should have no $$ref: $outputStr")
   }
 
@@ -174,9 +174,10 @@ class OpenApiOperationSuite extends CatsEffectSuite:
       operations = OpenApiOperation.build(spec, List("listPets"))
       op         = operations.find(_.definition.name == "listPets").get
     yield
-      val typ = op.definition.outputSchema.hcursor.downField("type").as[String].getOrElse("")
+      val out = op.definition.outputSchema.get
+      val typ = out.hcursor.downField("type").as[String].getOrElse("")
       assertEquals(typ, "object", "array outputSchema should be wrapped in object")
-      assert(op.definition.outputSchema.hcursor.downField("properties").downField("items").focus.isDefined,
+      assert(out.hcursor.downField("properties").downField("items").focus.isDefined,
         "wrapped schema should have 'items' property")
   }
 
@@ -186,7 +187,7 @@ class OpenApiOperationSuite extends CatsEffectSuite:
       operations = OpenApiOperation.build(spec, List("healthCheck"))
       op         = operations.find(_.definition.name == "healthCheck").get
     yield
-      val typ = op.definition.outputSchema.hcursor.downField("type").as[String].getOrElse("")
+      val typ = op.definition.outputSchema.get.hcursor.downField("type").as[String].getOrElse("")
       assertEquals(typ, "object")
   }
 

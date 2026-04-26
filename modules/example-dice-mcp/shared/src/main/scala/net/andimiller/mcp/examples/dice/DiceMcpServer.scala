@@ -3,18 +3,69 @@ package net.andimiller.mcp.examples.dice
 import cats.effect.{IO, IOApp, Ref, Resource}
 import cats.effect.std.Random
 import cats.syntax.all.*
-import io.circe.{Decoder, Encoder}
-import net.andimiller.mcp.core.protocol.{PromptArgument, PromptMessage}
+import io.circe.{Codec, Decoder, Encoder}
+import io.circe.syntax.*
+import net.andimiller.mcp.core.protocol.{ElicitResult, ElicitationError, PromptArgument, PromptMessage, ToolResult}
 import net.andimiller.mcp.core.schema.{JsonSchema, description, example}
-import net.andimiller.mcp.core.server.{McpDsl, McpResource, Prompt, Server, ServerBuilder}
+import net.andimiller.mcp.core.server.{ElicitationClient, McpDsl, McpResource, Prompt, Server, ServerBuilder}
 import net.andimiller.mcp.stdio.StdioTransport
+import sttp.apispec.Schema
 
 object DiceMcpServer extends IOApp.Simple, McpDsl[IO]:
 
   case class DiceResources(
     rollHistory: Ref[IO, List[DiceRoller.RollResult]],
-    random: Random[IO]
+    random: Random[IO],
+    elicitation: ElicitationClient[IO]
   )
+
+  case class RollCustomRequest() derives JsonSchema, Decoder
+
+  enum DiceFace(val sides: Int):
+    case D2   extends DiceFace(2)
+    case D4   extends DiceFace(4)
+    case D6   extends DiceFace(6)
+    case D12  extends DiceFace(12)
+    case D20  extends DiceFace(20)
+    case D100 extends DiceFace(100)
+
+  object DiceFace:
+    val all: List[DiceFace] = List(D2, D4, D6, D12, D20, D100)
+    private def label(d: DiceFace): String = s"d${d.sides}"
+
+    given Codec[DiceFace] = Codec.from(
+      Decoder[String].emap {
+        case "d2"   => Right(D2)
+        case "d4"   => Right(D4)
+        case "d6"   => Right(D6)
+        case "d12"  => Right(D12)
+        case "d20"  => Right(D20)
+        case "d100" => Right(D100)
+        case other  => Left(s"Unknown dice face: $other")
+      },
+      Encoder[String].contramap(label)
+    )
+
+    given JsonSchema[DiceFace] with
+      def schema: Schema = JsonSchema.string.withEnum(all.map(label)*)
+
+  case class DiceChoice(
+    @description("Which dice to roll")
+    face: DiceFace,
+    @description("How many to roll")
+    @example(1)
+    @example(3)
+    count: Int
+  ) derives JsonSchema, Codec.AsObject
+
+  case class InteractiveRollResult(
+    @description("The full dice expression that was rolled")
+    expression: String,
+    @description("Numeric total of the roll")
+    result: Int,
+    @description("Per-die breakdown of the roll")
+    breakdown: String
+  ) derives JsonSchema, Encoder.AsObject
 
   case class RollDiceRequest(
     @description("Dice notation (e.g., '1d6', '2d20 + 5', '3d4 - 2')")
@@ -62,6 +113,52 @@ object DiceMcpServer extends IOApp.Simple, McpDsl[IO]:
                   )
                 }
               ))
+            }
+          }
+      )
+      .withTool(
+        tool.name("roll_interactive")
+          .description("Build a dice expression interactively: choose dice + counts, then roll the lot")
+          .in[RollCustomRequest]
+          .runResult[InteractiveRollResult] { _ =>
+            given Random[IO] = r.random
+            val roller = DiceRoller[IO]
+
+            def elicitChoice(round: Int): IO[Either[ElicitationError, ElicitResult[DiceChoice]]] =
+              r.elicitation.requestForm[DiceChoice](
+                message =
+                  if round == 0 then "Choose a dice to roll"
+                  else "Choose another dice — or decline to stop"
+              )
+
+            def collect(round: Int, acc: List[DiceChoice]): IO[Either[ToolResult[InteractiveRollResult], List[DiceChoice]]] =
+              elicitChoice(round).flatMap {
+                case Left(ElicitationError.CapabilityMissing) =>
+                  IO.pure(Left(ToolResult.Error("This client does not support form elicitation")))
+                case Left(err) =>
+                  IO.pure(Left(ToolResult.Error(s"Elicitation failed: $err")))
+                case Right(ElicitResult.Accept(choice)) if choice.count <= 0 =>
+                  IO.pure(Left(ToolResult.Error(s"count must be positive (got ${choice.count})")))
+                case Right(ElicitResult.Accept(choice)) =>
+                  collect(round + 1, acc :+ choice)
+                case Right(ElicitResult.Decline) | Right(ElicitResult.Cancel) =>
+                  IO.pure(Right(acc))
+              }
+
+            collect(0, Nil).flatMap {
+              case Left(error)    => IO.pure(error)
+              case Right(Nil)     => IO.pure(ToolResult.Text("No dice were chosen"))
+              case Right(choices) =>
+                val expr = choices.map(c => s"${c.count}d${c.face.sides}").mkString(" + ")
+                roller.rollDice(expr).flatMap { result =>
+                  r.rollHistory.update(h => (result :: h).take(100)).as(
+                    ToolResult.Success(InteractiveRollResult(
+                      expression = result.expression,
+                      result = result.result,
+                      breakdown = result.breakdown
+                    ))
+                  )
+                }
             }
           }
       )
@@ -136,11 +233,10 @@ object DiceMcpServer extends IOApp.Simple, McpDsl[IO]:
       .build
 
   def run: IO[Unit] =
-    Resource.eval(
+    StdioTransport.run[IO] { ctx =>
       for
         history <- Ref.of[IO, List[DiceRoller.RollResult]](Nil)
         random  <- Random.scalaUtilRandom[IO]
-      yield DiceResources(history, random)
-    ).use { r =>
-      server(r).flatMap(StdioTransport.run[IO])
+        srv     <- server(DiceResources(history, random, ctx.elicitation))
+      yield srv
     }
