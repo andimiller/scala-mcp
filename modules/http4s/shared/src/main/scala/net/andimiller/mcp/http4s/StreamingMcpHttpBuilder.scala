@@ -38,7 +38,8 @@ class StreamingMcpHttpBuilder[F[_]: Async, Ctx] private[http4s] (
     val mSessionStore: Option[SessionStore[F]],
     val mSinkFactory: Option[String => Resource[F, NotificationSink[F]]],
     val mSessionRefsFactory: Option[String => SessionRefs[F]],
-    val mSessionStoreFactory: Option[SessionStoreFactory[F]]
+    val mSessionStoreFactory: Option[SessionStoreFactory[F]],
+    val mCancellationRegistryFactory: Option[String => Resource[F, CancellationRegistry[F]]]
 ):
 
   private def copy[Ctx2](
@@ -61,7 +62,8 @@ class StreamingMcpHttpBuilder[F[_]: Async, Ctx] private[http4s] (
       mSessionStore: Option[SessionStore[F]] = this.mSessionStore,
       mSinkFactory: Option[String => Resource[F, NotificationSink[F]]] = this.mSinkFactory,
       mSessionRefsFactory: Option[String => SessionRefs[F]] = this.mSessionRefsFactory,
-      mSessionStoreFactory: Option[SessionStoreFactory[F]] = this.mSessionStoreFactory
+      mSessionStoreFactory: Option[SessionStoreFactory[F]] = this.mSessionStoreFactory,
+      mCancellationRegistryFactory: Option[String => Resource[F, CancellationRegistry[F]]] = this.mCancellationRegistryFactory
   ): StreamingMcpHttpBuilder[F, Ctx2] =
     new StreamingMcpHttpBuilder[F, Ctx2](
       mName, mVersion, mConfig, mAuthInfo, mStatefulCreators, mStatefulExternalCreators, mAuthExtractor,
@@ -70,7 +72,8 @@ class StreamingMcpHttpBuilder[F[_]: Async, Ctx] private[http4s] (
       mPlainResourceTemplates, mContextResourceTemplateResolvers,
       mPlainPrompts, mContextPromptResolvers,
       mCaps,
-      mSessionStore, mSinkFactory, mSessionRefsFactory, mSessionStoreFactory
+      mSessionStore, mSinkFactory, mSessionRefsFactory, mSessionStoreFactory,
+      mCancellationRegistryFactory
     )
 
   // ── Config ──────────────────────────────────────────────────────────
@@ -95,6 +98,16 @@ class StreamingMcpHttpBuilder[F[_]: Async, Ctx] private[http4s] (
 
   def withSessionStoreFactory(factory: SessionStoreFactory[F]): StreamingMcpHttpBuilder[F, Ctx] =
     copy(mSessionStoreFactory = Some(factory))
+
+  /**
+   * Supply a per-session [[CancellationRegistry]] factory. Use this to opt into
+   * cross-node cancellation (e.g. Redis pub/sub) — each session receives a
+   * Resource-managed registry keyed by session ID.
+   */
+  def withCancellationRegistryFactory(
+    f: String => Resource[F, CancellationRegistry[F]]
+  ): StreamingMcpHttpBuilder[F, Ctx] =
+    copy(mCancellationRegistryFactory = Some(f))
 
   // ── Context accumulation ──────────────────────────────────────────
 
@@ -250,7 +263,8 @@ class StreamingMcpHttpBuilder[F[_]: Async, Ctx] private[http4s] (
   // ── Terminal operations ─────────────────────────────────────────────
 
   private def hasExternalFactories: Boolean =
-    mSessionStore.isDefined || mSinkFactory.isDefined || mSessionRefsFactory.isDefined || mSessionStoreFactory.isDefined
+    mSessionStore.isDefined || mSinkFactory.isDefined || mSessionRefsFactory.isDefined ||
+      mSessionStoreFactory.isDefined || mCancellationRegistryFactory.isDefined
 
   def routes(using UUIDGen[F]): Resource[F, HttpRoutes[F]] =
     mAuthInfo match
@@ -260,13 +274,15 @@ class StreamingMcpHttpBuilder[F[_]: Async, Ctx] private[http4s] (
           case Some(store: AuthenticatedSessionStore[F, Any] @unchecked) => Resource.pure[F, AuthenticatedSessionStore[F, Any]](store)
           case _ => Resource.eval(AuthenticatedSessionStore.inMemory[F, Any])
         storeR.flatMap { store =>
-          if mSinkFactory.isDefined || mSessionRefsFactory.isDefined || mSessionStoreFactory.isDefined then
+          if hasExternalFactories then
             val sinkF: String => Resource[F, NotificationSink[F]] =
               mSinkFactory.getOrElse(_ => NotificationSink.create[F])
+            val cancelF: String => Resource[F, CancellationRegistry[F]] =
+              mCancellationRegistryFactory.getOrElse(_ => Resource.eval(CancellationRegistry.create[F]))
             val serverF: (String, Any, NotificationSink[F]) => F[Server[F]] =
               (id, user, sink) => newAuthenticatedSessionFactoryWithRefs(id)(user, sink)
             StreamableHttpTransport.authenticatedRoutes[F, Any](
-              extractReq, serverF, Async[F].pure(info.onForbidden), sinkF, store
+              extractReq, serverF, Async[F].pure(info.onForbidden), sinkF, store, cancelF
             )(using Async[F], summon[UUIDGen[F]], info.eqAny)
           else
             StreamableHttpTransport.authenticatedRoutes[F, Any](
@@ -278,6 +294,8 @@ class StreamingMcpHttpBuilder[F[_]: Async, Ctx] private[http4s] (
             )(using Async[F], summon[UUIDGen[F]], info.eqAny)
         }
       case None =>
+        val cancelF: String => Resource[F, CancellationRegistry[F]] =
+          mCancellationRegistryFactory.getOrElse(_ => Resource.eval(CancellationRegistry.create[F]))
         val storeR = mSessionStoreFactory match
           case Some(factory) =>
             val sinkF = mSinkFactory.getOrElse((_: String) => NotificationSink.create[F])
@@ -286,19 +304,21 @@ class StreamingMcpHttpBuilder[F[_]: Async, Ctx] private[http4s] (
                 sinkPair      <- sinkF(id).allocated
                 (sink, _)      = sinkPair
                 server        <- newSessionFactoryWithRefs(id)(sink)
-                handler        = new RequestHandler[F](server)
+                regPair       <- cancelF(id).allocated
+                (registry, _)  = regPair
+                handler        = new RequestHandler[F](server, sink, registry)
                 subscriptions <- Ref.of[F, Set[String]](Set.empty)
               yield McpSession(id, handler, sink, subscriptions)
             Resource.eval(factory.create(reconstruct))
           case None =>
             mSessionStore.fold(Resource.eval(SessionStore.inMemory[F]))(Resource.pure(_))
         storeR.flatMap { store =>
-          if mSinkFactory.isDefined || mSessionRefsFactory.isDefined || mSessionStoreFactory.isDefined then
+          if hasExternalFactories then
             val sinkF: String => Resource[F, NotificationSink[F]] =
               mSinkFactory.getOrElse(_ => NotificationSink.create[F])
             val serverF: (String, NotificationSink[F]) => F[Server[F]] =
               (id, sink) => newSessionFactoryWithRefs(id)(sink)
-            StreamableHttpTransport.routes(serverF, sinkF, store)
+            StreamableHttpTransport.routes(serverF, sinkF, store, cancelF)
           else
             StreamableHttpTransport.routes(newSessionFactory, NotificationSink.create[F], store)
         }

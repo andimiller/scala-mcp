@@ -127,6 +127,17 @@
       }
     },
     {
+      "description" : "Sleep for 100 seconds. Cancel the request to test cancellation — watch stdout for finish vs cancel.",
+      "inputSchema" : {
+        "additionalProperties" : false,
+        "type" : "object"
+      },
+      "name" : "sleep",
+      "outputSchema" : {
+        "type" : "object"
+      }
+    },
+    {
       "description" : "Start a new pomodoro timer",
       "inputSchema" : {
         "additionalProperties" : false,

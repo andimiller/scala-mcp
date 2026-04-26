@@ -27,12 +27,14 @@ object McpRedis:
    * - Session store factory (deferred construction with TTL and local caching)
    * - Notification sink factory (pub/sub per session)
    * - Session refs factory (per-session state in Redis)
+   * - Cancellation registry factory (pub/sub per session — lets `notifications/cancelled`
+   *   arriving on any node interrupt in-flight requests running on any other node)
    *
    * The session store is constructed at route-build time, when the builder
    * can provide a `reconstruct` callback for cache misses.
    *
    * @param redis     Redis commands for key-value operations
-   * @param pubSub    Redis pub/sub commands for notifications
+   * @param pubSub    Redis pub/sub commands for notifications and cancellations
    * @param ttl       TTL for session keys and state (default: 1 hour)
    */
   def configure[F[_]: Async, Ctx](
@@ -44,3 +46,4 @@ object McpRedis:
       .withNotificationSinkFactory(id => RedisNotificationSink.create(pubSub, id))
       .withSessionRefsFactory(id => new RedisSessionRefs(redis, id, ttl))
       .withSessionStoreFactory(new RedisSessionStoreFactory(redis, ttl))
+      .withCancellationRegistryFactory(id => RedisCancellationRegistry.create(pubSub, id))

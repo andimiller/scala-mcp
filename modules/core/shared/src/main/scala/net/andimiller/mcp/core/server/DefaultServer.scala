@@ -31,10 +31,10 @@ class DefaultServer[F[_]: Async](
 
     ListToolsResponse(tools = tools, nextCursor = None).pure[F]
 
-  override def callTool(request: CallToolRequest): F[CallToolResponse] =
+  override def callTool(request: CallToolRequest, rc: RequestContext[F]): F[CallToolResponse] =
     toolHandlers.get(request.name) match
       case Some(handler) =>
-        handler.handle(request.arguments).map { result =>
+        handler.handle(request.arguments, rc).map { result =>
           CallToolResponse(content = result.content, structuredContent = result.structuredContent, isError = result.isError)
         }
       case None =>

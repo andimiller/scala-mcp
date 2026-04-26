@@ -13,7 +13,7 @@ import org.typelevel.ci.*
 import fs2.Stream
 import net.andimiller.mcp.core.codecs.CirceCodecs.given
 import net.andimiller.mcp.core.protocol.jsonrpc.Message
-import net.andimiller.mcp.core.server.{NotificationSink, RequestHandler, Server}
+import net.andimiller.mcp.core.server.{CancellationRegistry, NotificationSink, RequestHandler, Server}
 
 /**
  * Streamable HTTP transport for MCP (spec 2025-03-26).
@@ -30,6 +30,10 @@ object StreamableHttpTransport:
   private val mcpSessionId = ci"Mcp-Session-Id"
   private val eventStreamMediaType = new MediaType("text", "event-stream")
 
+  /** Default per-session cancellation factory — builds a local-only in-memory registry. */
+  private def defaultCancelFactory[F[_]: Async]: String => Resource[F, CancellationRegistry[F]] =
+    _ => Resource.eval(CancellationRegistry.create[F])
+
   /**
    * Build HTTP routes for the MCP streamable transport.
    *
@@ -42,7 +46,7 @@ object StreamableHttpTransport:
     for
       sinkFactory <- Resource.pure(NotificationSink.create[F])
       store       <- Resource.eval(SessionStore.inMemory[F])
-    yield buildRoutes(serverFactory, sinkFactory, store)
+    yield buildRoutes(serverFactory, sinkFactory, store, defaultCancelFactory[F])
 
   /**
    * Build HTTP routes using an externally-provided [[SessionStore]].
@@ -52,7 +56,7 @@ object StreamableHttpTransport:
     sinkFactory: Resource[F, NotificationSink[F]],
     store: SessionStore[F]
   ): Resource[F, HttpRoutes[F]] =
-    Resource.pure(buildRoutes(serverFactory, sinkFactory, store))
+    Resource.pure(buildRoutes(serverFactory, sinkFactory, store, defaultCancelFactory[F]))
 
   /**
    * Build HTTP routes with session-ID-aware factories.
@@ -65,7 +69,20 @@ object StreamableHttpTransport:
     sinkFactory: String => Resource[F, NotificationSink[F]],
     store: SessionStore[F]
   ): Resource[F, HttpRoutes[F]] =
-    Resource.pure(buildRoutesWithId(serverFactory, sinkFactory, store))
+    Resource.pure(buildRoutesWithId(serverFactory, sinkFactory, store, defaultCancelFactory[F]))
+
+  /**
+   * Build HTTP routes with session-ID-aware factories, including a factory for
+   * per-session [[CancellationRegistry]] instances. Use this overload when
+   * cancellation must route across multiple server nodes (e.g. via Redis pub/sub).
+   */
+  def routes[F[_]: Async: UUIDGen](
+    serverFactory: (String, NotificationSink[F]) => F[Server[F]],
+    sinkFactory: String => Resource[F, NotificationSink[F]],
+    store: SessionStore[F],
+    cancelFactory: String => Resource[F, CancellationRegistry[F]]
+  ): Resource[F, HttpRoutes[F]] =
+    Resource.pure(buildRoutesWithId(serverFactory, sinkFactory, store, cancelFactory))
 
   private def getSessionId[F[_]](req: Request[F]): Option[String] =
     req.headers.get(mcpSessionId).map(_.head.value)
@@ -73,7 +90,8 @@ object StreamableHttpTransport:
   private def buildRoutes[F[_]: Async: UUIDGen](
     serverFactory: NotificationSink[F] => F[Server[F]],
     sinkFactory: Resource[F, NotificationSink[F]],
-    store: SessionStore[F]
+    store: SessionStore[F],
+    cancelFactory: String => Resource[F, CancellationRegistry[F]]
   ): HttpRoutes[F] =
     val dsl = Http4sDsl[F]
     import dsl.*
@@ -89,7 +107,7 @@ object StreamableHttpTransport:
             message match
               // Initialize: create a new session
               case r @ Message.Request(_, _, "initialize", _) =>
-                createSession(serverFactory, sinkFactory, store).flatMap { session =>
+                createSession(serverFactory, sinkFactory, store, cancelFactory).flatMap { session =>
                   session.handler.handle(r).flatMap {
                     case Some(response) =>
                       Ok(response.asJson.noSpaces)
@@ -165,7 +183,8 @@ object StreamableHttpTransport:
   private def buildRoutesWithId[F[_]: Async: UUIDGen](
     serverFactory: (String, NotificationSink[F]) => F[Server[F]],
     sinkFactory: String => Resource[F, NotificationSink[F]],
-    store: SessionStore[F]
+    store: SessionStore[F],
+    cancelFactory: String => Resource[F, CancellationRegistry[F]]
   ): HttpRoutes[F] =
     val dsl = Http4sDsl[F]
     import dsl.*
@@ -181,7 +200,7 @@ object StreamableHttpTransport:
             message match
               // Initialize: create a new session
               case r @ Message.Request(_, _, "initialize", _) =>
-                createSessionWithId(serverFactory, sinkFactory, store).flatMap { session =>
+                createSessionWithId(serverFactory, sinkFactory, store, cancelFactory).flatMap { session =>
                   session.handler.handle(r).flatMap {
                     case Some(response) =>
                       Ok(response.asJson.noSpaces)
@@ -275,7 +294,7 @@ object StreamableHttpTransport:
     for
       sinkFactory <- Resource.pure(NotificationSink.create[F])
       store       <- Resource.eval(AuthenticatedSessionStore.inMemory[F, U])
-    yield buildAuthenticatedRoutes(authenticate, serverFactory, sinkFactory, store, onUnauthorized)
+    yield buildAuthenticatedRoutes(authenticate, serverFactory, sinkFactory, store, onUnauthorized, defaultCancelFactory[F])
 
   /**
    * Build authenticated HTTP routes using an externally-provided [[AuthenticatedSessionStore]].
@@ -287,7 +306,7 @@ object StreamableHttpTransport:
     sinkFactory: Resource[F, NotificationSink[F]],
     store: AuthenticatedSessionStore[F, U]
   ): Resource[F, HttpRoutes[F]] =
-    Resource.pure(buildAuthenticatedRoutes(authenticate, serverFactory, sinkFactory, store, onUnauthorized))
+    Resource.pure(buildAuthenticatedRoutes(authenticate, serverFactory, sinkFactory, store, onUnauthorized, defaultCancelFactory[F]))
 
   /**
    * Build authenticated HTTP routes with session-ID-aware factories.
@@ -299,14 +318,29 @@ object StreamableHttpTransport:
     sinkFactory: String => Resource[F, NotificationSink[F]],
     store: AuthenticatedSessionStore[F, U]
   ): Resource[F, HttpRoutes[F]] =
-    Resource.pure(buildAuthenticatedRoutesWithId(authenticate, serverFactory, sinkFactory, store, onUnauthorized))
+    Resource.pure(buildAuthenticatedRoutesWithId(authenticate, serverFactory, sinkFactory, store, onUnauthorized, defaultCancelFactory[F]))
+
+  /**
+   * Build authenticated HTTP routes with session-ID-aware factories, including a
+   * factory for per-session [[CancellationRegistry]] instances.
+   */
+  def authenticatedRoutes[F[_]: Async: UUIDGen, U: Eq](
+    authenticate: Request[F] => F[Option[U]],
+    serverFactory: (String, U, NotificationSink[F]) => F[Server[F]],
+    onUnauthorized: F[Response[F]],
+    sinkFactory: String => Resource[F, NotificationSink[F]],
+    store: AuthenticatedSessionStore[F, U],
+    cancelFactory: String => Resource[F, CancellationRegistry[F]]
+  ): Resource[F, HttpRoutes[F]] =
+    Resource.pure(buildAuthenticatedRoutesWithId(authenticate, serverFactory, sinkFactory, store, onUnauthorized, cancelFactory))
 
   private def buildAuthenticatedRoutes[F[_]: Async: UUIDGen, U: Eq](
     authenticate: Request[F] => F[Option[U]],
     serverFactory: (U, NotificationSink[F]) => F[Server[F]],
     sinkFactory: Resource[F, NotificationSink[F]],
     store: AuthenticatedSessionStore[F, U],
-    onUnauthorized: F[Response[F]]
+    onUnauthorized: F[Response[F]],
+    cancelFactory: String => Resource[F, CancellationRegistry[F]]
   ): HttpRoutes[F] =
     val dsl = Http4sDsl[F]
     import dsl.*
@@ -324,7 +358,7 @@ object StreamableHttpTransport:
               case Right(message) =>
                 message match
                   case r @ Message.Request(_, _, "initialize", _) =>
-                    createAuthenticatedSession(serverFactory, sinkFactory, store, user).flatMap { session =>
+                    createAuthenticatedSession(serverFactory, sinkFactory, store, user, cancelFactory).flatMap { session =>
                       session.handler.handle(r).flatMap {
                         case Some(response) =>
                           Ok(response.asJson.noSpaces)
@@ -410,14 +444,17 @@ object StreamableHttpTransport:
     serverFactory: (U, NotificationSink[F]) => F[Server[F]],
     sinkFactory: Resource[F, NotificationSink[F]],
     store: AuthenticatedSessionStore[F, U],
-    user: U
+    user: U,
+    cancelFactory: String => Resource[F, CancellationRegistry[F]]
   ): F[McpSession[F]] =
     for
       id            <- UUIDGen[F].randomUUID.map(_.toString)
       sinkPair      <- sinkFactory.allocated
       (sink, _)      = sinkPair
       server        <- serverFactory(user, sink)
-      handler        = new RequestHandler[F](server)
+      regPair       <- cancelFactory(id).allocated
+      (registry, _)  = regPair
+      handler        = new RequestHandler[F](server, sink, registry)
       subscriptions <- Ref.of[F, Set[String]](Set.empty)
       session        = McpSession(id, handler, sink, subscriptions)
       _             <- store.put(session)
@@ -429,7 +466,8 @@ object StreamableHttpTransport:
     serverFactory: (String, U, NotificationSink[F]) => F[Server[F]],
     sinkFactory: String => Resource[F, NotificationSink[F]],
     store: AuthenticatedSessionStore[F, U],
-    onUnauthorized: F[Response[F]]
+    onUnauthorized: F[Response[F]],
+    cancelFactory: String => Resource[F, CancellationRegistry[F]]
   ): HttpRoutes[F] =
     val dsl = Http4sDsl[F]
     import dsl.*
@@ -447,7 +485,7 @@ object StreamableHttpTransport:
               case Right(message) =>
                 message match
                   case r @ Message.Request(_, _, "initialize", _) =>
-                    createAuthenticatedSessionWithId(serverFactory, sinkFactory, store, user).flatMap { session =>
+                    createAuthenticatedSessionWithId(serverFactory, sinkFactory, store, user, cancelFactory).flatMap { session =>
                       session.handler.handle(r).flatMap {
                         case Some(response) =>
                           Ok(response.asJson.noSpaces)
@@ -533,14 +571,17 @@ object StreamableHttpTransport:
     serverFactory: (String, U, NotificationSink[F]) => F[Server[F]],
     sinkFactory: String => Resource[F, NotificationSink[F]],
     store: AuthenticatedSessionStore[F, U],
-    user: U
+    user: U,
+    cancelFactory: String => Resource[F, CancellationRegistry[F]]
   ): F[McpSession[F]] =
     for
       id            <- UUIDGen[F].randomUUID.map(_.toString)
       sinkPair      <- sinkFactory(id).allocated
       (sink, _)      = sinkPair
       server        <- serverFactory(id, user, sink)
-      handler        = new RequestHandler[F](server)
+      regPair       <- cancelFactory(id).allocated
+      (registry, _)  = regPair
+      handler        = new RequestHandler[F](server, sink, registry)
       subscriptions <- Ref.of[F, Set[String]](Set.empty)
       session        = McpSession(id, handler, sink, subscriptions)
       _             <- store.put(session)
@@ -555,14 +596,17 @@ object StreamableHttpTransport:
   private def createSession[F[_]: Async: UUIDGen](
     serverFactory: NotificationSink[F] => F[Server[F]],
     sinkFactory: Resource[F, NotificationSink[F]],
-    store: SessionStore[F]
+    store: SessionStore[F],
+    cancelFactory: String => Resource[F, CancellationRegistry[F]]
   ): F[McpSession[F]] =
     for
       id            <- UUIDGen[F].randomUUID.map(_.toString)
       sinkPair      <- sinkFactory.allocated
       (sink, _)      = sinkPair
       server        <- serverFactory(sink)
-      handler        = new RequestHandler[F](server)
+      regPair       <- cancelFactory(id).allocated
+      (registry, _)  = regPair
+      handler        = new RequestHandler[F](server, sink, registry)
       subscriptions <- Ref.of[F, Set[String]](Set.empty)
       session        = McpSession(id, handler, sink, subscriptions)
       _             <- store.put(session)
@@ -571,14 +615,17 @@ object StreamableHttpTransport:
   private def createSessionWithId[F[_]: Async: UUIDGen](
     serverFactory: (String, NotificationSink[F]) => F[Server[F]],
     sinkFactory: String => Resource[F, NotificationSink[F]],
-    store: SessionStore[F]
+    store: SessionStore[F],
+    cancelFactory: String => Resource[F, CancellationRegistry[F]]
   ): F[McpSession[F]] =
     for
       id            <- UUIDGen[F].randomUUID.map(_.toString)
       sinkPair      <- sinkFactory(id).allocated
       (sink, _)      = sinkPair
       server        <- serverFactory(id, sink)
-      handler        = new RequestHandler[F](server)
+      regPair       <- cancelFactory(id).allocated
+      (registry, _)  = regPair
+      handler        = new RequestHandler[F](server, sink, registry)
       subscriptions <- Ref.of[F, Set[String]](Set.empty)
       session        = McpSession(id, handler, sink, subscriptions)
       _             <- store.put(session)

@@ -13,7 +13,7 @@ class Tool[F[_], Ctx, A, R](
     val description: String,
     val inputSchema: Json,
     val outputSchema: Json,
-    val handle: (Ctx, A) => F[R],
+    val handle: (Ctx, A, RequestContext[F]) => F[R],
     val resultEncoder: R => ToolResult
 )(using val decoder: Decoder[A]):
 
@@ -25,9 +25,9 @@ class Tool[F[_], Ctx, A, R](
       val description = self.description
       val inputSchema = self.inputSchema
       val outputSchema = self.outputSchema
-      def handle(arguments: Json): F[ToolResult] =
+      def handle(arguments: Json, rc: RequestContext[F]): F[ToolResult] =
         self.decoder.decodeJson(arguments) match
-          case Right(a)  => self.handle(ctx, a).map(self.resultEncoder)
+          case Right(a)  => self.handle(ctx, a, rc).map(self.resultEncoder)
           case Left(err) => Async[F].pure(ToolResult.error(s"Invalid arguments: ${err.getMessage}"))
 
 object Tool:
@@ -37,7 +37,7 @@ object Tool:
     def description: String
     def inputSchema: Json
     def outputSchema: Json
-    def handle(arguments: Json): F[ToolResult]
+    def handle(arguments: Json, rc: RequestContext[F]): F[ToolResult]
 
   def builder[F[_]: Async]: ToolBuilder.PlainEmpty[F] = new ToolBuilder.PlainEmpty[F]
 
@@ -45,13 +45,13 @@ object Tool:
     new ToolBuilder.ContextualEmpty[F, Ctx]
 
   extension (td: ToolDefinition)
-    def toResolved[F[_]](handler: Json => F[ToolResult]): Resolved[F] =
+    def toResolved[F[_]](handler: (Json, RequestContext[F]) => F[ToolResult]): Resolved[F] =
       new Resolved[F]:
         val name = td.name
         val description = td.description
         val inputSchema = td.inputSchema
         val outputSchema = td.outputSchema
-        def handle(arguments: Json) = handler(arguments)
+        def handle(arguments: Json, rc: RequestContext[F]) = handler(arguments, rc)
 
   extension [F[_]: Async, A, R](tool: Tool[F, Unit, A, R])
     def resolve: Resolved[F] = tool.provide(())
@@ -102,8 +102,8 @@ object ToolBuilder:
         name = toolName,
         description = toolDescription,
         inputSchema = JsonSchema.toJson[A],
-        outputSchema = Json.obj(),
-        handle = (_, a) => handler(a),
+        outputSchema = JsonSchema.toJson[Unit],
+        handle = (_, a, _) => handler(a),
         resultEncoder = identity
       )(using summon[Decoder[A]])
 
@@ -135,18 +135,40 @@ object ToolBuilder:
         description = toolDescription,
         inputSchema = inSchema,
         outputSchema = finalOutput,
-        handle = (_, a) => handler(a),
+        handle = (_, a, _) => handler(a),
+        resultEncoder = r => ToolResult.structured(r.asJson)
+      )(using summon[Decoder[A]])
+
+    def runWithContext[R](handler: (A, RequestContext[F]) => F[R])(using Decoder[A], Encoder.AsObject[R], JsonSchema[R]): Tool[F, Unit, A, R] =
+      val finalOutput = outSchemaJson.getOrElse(JsonSchema.toJson[R])
+      new Tool[F, Unit, A, R](
+        name = toolName,
+        description = toolDescription,
+        inputSchema = inSchema,
+        outputSchema = finalOutput,
+        handle = (_, a, rc) => handler(a, rc),
         resultEncoder = r => ToolResult.structured(r.asJson)
       )(using summon[Decoder[A]])
 
     def handle(handler: A => F[ToolResult])(using Decoder[A]): Tool[F, Unit, A, ToolResult] =
-      val finalOutput = outSchemaJson.getOrElse(Json.obj())
+      val finalOutput = outSchemaJson.getOrElse(JsonSchema.toJson[Unit])
       new Tool[F, Unit, A, ToolResult](
         name = toolName,
         description = toolDescription,
         inputSchema = inSchema,
         outputSchema = finalOutput,
-        handle = (_, a) => handler(a),
+        handle = (_, a, _) => handler(a),
+        resultEncoder = identity
+      )(using summon[Decoder[A]])
+
+    def handleWithContext(handler: (A, RequestContext[F]) => F[ToolResult])(using Decoder[A]): Tool[F, Unit, A, ToolResult] =
+      val finalOutput = outSchemaJson.getOrElse(JsonSchema.toJson[Unit])
+      new Tool[F, Unit, A, ToolResult](
+        name = toolName,
+        description = toolDescription,
+        inputSchema = inSchema,
+        outputSchema = finalOutput,
+        handle = (_, a, rc) => handler(a, rc),
         resultEncoder = identity
       )(using summon[Decoder[A]])
 
@@ -224,12 +246,34 @@ object ToolBuilder:
         description = toolDescription,
         inputSchema = inSchema,
         outputSchema = finalOutput,
+        handle = (ctx, a, _) => handler(ctx, a),
+        resultEncoder = r => ToolResult.structured(r.asJson)
+      )(using summon[Decoder[A]])
+
+    def runWithContext[R](handler: (Ctx, A, RequestContext[F]) => F[R])(using Decoder[A], Encoder.AsObject[R], JsonSchema[R]): Tool[F, Ctx, A, R] =
+      val finalOutput = outSchemaJson.getOrElse(JsonSchema.toJson[R])
+      new Tool[F, Ctx, A, R](
+        name = toolName,
+        description = toolDescription,
+        inputSchema = inSchema,
+        outputSchema = finalOutput,
         handle = handler,
         resultEncoder = r => ToolResult.structured(r.asJson)
       )(using summon[Decoder[A]])
 
     def handle(handler: (Ctx, A) => F[ToolResult])(using Decoder[A]): Tool[F, Ctx, A, ToolResult] =
-      val finalOutput = outSchemaJson.getOrElse(Json.obj())
+      val finalOutput = outSchemaJson.getOrElse(JsonSchema.toJson[Unit])
+      new Tool[F, Ctx, A, ToolResult](
+        name = toolName,
+        description = toolDescription,
+        inputSchema = inSchema,
+        outputSchema = finalOutput,
+        handle = (ctx, a, _) => handler(ctx, a),
+        resultEncoder = identity
+      )(using summon[Decoder[A]])
+
+    def handleWithContext(handler: (Ctx, A, RequestContext[F]) => F[ToolResult])(using Decoder[A]): Tool[F, Ctx, A, ToolResult] =
+      val finalOutput = outSchemaJson.getOrElse(JsonSchema.toJson[Unit])
       new Tool[F, Ctx, A, ToolResult](
         name = toolName,
         description = toolDescription,

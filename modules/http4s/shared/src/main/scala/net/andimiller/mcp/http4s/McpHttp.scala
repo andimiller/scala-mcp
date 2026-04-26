@@ -55,7 +55,8 @@ object McpHttp:
       mSessionStore = None,
       mSinkFactory = None,
       mSessionRefsFactory = None,
-      mSessionStoreFactory = None
+      mSessionStoreFactory = None,
+      mCancellationRegistryFactory = None
     )
 
   // ── Simple HTTP transport (no sessions, no SSE) ──────────────────

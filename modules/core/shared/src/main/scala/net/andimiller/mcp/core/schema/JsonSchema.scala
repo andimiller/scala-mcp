@@ -41,6 +41,10 @@ object JsonSchema:
   given JsonSchema[Boolean] with
     def schema: Schema = Schema(`type` = Some(List(SchemaType.Boolean)))
 
+  /** Empty object schema — natural fit for tools that take or produce no structured data. */
+  given JsonSchema[Unit] with
+    def schema: Schema = Schema(`type` = Some(List(SchemaType.Object)))
+
   given [A](using s: JsonSchema[A]): JsonSchema[Option[A]] with
     def schema: Schema = s.schema
 

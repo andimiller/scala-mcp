@@ -4,10 +4,12 @@ import cats.effect.*
 import cats.syntax.all.*
 import com.comcast.ip4s.*
 import io.circe.{Decoder, Encoder}
-import net.andimiller.mcp.core.protocol.{PromptArgument, PromptMessage, ResourceContent}
+import net.andimiller.mcp.core.protocol.{PromptArgument, PromptMessage, ResourceContent, ToolResult}
 import net.andimiller.mcp.core.schema.{JsonSchema, description}
 import net.andimiller.mcp.core.server.*
 import net.andimiller.mcp.http4s.{McpHttp, StreamingMcpHttpBuilder}
+
+import scala.concurrent.duration.*
 
 // ── request / response types ────────────────────────────────────────
 
@@ -62,6 +64,19 @@ object PomodoroMcpServer extends IOApp.Simple, McpDsl[IO]:
           .description("Get the current pomodoro timer status")
           .in[EmptyRequest]
           .run((timer, _) => timer.status.map(StatusResponse(_))),
+      )
+      .withContextualTool(
+        contextualTool[PomodoroTimer].name("sleep")
+          .description("Sleep for 100 seconds. Cancel the request to test cancellation — watch stdout for finish vs cancel.")
+          .in[EmptyRequest]
+          .handle { (_, _) =>
+            val work =
+              IO.println("[sleep] starting 100s sleep...") *>
+              IO.sleep(100.seconds) *>
+              IO.println("[sleep] finished normally") *>
+              IO.pure(ToolResult.text("slept for 100 seconds"))
+            work.onCancel(IO.println("[sleep] cancelled"))
+          },
       )
       // ── resources (need the timer) ─────────────────────────────────
       .withContextualResource(
