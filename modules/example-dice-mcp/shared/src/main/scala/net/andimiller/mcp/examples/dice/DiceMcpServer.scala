@@ -96,6 +96,7 @@ object DiceMcpServer extends IOApp.Simple:
         tool.name("roll_dice")
           .description("Roll dice using standard notation (e.g., '1d6', '2d20 + 5', '3d4 - 2')")
           .in[RollDiceRequest]
+          .out[RollDiceResponse]
           .run { request =>
             given Random[IO] = r.random
             val roller = DiceRoller[IO]
@@ -120,6 +121,7 @@ object DiceMcpServer extends IOApp.Simple:
         tool.name("roll_interactive")
           .description("Build a dice expression interactively: choose dice + counts, then roll the lot")
           .in[RollCustomRequest]
+          .out[InteractiveRollResult]
           .runResult { _ =>
             given Random[IO] = r.random
             val roller = DiceRoller[IO]

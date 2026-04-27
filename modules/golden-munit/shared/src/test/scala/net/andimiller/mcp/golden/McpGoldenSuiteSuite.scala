@@ -18,6 +18,7 @@ class McpGoldenSuiteSuite extends McpGoldenSuite:
         tool.name("echo")
           .description("Echoes the input message back")
           .in[EchoRequest]
+          .out[EchoResponse]
           .run(r => IO.pure(EchoResponse(r.message)))
       )
       .withPrompt(Prompt.static[IO]("greet", List(PromptMessage.user("Hello!")), Some("A greeting")))

@@ -64,10 +64,10 @@ object Tool:
 object ToolBuilder:
 
   final class Empty[Ctx]:
-    def name(n: String): WithIn[Ctx, Unit] =
-      new WithIn[Ctx, Unit](n, s"Tool: $n", JsonSchema.obj().asJson, None)
+    def name(n: String): WithIn[Ctx, Unit, Nothing] =
+      new WithIn[Ctx, Unit, Nothing](n, s"Tool: $n", JsonSchema.obj().asJson, None)
 
-  final class WithIn[Ctx, In] private[ToolBuilder] (
+  final class WithIn[Ctx, In, Out] private[ToolBuilder] (
       private[ToolBuilder] val toolName: String,
       private[ToolBuilder] val toolDescription: String,
       private[ToolBuilder] val inSchema: Json,
@@ -79,56 +79,56 @@ object ToolBuilder:
         toolDescription: String = this.toolDescription,
         inSchema: Json = this.inSchema,
         outSchemaJson: Option[Json] = this.outSchemaJson
-    ): WithIn[Ctx, In] =
-      new WithIn[Ctx, In](toolName, toolDescription, inSchema, outSchemaJson)
+    ): WithIn[Ctx, In, Out] =
+      new WithIn[Ctx, In, Out](toolName, toolDescription, inSchema, outSchemaJson)
 
-    def description(d: String): WithIn[Ctx, In] =
+    def description(d: String): WithIn[Ctx, In, Out] =
       copy(toolDescription = d)
 
-    def inputSchema(json: Json): WithIn[Ctx, In] =
+    def inputSchema(json: Json): WithIn[Ctx, In, Out] =
       copy(inSchema = json)
 
-    def inputSchema(schema: Schema): WithIn[Ctx, In] =
+    def inputSchema(schema: Schema): WithIn[Ctx, In, Out] =
       copy(inSchema = schema.asJson)
 
-    def outputSchema(json: Json): WithIn[Ctx, In] =
+    def outputSchema(json: Json): WithIn[Ctx, In, Out] =
       copy(outSchemaJson = Some(json))
 
-    def outputSchema(schema: Schema): WithIn[Ctx, In] =
+    def outputSchema(schema: Schema): WithIn[Ctx, In, Out] =
       copy(outSchemaJson = Some(schema.asJson))
 
-    def in[A](using JsonSchema[A], Decoder[A]): WithIn[Ctx, A] =
-      new WithIn[Ctx, A](toolName, toolDescription, JsonSchema.toJson[A], outSchemaJson)
+    def in[A](using JsonSchema[A], Decoder[A]): WithIn[Ctx, A, Out] =
+      new WithIn[Ctx, A, Out](toolName, toolDescription, JsonSchema.toJson[A], outSchemaJson)
 
     /** Override the output schema with the schema derived from `R`. */
-    def out[R: JsonSchema]: WithIn[Ctx, In] =
-      copy(outSchemaJson = Some(JsonSchema.toJson[R]))
+    def out[A: JsonSchema]: WithIn[Ctx, In, A] =
+      new WithIn[Ctx, In, A](toolName, toolDescription, inSchema, outSchemaJson = Some(JsonSchema.toJson[A]))
 
     /** Promote a `Ctx = Unit` builder into one parameterised on a custom `Ctx`. */
-    def contextual[NewCtx]: WithIn[NewCtx, In] =
-      new WithIn[NewCtx, In](toolName, toolDescription, inSchema, outSchemaJson)
+    def contextual[A]: WithIn[A, In, Out] =
+      new WithIn[A, In, Out](toolName, toolDescription, inSchema, outSchemaJson)
 
   // Terminal `run` / `runResult` are extension methods so the receiver type
   // (`WithIn[Ctx, A]` vs `WithIn[Unit, A]`) drives the dispatch — Scala 3 picks
   // by lambda arity without any `=:=` evidence.
 
-  extension [Ctx, A](b: WithIn[Ctx, A])
+  extension [Ctx, A, Out](b: WithIn[Ctx, A, Out])
     /** Build a tool whose handler returns a structured success value `R`. Sugar over
      *  [[runResult]] — the value is wrapped in `ToolResult.Success(...)`. */
-    def run[F[_]: Async, R](handler: (Ctx, A) => F[R])(using
-        Decoder[A], Encoder.AsObject[R], OutputSchema[R]
-    ): Tool[F, Ctx, A, R] =
-      b.runResult[F, R]((ctx, a) => handler(ctx, a).map(ToolResult.Success(_)))
+    def run[F[_]: Async](handler: (Ctx, A) => F[Out])(using
+        Decoder[A], Encoder.AsObject[Out], OutputSchema[Out]
+    ): Tool[F, Ctx, A, Out] =
+      b.runResult[F]((ctx, a) => handler(ctx, a).map(ToolResult.Success(_)))
 
     /** Build a tool whose handler returns a `ToolResult[R]` directly — useful when the
      *  handler needs to choose between structured success, plain text, or error branches.
      *  The output schema is auto-derived from `R` (via `OutputSchema[R]`) unless explicitly
      *  set via [[out]] / [[outputSchema]]. */
-    def runResult[F[_]: Async, R](handler: (Ctx, A) => F[ToolResult[R]])(using
-        decoder: Decoder[A], encoder: Encoder.AsObject[R], outSchema: OutputSchema[R]
-    ): Tool[F, Ctx, A, R] =
+    def runResult[F[_]: Async](handler: (Ctx, A) => F[ToolResult[Out]])(using
+        decoder: Decoder[A], encoder: Encoder.AsObject[Out], outSchema: OutputSchema[Out]
+    ): Tool[F, Ctx, A, Out] =
       val finalOutput = b.outSchemaJson.orElse(outSchema.asJson)
-      new Tool[F, Ctx, A, R](
+      new Tool[F, Ctx, A, Out](
         name = b.toolName,
         description = b.toolDescription,
         inputSchema = b.inSchema,
@@ -137,21 +137,21 @@ object ToolBuilder:
         resultEncoder = encoder
       )(using decoder)
 
-  extension [A](b: WithIn[Unit, A])
+  extension [A, Out](b: WithIn[Unit, A, Out])
     /** Plain (`Ctx = Unit`) [[run]]: auto-calls `.provide(())` and returns a resolved
      *  handler ready to feed into `withTool`. */
-    def run[F[_]: Async, R](handler: A => F[R])(using
-        Decoder[A], Encoder.AsObject[R], OutputSchema[R]
+    def run[F[_]: Async](handler: A => F[Out])(using
+        Decoder[A], Encoder.AsObject[Out], OutputSchema[Out]
     ): Tool.Resolved[F] =
-      b.runResult[F, R]((a: A) => handler(a).map(ToolResult.Success(_)))
+      b.runResult[F]((a: A) => handler(a).map(ToolResult.Success(_)))
 
     /** Plain (`Ctx = Unit`) [[runResult]]: auto-calls `.provide(())` and returns a resolved
      *  handler ready to feed into `withTool`. */
-    def runResult[F[_]: Async, R](handler: A => F[ToolResult[R]])(using
-        decoder: Decoder[A], encoder: Encoder.AsObject[R], outSchema: OutputSchema[R]
+    def runResult[F[_]: Async](handler: A => F[ToolResult[Out]])(using
+        decoder: Decoder[A], encoder: Encoder.AsObject[Out], outSchema: OutputSchema[Out]
     ): Tool.Resolved[F] =
       val finalOutput = b.outSchemaJson.orElse(outSchema.asJson)
-      new Tool[F, Unit, A, R](
+      new Tool[F, Unit, A, Out](
         name = b.toolName,
         description = b.toolDescription,
         inputSchema = b.inSchema,

@@ -124,6 +124,7 @@ object RpgCharacterCreatorMcpServer extends IOApp.Simple:
         contextualTool[CreatorState].name("create_character")
           .description("Build a D&D-flavoured character interactively (race → class → weapon → name)")
           .in[CreateCharacterRequest]
+          .out[Character]
           .runResult { (state, _) =>
             createWizard(state)
           }
@@ -132,6 +133,7 @@ object RpgCharacterCreatorMcpServer extends IOApp.Simple:
         contextualTool[CreatorState].name("list_characters")
           .description("List all characters created in this session")
           .in[ListCharactersRequest]
+          .out[CharacterList]
           .run((state, _) => state.history.get.map(CharacterList(_)))
       )
 

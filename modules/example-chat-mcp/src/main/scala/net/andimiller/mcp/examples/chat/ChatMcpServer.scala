@@ -95,6 +95,7 @@ object ChatMcpServer extends IOApp.Simple:
           contextualTool[ChatSession].name("set_username")
             .description("Set your display name for this chat session")
             .in[SetUsernameRequest]
+            .out[MessageResponse]
             .run { (session, req) =>
               session.username.set(Some(req.name))
                 .as(MessageResponse(s"Username set to '${req.name}'"))
@@ -104,6 +105,7 @@ object ChatMcpServer extends IOApp.Simple:
           contextualTool[ChatSession].name("create_room")
             .description("Create a new chat room and join it")
             .in[CreateRoomRequest]
+            .out[MessageResponse]
             .run { (session, req) =>
               for
                 user <- session.username.get.flatMap {
@@ -119,6 +121,7 @@ object ChatMcpServer extends IOApp.Simple:
           contextualTool[ChatSession].name("join_room")
             .description("Join an existing chat room")
             .in[JoinRoomRequest]
+            .out[MessageResponse]
             .run { (session, req) =>
               for
                 user <- session.username.get.flatMap {
@@ -134,6 +137,7 @@ object ChatMcpServer extends IOApp.Simple:
           contextualTool[ChatSession].name("send_message")
             .description("Send a message to your current room")
             .in[SendMessageRequest]
+            .out[MessageResponse]
             .run { (session, req) =>
               for
                 user <- session.username.get.flatMap {
@@ -153,6 +157,7 @@ object ChatMcpServer extends IOApp.Simple:
           contextualTool[ChatSession].name("read_messages")
             .description("Read recent messages from a room")
             .in[ReadMessagesRequest]
+            .out[ChatMessagesResponse]
             .run { (session, req) =>
               session.chat.getMessages(req.room, req.count.getOrElse(50)).map { msgs =>
                 ChatMessagesResponse(msgs.map(m => ChatMessageView(m.sender, m.content, m.timestamp)))

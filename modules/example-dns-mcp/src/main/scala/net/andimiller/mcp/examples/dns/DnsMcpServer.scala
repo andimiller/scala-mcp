@@ -43,6 +43,7 @@ object DnsMcpServer extends IOApp.Simple:
           .name("resolve_dns")
           .description("Resolve DNS records for a hostname. Supports A, AAAA, MX, TXT, CNAME, and NS record types.")
           .in[ResolveDnsRequest]
+          .out[DnsResponse]
           .run { req =>
             val rrtype = req.record_type.map(_.toUpperCase).getOrElse("A")
             val lookup = rrtype match
@@ -59,6 +60,7 @@ object DnsMcpServer extends IOApp.Simple:
           .name("reverse_dns")
           .description("Perform a reverse DNS lookup for an IP address, returning associated hostnames.")
           .in[ReverseDnsRequest]
+          .out[DnsResponse]
           .run(req => dns.reverse(req.ip).map(DnsResponse(_)))
       )
       .withResources(
