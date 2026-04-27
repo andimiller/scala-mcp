@@ -24,7 +24,7 @@ case class MessageResponse(message: String) derives Encoder.AsObject, JsonSchema
 
 // ── shared builder setup ────────────────────────────────────────────
 
-object PomodoroMcpServer extends IOApp.Simple, McpDsl[IO]:
+object PomodoroMcpServer extends IOApp.Simple:
 
   /** Wires all tools, resources, prompts and capabilities onto the given builder.
     * Call `.stateful[PomodoroTimer]` internally so callers only need a `Unit`-context builder.
@@ -37,30 +37,35 @@ object PomodoroMcpServer extends IOApp.Simple, McpDsl[IO]:
         contextualTool[PomodoroTimer].name("start_timer")
           .description("Start a new pomodoro timer")
           .in[StartTimerRequest]
+          .out[MessageResponse]
           .run((timer, req) => timer.start(req.duration_minutes, req.label).map(MessageResponse(_))),
       )
       .withContextualTool(
         contextualTool[PomodoroTimer].name("pause_timer")
           .description("Pause the running pomodoro timer")
           .in[EmptyRequest]
+          .out[MessageResponse]
           .run((timer, _) => timer.pause().map(MessageResponse(_))),
       )
       .withContextualTool(
         contextualTool[PomodoroTimer].name("resume_timer")
           .description("Resume a paused pomodoro timer")
           .in[EmptyRequest]
+          .out[MessageResponse]
           .run((timer, _) => timer.resume().map(MessageResponse(_))),
       )
       .withContextualTool(
         contextualTool[PomodoroTimer].name("stop_timer")
           .description("Stop/cancel the current pomodoro timer")
           .in[EmptyRequest]
+          .out[MessageResponse]
           .run((timer, _) => timer.stop().map(MessageResponse(_))),
       )
       .withContextualTool(
         contextualTool[PomodoroTimer].name("get_status")
           .description("Get the current pomodoro timer status")
           .in[EmptyRequest]
+          .out[StatusResponse]
           .run((timer, _) => timer.status.map(StatusResponse(_))),
       )
       // ── resources (need the timer) ─────────────────────────────────

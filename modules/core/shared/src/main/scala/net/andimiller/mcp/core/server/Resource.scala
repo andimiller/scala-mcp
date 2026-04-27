@@ -32,11 +32,11 @@ object McpResource:
   extension [F[_]](resource: McpResource[F, Unit])
     def resolve: Resolved[F] = resource.provide(())
 
-  def builder[F[_]: Async]: ResourceBuilder.PlainEmpty[F] =
-    new ResourceBuilder.PlainEmpty[F]
+  def builder: ResourceBuilder.Empty[Unit] =
+    new ResourceBuilder.Empty[Unit]
 
-  def contextual[F[_]: Async, Ctx]: ResourceBuilder.ContextualEmpty[F, Ctx] =
-    new ResourceBuilder.ContextualEmpty[F, Ctx]
+  def contextual[Ctx]: ResourceBuilder.Empty[Ctx] =
+    new ResourceBuilder.Empty[Ctx]
 
   /**
    * Create a static resource with fixed content.
@@ -94,17 +94,15 @@ object McpResource:
 
 object ResourceBuilder:
 
-  // ── Context-free (plain) builder ──────────────────────────────
+  final class Empty[Ctx]:
+    def uri(u: String): Builder[Ctx] =
+      new Builder[Ctx](u, u, None, None)
 
-  final class PlainEmpty[F[_]: Async]:
-    def uri(u: String): PlainBuilder[F] =
-      new PlainBuilder[F](u, u, None, None)
-
-  final class PlainBuilder[F[_]: Async] private[ResourceBuilder] (
-      resourceUri: String,
-      resourceName: String,
-      resourceDescription: Option[String],
-      resourceMimeType: Option[String]
+  final class Builder[Ctx] private[ResourceBuilder] (
+      private[ResourceBuilder] val resourceUri: String,
+      private[ResourceBuilder] val resourceName: String,
+      private[ResourceBuilder] val resourceDescription: Option[String],
+      private[ResourceBuilder] val resourceMimeType: Option[String]
   ):
 
     private def copy(
@@ -112,73 +110,45 @@ object ResourceBuilder:
         resourceName: String = this.resourceName,
         resourceDescription: Option[String] = this.resourceDescription,
         resourceMimeType: Option[String] = this.resourceMimeType
-    ): PlainBuilder[F] =
-      new PlainBuilder[F](resourceUri, resourceName, resourceDescription, resourceMimeType)
+    ): Builder[Ctx] =
+      new Builder[Ctx](resourceUri, resourceName, resourceDescription, resourceMimeType)
 
-    def name(n: String): PlainBuilder[F] =
+    def name(n: String): Builder[Ctx] =
       copy(resourceName = n)
 
-    def description(d: String): PlainBuilder[F] =
+    def description(d: String): Builder[Ctx] =
       copy(resourceDescription = Some(d))
 
-    def mimeType(m: String): PlainBuilder[F] =
+    def mimeType(m: String): Builder[Ctx] =
       copy(resourceMimeType = Some(m))
 
-    def staticContent(content: String): McpResource[F, Unit] =
-      McpResource.static[F](resourceUri, resourceName, content, resourceDescription, resourceMimeType)
-
-    def read(reader: () => F[String]): McpResource[F, Unit] =
-      McpResource.dynamic[F](resourceUri, resourceName, reader, resourceDescription, resourceMimeType)
-
-    def readContent(reader: () => F[ResourceContent]): McpResource[F, Unit] =
-      McpResource.fromContent[F](resourceUri, resourceName, reader, resourceDescription, resourceMimeType)
-
-  // ── Contextual builder ──────────────────────────────────────────
-
-  final class ContextualEmpty[F[_]: Async, Ctx]:
-    def uri(u: String): ContextualBuilder[F, Ctx] =
-      new ContextualBuilder[F, Ctx](u, u, None, None)
-
-  final class ContextualBuilder[F[_]: Async, Ctx] private[ResourceBuilder] (
-      resourceUri: String,
-      resourceName: String,
-      resourceDescription: Option[String],
-      resourceMimeType: Option[String]
-  ):
-
-    private def copy(
-        resourceUri: String = this.resourceUri,
-        resourceName: String = this.resourceName,
-        resourceDescription: Option[String] = this.resourceDescription,
-        resourceMimeType: Option[String] = this.resourceMimeType
-    ): ContextualBuilder[F, Ctx] =
-      new ContextualBuilder[F, Ctx](resourceUri, resourceName, resourceDescription, resourceMimeType)
-
-    def name(n: String): ContextualBuilder[F, Ctx] =
-      copy(resourceName = n)
-
-    def description(d: String): ContextualBuilder[F, Ctx] =
-      copy(resourceDescription = Some(d))
-
-    def mimeType(m: String): ContextualBuilder[F, Ctx] =
-      copy(resourceMimeType = Some(m))
-
-    def read(reader: Ctx => F[String]): McpResource[F, Ctx] =
-      val rUri = resourceUri
-      val rMime = resourceMimeType
+  extension [Ctx](b: Builder[Ctx])
+    def read[F[_]: Async](reader: Ctx => F[String]): McpResource[F, Ctx] =
+      val rUri = b.resourceUri
+      val rMime = b.resourceMimeType
       new McpResource[F, Ctx](
-        uri = resourceUri,
-        name = resourceName,
-        description = resourceDescription,
-        mimeType = resourceMimeType,
+        uri = b.resourceUri,
+        name = b.resourceName,
+        description = b.resourceDescription,
+        mimeType = b.resourceMimeType,
         reader = ctx => reader(ctx).map(content => ResourceContent.text(rUri, content, rMime))
       )
 
-    def readContent(reader: Ctx => F[ResourceContent]): McpResource[F, Ctx] =
+    def readContent[F[_]: Async](reader: Ctx => F[ResourceContent]): McpResource[F, Ctx] =
       new McpResource[F, Ctx](
-        uri = resourceUri,
-        name = resourceName,
-        description = resourceDescription,
-        mimeType = resourceMimeType,
+        uri = b.resourceUri,
+        name = b.resourceName,
+        description = b.resourceDescription,
+        mimeType = b.resourceMimeType,
         reader = reader
       )
+
+  extension (b: Builder[Unit])
+    def staticContent[F[_]: Async](content: String): McpResource[F, Unit] =
+      McpResource.static[F](b.resourceUri, b.resourceName, content, b.resourceDescription, b.resourceMimeType)
+
+    def read[F[_]: Async](reader: () => F[String]): McpResource[F, Unit] =
+      McpResource.dynamic[F](b.resourceUri, b.resourceName, reader, b.resourceDescription, b.resourceMimeType)
+
+    def readContent[F[_]: Async](reader: () => F[ResourceContent]): McpResource[F, Unit] =
+      McpResource.fromContent[F](b.resourceUri, b.resourceName, reader, b.resourceDescription, b.resourceMimeType)

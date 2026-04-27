@@ -4,9 +4,9 @@ import cats.effect.IO
 import io.circe.{Decoder, Encoder}
 import net.andimiller.mcp.core.protocol.*
 import net.andimiller.mcp.core.schema.JsonSchema
-import net.andimiller.mcp.core.server.{McpDsl, Prompt, Server, ServerBuilder}
+import net.andimiller.mcp.core.server.{Prompt, Server, ServerBuilder, tool}
 
-class McpGoldenSuiteSuite extends McpGoldenSuite, McpDsl[IO]:
+class McpGoldenSuiteSuite extends McpGoldenSuite:
   override def goldenFileName = "test-server.json"
 
   case class EchoRequest(message: String) derives JsonSchema, Decoder
@@ -18,7 +18,8 @@ class McpGoldenSuiteSuite extends McpGoldenSuite, McpDsl[IO]:
         tool.name("echo")
           .description("Echoes the input message back")
           .in[EchoRequest]
-          .run[EchoResponse](r => IO.pure(EchoResponse(r.message)))
+          .out[EchoResponse]
+          .run(r => IO.pure(EchoResponse(r.message)))
       )
       .withPrompt(Prompt.static[IO]("greet", List(PromptMessage.user("Hello!")), Some("A greeting")))
       .build

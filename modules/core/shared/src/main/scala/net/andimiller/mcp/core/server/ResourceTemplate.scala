@@ -31,27 +31,25 @@ object ResourceTemplate:
   extension [F[_]](rt: ResourceTemplate[F, Unit])
     def resolve: Resolved[F] = rt.provide(())
 
-  def builder[F[_]: Async]: ResourceTemplateBuilder.PlainEmpty[F] =
-    new ResourceTemplateBuilder.PlainEmpty[F]
+  def builder: ResourceTemplateBuilder.Empty[Unit] =
+    new ResourceTemplateBuilder.Empty[Unit]
 
-  def contextual[F[_]: Async, Ctx]: ResourceTemplateBuilder.ContextualEmpty[F, Ctx] =
-    new ResourceTemplateBuilder.ContextualEmpty[F, Ctx]
+  def contextual[Ctx]: ResourceTemplateBuilder.Empty[Ctx] =
+    new ResourceTemplateBuilder.Empty[Ctx]
 
 object ResourceTemplateBuilder:
 
-  // ── Context-free (plain) builder ──────────────────────────────
+  final class Empty[Ctx]:
+    def uriTemplate(t: String): Builder[Ctx] =
+      new Builder[Ctx](t, t, None, None)
+    def path[A](p: UriPath[A]): PathBuilder[Ctx, A] =
+      new PathBuilder[Ctx, A](p, p.template, None, None)
 
-  final class PlainEmpty[F[_]: Async]:
-    def uriTemplate(t: String): PlainBuilder[F] =
-      new PlainBuilder[F](t, t, None, None)
-    def path[A](p: UriPath[A]): PlainPathBuilder[F, A] =
-      new PlainPathBuilder[F, A](p, p.template, None, None)
-
-  final class PlainBuilder[F[_]: Async] private[ResourceTemplateBuilder] (
-      templateUri: String,
-      templateName: String,
-      templateDescription: Option[String],
-      templateMimeType: Option[String]
+  final class Builder[Ctx] private[ResourceTemplateBuilder] (
+      private[ResourceTemplateBuilder] val templateUri: String,
+      private[ResourceTemplateBuilder] val templateName: String,
+      private[ResourceTemplateBuilder] val templateDescription: Option[String],
+      private[ResourceTemplateBuilder] val templateMimeType: Option[String]
   ):
 
     private def copy(
@@ -59,132 +57,77 @@ object ResourceTemplateBuilder:
         templateName: String = this.templateName,
         templateDescription: Option[String] = this.templateDescription,
         templateMimeType: Option[String] = this.templateMimeType
-    ): PlainBuilder[F] =
-      new PlainBuilder[F](templateUri, templateName, templateDescription, templateMimeType)
+    ): Builder[Ctx] =
+      new Builder[Ctx](templateUri, templateName, templateDescription, templateMimeType)
 
-    def name(n: String): PlainBuilder[F] =
+    def name(n: String): Builder[Ctx] =
       copy(templateName = n)
 
-    def description(d: String): PlainBuilder[F] =
+    def description(d: String): Builder[Ctx] =
       copy(templateDescription = Some(d))
 
-    def mimeType(m: String): PlainBuilder[F] =
+    def mimeType(m: String): Builder[Ctx] =
       copy(templateMimeType = Some(m))
 
-    def read(reader: String => Option[F[ResourceContent]]): ResourceTemplate[F, Unit] =
-      new ResourceTemplate[F, Unit](
-        uriTemplate = templateUri,
-        name = templateName,
-        description = templateDescription,
-        mimeType = templateMimeType,
-        reader = (_, uri) => reader(uri)
-      )
-
-  // ── Contextual builder ──────────────────────────────────────────
-
-  final class ContextualEmpty[F[_]: Async, Ctx]:
-    def uriTemplate(t: String): ContextualBuilder[F, Ctx] =
-      new ContextualBuilder[F, Ctx](t, t, None, None)
-    def path[A](p: UriPath[A]): ContextualPathBuilder[F, Ctx, A] =
-      new ContextualPathBuilder[F, Ctx, A](p, p.template, None, None)
-
-  final class ContextualBuilder[F[_]: Async, Ctx] private[ResourceTemplateBuilder] (
-      templateUri: String,
-      templateName: String,
-      templateDescription: Option[String],
-      templateMimeType: Option[String]
+  final class PathBuilder[Ctx, A] private[ResourceTemplateBuilder] (
+      private[ResourceTemplateBuilder] val uriPath: UriPath[A],
+      private[ResourceTemplateBuilder] val templateName: String,
+      private[ResourceTemplateBuilder] val templateDescription: Option[String],
+      private[ResourceTemplateBuilder] val templateMimeType: Option[String]
   ):
 
     private def copy(
-        templateUri: String = this.templateUri,
         templateName: String = this.templateName,
         templateDescription: Option[String] = this.templateDescription,
         templateMimeType: Option[String] = this.templateMimeType
-    ): ContextualBuilder[F, Ctx] =
-      new ContextualBuilder[F, Ctx](templateUri, templateName, templateDescription, templateMimeType)
+    ): PathBuilder[Ctx, A] =
+      new PathBuilder[Ctx, A](uriPath, templateName, templateDescription, templateMimeType)
 
-    def name(n: String): ContextualBuilder[F, Ctx] =
+    def name(n: String): PathBuilder[Ctx, A] =
       copy(templateName = n)
 
-    def description(d: String): ContextualBuilder[F, Ctx] =
+    def description(d: String): PathBuilder[Ctx, A] =
       copy(templateDescription = Some(d))
 
-    def mimeType(m: String): ContextualBuilder[F, Ctx] =
+    def mimeType(m: String): PathBuilder[Ctx, A] =
       copy(templateMimeType = Some(m))
 
-    def read(reader: (Ctx, String) => Option[F[ResourceContent]]): ResourceTemplate[F, Ctx] =
+  extension [Ctx](b: Builder[Ctx])
+    def read[F[_]: Async](reader: (Ctx, String) => Option[F[ResourceContent]]): ResourceTemplate[F, Ctx] =
       new ResourceTemplate[F, Ctx](
-        uriTemplate = templateUri,
-        name = templateName,
-        description = templateDescription,
-        mimeType = templateMimeType,
+        uriTemplate = b.templateUri,
+        name = b.templateName,
+        description = b.templateDescription,
+        mimeType = b.templateMimeType,
         reader = reader
       )
 
-  // ── Context-free path builder ───────────────────────────────────
-
-  final class PlainPathBuilder[F[_]: Async, A] private[ResourceTemplateBuilder] (
-      uriPath: UriPath[A],
-      templateName: String,
-      templateDescription: Option[String],
-      templateMimeType: Option[String]
-  ):
-
-    private def copy(
-        templateName: String = this.templateName,
-        templateDescription: Option[String] = this.templateDescription,
-        templateMimeType: Option[String] = this.templateMimeType
-    ): PlainPathBuilder[F, A] =
-      new PlainPathBuilder[F, A](uriPath, templateName, templateDescription, templateMimeType)
-
-    def name(n: String): PlainPathBuilder[F, A] =
-      copy(templateName = n)
-
-    def description(d: String): PlainPathBuilder[F, A] =
-      copy(templateDescription = Some(d))
-
-    def mimeType(m: String): PlainPathBuilder[F, A] =
-      copy(templateMimeType = Some(m))
-
-    def read(handler: A => F[ResourceContent]): ResourceTemplate[F, Unit] =
-      new ResourceTemplate[F, Unit](
-        uriTemplate = uriPath.template,
-        name = templateName,
-        description = templateDescription,
-        mimeType = templateMimeType,
-        reader = (_, uri) => uriPath.parse(uri).collect { case (a, "") => handler(a) }
+  extension [Ctx, A](b: PathBuilder[Ctx, A])
+    def read[F[_]: Async](handler: (Ctx, A) => F[ResourceContent]): ResourceTemplate[F, Ctx] =
+      new ResourceTemplate[F, Ctx](
+        uriTemplate = b.uriPath.template,
+        name = b.templateName,
+        description = b.templateDescription,
+        mimeType = b.templateMimeType,
+        reader = (ctx, uri) => b.uriPath.parse(uri).collect { case (a, "") => handler(ctx, a) }
       )
 
-  // ── Contextual path builder ─────────────────────────────────────
+  extension (b: Builder[Unit])
+    def read[F[_]: Async](reader: String => Option[F[ResourceContent]]): ResourceTemplate[F, Unit] =
+      new ResourceTemplate[F, Unit](
+        uriTemplate = b.templateUri,
+        name = b.templateName,
+        description = b.templateDescription,
+        mimeType = b.templateMimeType,
+        reader = (_, uri) => reader(uri)
+      )
 
-  final class ContextualPathBuilder[F[_]: Async, Ctx, A] private[ResourceTemplateBuilder] (
-      uriPath: UriPath[A],
-      templateName: String,
-      templateDescription: Option[String],
-      templateMimeType: Option[String]
-  ):
-
-    private def copy(
-        templateName: String = this.templateName,
-        templateDescription: Option[String] = this.templateDescription,
-        templateMimeType: Option[String] = this.templateMimeType
-    ): ContextualPathBuilder[F, Ctx, A] =
-      new ContextualPathBuilder[F, Ctx, A](uriPath, templateName, templateDescription, templateMimeType)
-
-    def name(n: String): ContextualPathBuilder[F, Ctx, A] =
-      copy(templateName = n)
-
-    def description(d: String): ContextualPathBuilder[F, Ctx, A] =
-      copy(templateDescription = Some(d))
-
-    def mimeType(m: String): ContextualPathBuilder[F, Ctx, A] =
-      copy(templateMimeType = Some(m))
-
-    def read(handler: (Ctx, A) => F[ResourceContent]): ResourceTemplate[F, Ctx] =
-      new ResourceTemplate[F, Ctx](
-        uriTemplate = uriPath.template,
-        name = templateName,
-        description = templateDescription,
-        mimeType = templateMimeType,
-        reader = (ctx, uri) => uriPath.parse(uri).collect { case (a, "") => handler(ctx, a) }
+  extension [A](b: PathBuilder[Unit, A])
+    def read[F[_]: Async](handler: A => F[ResourceContent]): ResourceTemplate[F, Unit] =
+      new ResourceTemplate[F, Unit](
+        uriTemplate = b.uriPath.template,
+        name = b.templateName,
+        description = b.templateDescription,
+        mimeType = b.templateMimeType,
+        reader = (_, uri) => b.uriPath.parse(uri).collect { case (a, "") => handler(a) }
       )

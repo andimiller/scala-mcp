@@ -5,6 +5,7 @@ import io.circe.syntax.*
 import net.andimiller.mcp.core.protocol.content.Content
 import net.andimiller.mcp.core.codecs.CirceCodecs.given
 import net.andimiller.mcp.core.schema.JsonSchema
+import sttp.apispec.circe.given
 
 /** Tool definition in MCP protocol */
 case class ToolDefinition(
@@ -46,7 +47,7 @@ enum ToolResult[+R]:
 object ToolResult:
 
   /** Convert to the wire-level `CallToolResponse`. */
-  def toWire[R](r: ToolResult[R])(using enc: Encoder.AsObject[R]): CallToolResponse = r match
+  def toWire[R](r: ToolResult[R])(using enc: OutputSchema[R]): CallToolResponse = r match
     case Success(v) =>
       val j = enc.encodeObject(v).asJson
       CallToolResponse(List(Content.Text(j.noSpaces)), Some(j), isError = false)
@@ -69,17 +70,34 @@ object ToolResult:
  * and schema-less handlers.
  */
 trait OutputSchema[R]:
+  def encodeObject(r: R): JsonObject
   def asJson: Option[Json]
 
 object OutputSchema:
   /** Lower-priority instance: derive from `JsonSchema[R]`. */
-  given derived[R](using js: JsonSchema[R]): OutputSchema[R] with
+  given derived[R](using js: JsonSchema[R], enc: Encoder.AsObject[R]): OutputSchema[R] with
+    def encodeObject(r: R): JsonObject = enc.encodeObject(r)
     def asJson: Option[Json] = Some(JsonSchema.toJson[R])
 
   /** Higher-priority instance for the bottom type — pinned in the companion object so it's
    *  preferred when `R = Nothing`. */
   given OutputSchema[Nothing] with
+    def encodeObject(r: Nothing): JsonObject = JsonObject.empty
     def asJson: Option[Json] = None
+
+trait InputSchema[R]:
+  def decode(json: Json): Either[Throwable, R]
+  def asJson: Json
+
+object InputSchema:
+  /** Lower-priority instance: derive from `JsonSchema[R]`. */
+  given derived[R](using js: JsonSchema[R], dec: Decoder[R]): InputSchema[R] with
+    def decode(json: Json): Either[Throwable, R] = dec.decodeJson(json)
+    def asJson: Json = JsonSchema.toJson[R]
+
+  given InputSchema[Unit] with
+    def decode(json: Json): Either[Throwable, Unit] = Right(())
+    def asJson: Json = JsonSchema.obj().asJson
 
 /** Request to list available tools */
 case class ListToolsRequest(

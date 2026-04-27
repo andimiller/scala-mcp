@@ -9,7 +9,7 @@ import io.circe.syntax.*
 import net.andimiller.enumerive.circe.LabelCodec
 import net.andimiller.mcp.core.protocol.{ElicitResult, ElicitationError, ToolResult}
 import net.andimiller.mcp.core.schema.{JsonSchema, description, example}
-import net.andimiller.mcp.core.server.{ElicitationClient, McpDsl}
+import net.andimiller.mcp.core.server.{contextualTool, ElicitationClient}
 import net.andimiller.mcp.http4s.{McpHttp, StreamingMcpHttpBuilder}
 import sttp.apispec.Schema
 
@@ -23,7 +23,7 @@ import sttp.apispec.Schema
  *
  * A separate `list_characters` tool reads the per-session history.
  */
-object RpgCharacterCreatorMcpServer extends IOApp.Simple, McpDsl[IO]:
+object RpgCharacterCreatorMcpServer extends IOApp.Simple:
 
   // ── Catalog ────────────────────────────────────────────────────────
 
@@ -124,7 +124,8 @@ object RpgCharacterCreatorMcpServer extends IOApp.Simple, McpDsl[IO]:
         contextualTool[CreatorState].name("create_character")
           .description("Build a D&D-flavoured character interactively (race → class → weapon → name)")
           .in[CreateCharacterRequest]
-          .runResult[Character] { (state, _) =>
+          .out[Character]
+          .runResult { (state, _) =>
             createWizard(state)
           }
       )
@@ -132,6 +133,7 @@ object RpgCharacterCreatorMcpServer extends IOApp.Simple, McpDsl[IO]:
         contextualTool[CreatorState].name("list_characters")
           .description("List all characters created in this session")
           .in[ListCharactersRequest]
+          .out[CharacterList]
           .run((state, _) => state.history.get.map(CharacterList(_)))
       )
 

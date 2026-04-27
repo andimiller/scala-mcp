@@ -7,11 +7,11 @@ import io.circe.{Codec, Decoder, Encoder}
 import io.circe.syntax.*
 import net.andimiller.mcp.core.protocol.{ElicitResult, ElicitationError, PromptArgument, PromptMessage, ToolResult}
 import net.andimiller.mcp.core.schema.{JsonSchema, description, example}
-import net.andimiller.mcp.core.server.{ElicitationClient, McpDsl, McpResource, Prompt, Server, ServerBuilder}
+import net.andimiller.mcp.core.server.{tool, ElicitationClient, McpResource, Prompt, Server, ServerBuilder}
 import net.andimiller.mcp.stdio.StdioTransport
 import sttp.apispec.Schema
 
-object DiceMcpServer extends IOApp.Simple, McpDsl[IO]:
+object DiceMcpServer extends IOApp.Simple:
 
   case class DiceResources(
     rollHistory: Ref[IO, List[DiceRoller.RollResult]],
@@ -96,6 +96,7 @@ object DiceMcpServer extends IOApp.Simple, McpDsl[IO]:
         tool.name("roll_dice")
           .description("Roll dice using standard notation (e.g., '1d6', '2d20 + 5', '3d4 - 2')")
           .in[RollDiceRequest]
+          .out[RollDiceResponse]
           .run { request =>
             given Random[IO] = r.random
             val roller = DiceRoller[IO]
@@ -120,7 +121,8 @@ object DiceMcpServer extends IOApp.Simple, McpDsl[IO]:
         tool.name("roll_interactive")
           .description("Build a dice expression interactively: choose dice + counts, then roll the lot")
           .in[RollCustomRequest]
-          .runResult[InteractiveRollResult] { _ =>
+          .out[InteractiveRollResult]
+          .runResult { _ =>
             given Random[IO] = r.random
             val roller = DiceRoller[IO]
 

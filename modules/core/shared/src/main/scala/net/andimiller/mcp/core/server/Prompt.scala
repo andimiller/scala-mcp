@@ -30,11 +30,11 @@ object Prompt:
   extension [F[_]](prompt: Prompt[F, Unit])
     def resolve: Resolved[F] = prompt.provide(())
 
-  def builder[F[_]: Async]: PromptBuilder.PlainEmpty[F] =
-    new PromptBuilder.PlainEmpty[F]
+  def builder: PromptBuilder.Empty[Unit] =
+    new PromptBuilder.Empty[Unit]
 
-  def contextual[F[_]: Async, Ctx]: PromptBuilder.ContextualEmpty[F, Ctx] =
-    new PromptBuilder.ContextualEmpty[F, Ctx]
+  def contextual[Ctx]: PromptBuilder.Empty[Ctx] =
+    new PromptBuilder.Empty[Ctx]
 
   /**
    * Create a simple prompt with static messages.
@@ -70,67 +70,42 @@ object Prompt:
 
 object PromptBuilder:
 
-  // ── Context-free (plain) builder ──────────────────────────────
+  final class Empty[Ctx]:
+    def name(n: String): Builder[Ctx] =
+      new Builder[Ctx](n, None, Nil)
 
-  final class PlainEmpty[F[_]: Async]:
-    def name(n: String): PlainBuilder[F] =
-      new PlainBuilder[F](n, None, Nil)
-
-  final class PlainBuilder[F[_]: Async] private[PromptBuilder] (
-      promptName: String,
-      promptDescription: Option[String],
-      promptArguments: List[PromptArgument]
+  final class Builder[Ctx] private[PromptBuilder] (
+      private[PromptBuilder] val promptName: String,
+      private[PromptBuilder] val promptDescription: Option[String],
+      private[PromptBuilder] val promptArguments: List[PromptArgument]
   ):
 
     private def copy(
         promptName: String = this.promptName,
         promptDescription: Option[String] = this.promptDescription,
         promptArguments: List[PromptArgument] = this.promptArguments
-    ): PlainBuilder[F] =
-      new PlainBuilder[F](promptName, promptDescription, promptArguments)
+    ): Builder[Ctx] =
+      new Builder[Ctx](promptName, promptDescription, promptArguments)
 
-    def description(d: String): PlainBuilder[F] =
+    def description(d: String): Builder[Ctx] =
       copy(promptDescription = Some(d))
 
-    def argument(name: String, description: Option[String] = None, required: Boolean = false): PlainBuilder[F] =
+    def argument(name: String, description: Option[String] = None, required: Boolean = false): Builder[Ctx] =
       copy(promptArguments = promptArguments :+ PromptArgument(name, description, required))
 
-    def messages(msgs: List[PromptMessage]): Prompt[F, Unit] =
-      Prompt.static[F](promptName, msgs, promptDescription, promptArguments)
-
-    def generate(generator: Map[String, Json] => F[List[PromptMessage]]): Prompt[F, Unit] =
-      Prompt.dynamic[F](promptName, generator, promptDescription, promptArguments)
-
-  // ── Contextual builder ──────────────────────────────────────────
-
-  final class ContextualEmpty[F[_]: Async, Ctx]:
-    def name(n: String): ContextualBuilder[F, Ctx] =
-      new ContextualBuilder[F, Ctx](n, None, Nil)
-
-  final class ContextualBuilder[F[_]: Async, Ctx] private[PromptBuilder] (
-      promptName: String,
-      promptDescription: Option[String],
-      promptArguments: List[PromptArgument]
-  ):
-
-    private def copy(
-        promptName: String = this.promptName,
-        promptDescription: Option[String] = this.promptDescription,
-        promptArguments: List[PromptArgument] = this.promptArguments
-    ): ContextualBuilder[F, Ctx] =
-      new ContextualBuilder[F, Ctx](promptName, promptDescription, promptArguments)
-
-    def description(d: String): ContextualBuilder[F, Ctx] =
-      copy(promptDescription = Some(d))
-
-    def argument(name: String, description: Option[String] = None, required: Boolean = false): ContextualBuilder[F, Ctx] =
-      copy(promptArguments = promptArguments :+ PromptArgument(name, description, required))
-
-    def generate(generator: (Ctx, Map[String, Json]) => F[List[PromptMessage]]): Prompt[F, Ctx] =
-      val desc = promptDescription
+  extension [Ctx](b: Builder[Ctx])
+    def generate[F[_]: Async](generator: (Ctx, Map[String, Json]) => F[List[PromptMessage]]): Prompt[F, Ctx] =
+      val desc = b.promptDescription
       new Prompt[F, Ctx](
-        name = promptName,
-        description = promptDescription,
-        arguments = promptArguments,
+        name = b.promptName,
+        description = b.promptDescription,
+        arguments = b.promptArguments,
         handler = (ctx, args) => generator(ctx, args).map(messages => GetPromptResponse(desc, messages))
       )
+
+  extension (b: Builder[Unit])
+    def messages[F[_]: Async](msgs: List[PromptMessage]): Prompt[F, Unit] =
+      Prompt.static[F](b.promptName, msgs, b.promptDescription, b.promptArguments)
+
+    def generate[F[_]: Async](generator: Map[String, Json] => F[List[PromptMessage]]): Prompt[F, Unit] =
+      Prompt.dynamic[F](b.promptName, generator, b.promptDescription, b.promptArguments)

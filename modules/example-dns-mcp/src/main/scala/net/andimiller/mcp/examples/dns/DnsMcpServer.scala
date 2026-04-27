@@ -9,7 +9,7 @@ import net.andimiller.mcp.core.schema.{JsonSchema, description}
 import net.andimiller.mcp.core.server.*
 import net.andimiller.mcp.http4s.McpHttp
 
-object DnsMcpServer extends IOApp.Simple, McpDsl[IO]:
+object DnsMcpServer extends IOApp.Simple:
 
   // ── request / response types ──────────────────────────────────────
 
@@ -43,6 +43,7 @@ object DnsMcpServer extends IOApp.Simple, McpDsl[IO]:
           .name("resolve_dns")
           .description("Resolve DNS records for a hostname. Supports A, AAAA, MX, TXT, CNAME, and NS record types.")
           .in[ResolveDnsRequest]
+          .out[DnsResponse]
           .run { req =>
             val rrtype = req.record_type.map(_.toUpperCase).getOrElse("A")
             val lookup = rrtype match
@@ -54,13 +55,13 @@ object DnsMcpServer extends IOApp.Simple, McpDsl[IO]:
               case "NS"    => dns.resolveNs(req.hostname)
               case other   => IO.raiseError(new Exception(s"Unsupported record type: $other"))
             lookup.map(DnsResponse(_))
-          }.resolve,
+          },
         tool
           .name("reverse_dns")
           .description("Perform a reverse DNS lookup for an IP address, returning associated hostnames.")
           .in[ReverseDnsRequest]
+          .out[DnsResponse]
           .run(req => dns.reverse(req.ip).map(DnsResponse(_)))
-          .resolve
       )
       .withResources(
         McpResource.static[IO](

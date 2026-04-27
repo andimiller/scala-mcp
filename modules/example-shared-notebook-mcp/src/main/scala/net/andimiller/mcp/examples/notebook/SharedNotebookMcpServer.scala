@@ -17,7 +17,7 @@ case class UserContext(username: String)
 object UserContext:
   given Eq[UserContext] = Eq.by(_.username)
 
-object SharedNotebookMcpServer extends IOApp.Simple, McpDsl[IO]:
+object SharedNotebookMcpServer extends IOApp.Simple:
 
   // ── auth ──────────────────────────────────────────────────────────
 
