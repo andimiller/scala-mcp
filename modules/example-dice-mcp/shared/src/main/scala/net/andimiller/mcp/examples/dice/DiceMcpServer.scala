@@ -120,7 +120,7 @@ object DiceMcpServer extends IOApp.Simple, McpDsl[IO]:
         tool.name("roll_interactive")
           .description("Build a dice expression interactively: choose dice + counts, then roll the lot")
           .in[RollCustomRequest]
-          .runResult[InteractiveRollResult] { _ =>
+          .runResult { _ =>
             given Random[IO] = r.random
             val roller = DiceRoller[IO]
 

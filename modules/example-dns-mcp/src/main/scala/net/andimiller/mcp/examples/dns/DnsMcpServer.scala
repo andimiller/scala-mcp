@@ -54,13 +54,12 @@ object DnsMcpServer extends IOApp.Simple, McpDsl[IO]:
               case "NS"    => dns.resolveNs(req.hostname)
               case other   => IO.raiseError(new Exception(s"Unsupported record type: $other"))
             lookup.map(DnsResponse(_))
-          }.resolve,
+          },
         tool
           .name("reverse_dns")
           .description("Perform a reverse DNS lookup for an IP address, returning associated hostnames.")
           .in[ReverseDnsRequest]
           .run(req => dns.reverse(req.ip).map(DnsResponse(_)))
-          .resolve
       )
       .withResources(
         McpResource.static[IO](

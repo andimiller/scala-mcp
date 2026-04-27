@@ -21,7 +21,6 @@ class Tool[F[_], Ctx, A, R](
 
   def provide(ctx: Ctx)(using Async[F]): Tool.Resolved[F] =
     val self = this
-    import cats.syntax.functor.*
     given Encoder.AsObject[R] = self.resultEncoder
     new Tool.Resolved[F]:
       val name = self.name
@@ -43,10 +42,9 @@ object Tool:
     def outputSchema: Option[Json]
     def handle(arguments: Json): F[CallToolResponse]
 
-  def builder[F[_]: Async]: ToolBuilder.PlainEmpty[F] = new ToolBuilder.PlainEmpty[F]
+  def builder: ToolBuilder.Empty[Unit] = new ToolBuilder.Empty[Unit]
 
-  def contextual[F[_]: Async, Ctx]: ToolBuilder.ContextualEmpty[F, Ctx] =
-    new ToolBuilder.ContextualEmpty[F, Ctx]
+  def contextual[Ctx]: ToolBuilder.Empty[Ctx] = new ToolBuilder.Empty[Ctx]
 
   /**
    * Build a [[Resolved]] from a [[ToolDefinition]] and a raw handler that produces a
@@ -61,71 +59,19 @@ object Tool:
         val inputSchema = td.inputSchema
         val outputSchema = td.outputSchema
         def handle(arguments: Json) =
-          import cats.syntax.functor.*
           handler(arguments).map(ToolResult.toWire[Nothing](_))
-
-  extension [F[_]: Async, A, R](tool: Tool[F, Unit, A, R])
-    def resolve: Resolved[F] = tool.provide(())
 
 object ToolBuilder:
 
-  // ── Context-free (plain) builder ──────────────────────────────
+  final class Empty[Ctx]:
+    def name(n: String): WithIn[Ctx, Unit] =
+      new WithIn[Ctx, Unit](n, s"Tool: $n", JsonSchema.obj().asJson, None)
 
-  final class PlainEmpty[F[_]: Async]:
-    def name(n: String): PlainBuilder[F] =
-      new PlainBuilder[F](n, s"Tool: $n", None, None)
-
-  final class PlainBuilder[F[_]: Async] private[ToolBuilder] (
-      toolName: String,
-      toolDescription: String,
-      inputSchemaJson: Option[Json],
-      outputSchemaJson: Option[Json]
-  ):
-
-    private def copy(
-        toolName: String = this.toolName,
-        toolDescription: String = this.toolDescription,
-        inputSchemaJson: Option[Json] = this.inputSchemaJson,
-        outputSchemaJson: Option[Json] = this.outputSchemaJson
-    ): PlainBuilder[F] =
-      new PlainBuilder[F](toolName, toolDescription, inputSchemaJson, outputSchemaJson)
-
-    def description(d: String): PlainBuilder[F] =
-      copy(toolDescription = d)
-
-    def inputSchema(json: Json): PlainBuilder[F] =
-      copy(inputSchemaJson = Some(json))
-
-    def outputSchema(json: Json): PlainBuilder[F] =
-      copy(outputSchemaJson = Some(json))
-
-    def inputSchema(schema: Schema): PlainBuilder[F] =
-      copy(inputSchemaJson = Some(schema.asJson))
-
-    def outputSchema(schema: Schema): PlainBuilder[F] =
-      copy(outputSchemaJson = Some(schema.asJson))
-
-    def in[A](using JsonSchema[A], Decoder[A]): PlainIn[F, A] =
-      new PlainIn[F, A](toolName, toolDescription, JsonSchema.toJson[A], outputSchemaJson)
-
-    /** Shortcut for `.in[A].runResult(...)`. The handler returns a `ToolResult[Nothing]` —
-     *  i.e. only `Text`/`Error`/`Raw` branches, no structured success — so no output
-     *  schema is advertised. */
-    def logic[A](handler: A => F[ToolResult[Nothing]])(using JsonSchema[A], Decoder[A]): Tool[F, Unit, A, Nothing] =
-      new Tool[F, Unit, A, Nothing](
-        name = toolName,
-        description = toolDescription,
-        inputSchema = JsonSchema.toJson[A],
-        outputSchema = None,
-        handle = (_, a) => handler(a),
-        resultEncoder = summon[Encoder.AsObject[Nothing]]
-      )(using summon[Decoder[A]])
-
-  final class PlainIn[F[_]: Async, A] private[ToolBuilder] (
-      toolName: String,
-      toolDescription: String,
-      inSchema: Json,
-      outSchemaJson: Option[Json]
+  final class WithIn[Ctx, A] private[ToolBuilder] (
+      private[ToolBuilder] val toolName: String,
+      private[ToolBuilder] val toolDescription: String,
+      private[ToolBuilder] val inSchema: Json,
+      private[ToolBuilder] val outSchemaJson: Option[Json]
   ):
 
     private def copy(
@@ -133,121 +79,83 @@ object ToolBuilder:
         toolDescription: String = this.toolDescription,
         inSchema: Json = this.inSchema,
         outSchemaJson: Option[Json] = this.outSchemaJson
-    ): PlainIn[F, A] =
-      new PlainIn[F, A](toolName, toolDescription, inSchema, outSchemaJson)
+    ): WithIn[Ctx, A] =
+      new WithIn[Ctx, A](toolName, toolDescription, inSchema, outSchemaJson)
 
-    def description(d: String): PlainIn[F, A] =
+    def description(d: String): WithIn[Ctx, A] =
       copy(toolDescription = d)
 
-    /** Override the output schema with the schema derived from `R`. Useful when the runtime
-     *  result type and the advertised schema differ. */
-    def out[R: JsonSchema]: PlainIn[F, A] =
-      copy(outSchemaJson = Some(JsonSchema.toJson[R]))
+    def inputSchema(json: Json): WithIn[Ctx, A] =
+      copy(inSchema = json)
 
-    /** Build a tool whose handler returns a structured success value `R`. Sugar over
-     *  [[runResult]] — the value is wrapped in `ToolResult.Success(...)`. */
-    def run[R](handler: A => F[R])(using Decoder[A], Encoder.AsObject[R], OutputSchema[R]): Tool[F, Unit, A, R] =
-      runResult[R](a => handler(a).map(ToolResult.Success(_)))
+    def inputSchema(schema: Schema): WithIn[Ctx, A] =
+      copy(inSchema = schema.asJson)
 
-    /** Build a tool whose handler returns a `ToolResult[R]` directly — useful when the
-     *  handler needs to choose between structured success, plain text, or error branches.
-     *  The output schema is auto-derived from `R` (via `OutputSchema[R]`) unless explicitly
-     *  set via [[out]] / [[outputSchema]]. */
-    def runResult[R](handler: A => F[ToolResult[R]])(using
-        Decoder[A], Encoder.AsObject[R], OutputSchema[R]
-    ): Tool[F, Unit, A, R] =
-      val finalOutput = outSchemaJson.orElse(summon[OutputSchema[R]].asJson)
-      new Tool[F, Unit, A, R](
-        name = toolName,
-        description = toolDescription,
-        inputSchema = inSchema,
-        outputSchema = finalOutput,
-        handle = (_, a) => handler(a),
-        resultEncoder = summon[Encoder.AsObject[R]]
-      )(using summon[Decoder[A]])
+    def outputSchema(json: Json): WithIn[Ctx, A] =
+      copy(outSchemaJson = Some(json))
 
-    def contextual[Ctx]: ContextualIn[F, Ctx, A] =
-      new ContextualIn[F, Ctx, A](toolName, toolDescription, inSchema, outSchemaJson)
+    def outputSchema(schema: Schema): WithIn[Ctx, A] =
+      copy(outSchemaJson = Some(schema.asJson))
 
-  // ── Contextual builder ──────────────────────────────────────────
-
-  final class ContextualEmpty[F[_]: Async, Ctx]:
-    def name(n: String): ContextualBuilder[F, Ctx] =
-      new ContextualBuilder[F, Ctx](n, s"Tool: $n", None, None)
-
-  final class ContextualBuilder[F[_]: Async, Ctx] private[ToolBuilder] (
-      toolName: String,
-      toolDescription: String,
-      inputSchemaJson: Option[Json],
-      outputSchemaJson: Option[Json]
-  ):
-
-    private def copy(
-        toolName: String = this.toolName,
-        toolDescription: String = this.toolDescription,
-        inputSchemaJson: Option[Json] = this.inputSchemaJson,
-        outputSchemaJson: Option[Json] = this.outputSchemaJson
-    ): ContextualBuilder[F, Ctx] =
-      new ContextualBuilder[F, Ctx](toolName, toolDescription, inputSchemaJson, outputSchemaJson)
-
-    def description(d: String): ContextualBuilder[F, Ctx] =
-      copy(toolDescription = d)
-
-    def inputSchema(json: Json): ContextualBuilder[F, Ctx] =
-      copy(inputSchemaJson = Some(json))
-
-    def outputSchema(json: Json): ContextualBuilder[F, Ctx] =
-      copy(outputSchemaJson = Some(json))
-
-    def inputSchema(schema: Schema): ContextualBuilder[F, Ctx] =
-      copy(inputSchemaJson = Some(schema.asJson))
-
-    def outputSchema(schema: Schema): ContextualBuilder[F, Ctx] =
-      copy(outputSchemaJson = Some(schema.asJson))
-
-    def in[A](using JsonSchema[A], Decoder[A]): ContextualIn[F, Ctx, A] =
-      new ContextualIn[F, Ctx, A](toolName, toolDescription, JsonSchema.toJson[A], outputSchemaJson)
-
-  final class ContextualIn[F[_]: Async, Ctx, A] private[ToolBuilder] (
-      toolName: String,
-      toolDescription: String,
-      inSchema: Json,
-      outSchemaJson: Option[Json]
-  ):
-
-    private def copy(
-        toolName: String = this.toolName,
-        toolDescription: String = this.toolDescription,
-        inSchema: Json = this.inSchema,
-        outSchemaJson: Option[Json] = this.outSchemaJson
-    ): ContextualIn[F, Ctx, A] =
-      new ContextualIn[F, Ctx, A](toolName, toolDescription, inSchema, outSchemaJson)
-
-    def description(d: String): ContextualIn[F, Ctx, A] =
-      copy(toolDescription = d)
+    def in[A2](using JsonSchema[A2], Decoder[A2]): WithIn[Ctx, A2] =
+      new WithIn[Ctx, A2](toolName, toolDescription, JsonSchema.toJson[A2], outSchemaJson)
 
     /** Override the output schema with the schema derived from `R`. */
-    def out[R: JsonSchema]: ContextualIn[F, Ctx, A] =
+    def out[R: JsonSchema]: WithIn[Ctx, A] =
       copy(outSchemaJson = Some(JsonSchema.toJson[R]))
 
+    /** Promote a `Ctx = Unit` builder into one parameterised on a custom `Ctx`. */
+    def contextual[NewCtx]: WithIn[NewCtx, A] =
+      new WithIn[NewCtx, A](toolName, toolDescription, inSchema, outSchemaJson)
+
+  // Terminal `run` / `runResult` are extension methods so the receiver type
+  // (`WithIn[Ctx, A]` vs `WithIn[Unit, A]`) drives the dispatch — Scala 3 picks
+  // by lambda arity without any `=:=` evidence.
+
+  extension [Ctx, A](b: WithIn[Ctx, A])
     /** Build a tool whose handler returns a structured success value `R`. Sugar over
      *  [[runResult]] — the value is wrapped in `ToolResult.Success(...)`. */
-    def run[R](handler: (Ctx, A) => F[R])(using Decoder[A], Encoder.AsObject[R], OutputSchema[R]): Tool[F, Ctx, A, R] =
-      runResult[R]((ctx, a) => handler(ctx, a).map(ToolResult.Success(_)))
+    def run[F[_]: Async, R](handler: (Ctx, A) => F[R])(using
+        Decoder[A], Encoder.AsObject[R], OutputSchema[R]
+    ): Tool[F, Ctx, A, R] =
+      b.runResult[F, R]((ctx, a) => handler(ctx, a).map(ToolResult.Success(_)))
 
     /** Build a tool whose handler returns a `ToolResult[R]` directly — useful when the
      *  handler needs to choose between structured success, plain text, or error branches.
      *  The output schema is auto-derived from `R` (via `OutputSchema[R]`) unless explicitly
      *  set via [[out]] / [[outputSchema]]. */
-    def runResult[R](handler: (Ctx, A) => F[ToolResult[R]])(using
-        Decoder[A], Encoder.AsObject[R], OutputSchema[R]
+    def runResult[F[_]: Async, R](handler: (Ctx, A) => F[ToolResult[R]])(using
+        decoder: Decoder[A], encoder: Encoder.AsObject[R], outSchema: OutputSchema[R]
     ): Tool[F, Ctx, A, R] =
-      val finalOutput = outSchemaJson.orElse(summon[OutputSchema[R]].asJson)
+      val finalOutput = b.outSchemaJson.orElse(outSchema.asJson)
       new Tool[F, Ctx, A, R](
-        name = toolName,
-        description = toolDescription,
-        inputSchema = inSchema,
+        name = b.toolName,
+        description = b.toolDescription,
+        inputSchema = b.inSchema,
         outputSchema = finalOutput,
         handle = handler,
-        resultEncoder = summon[Encoder.AsObject[R]]
-      )(using summon[Decoder[A]])
+        resultEncoder = encoder
+      )(using decoder)
+
+  extension [A](b: WithIn[Unit, A])
+    /** Plain (`Ctx = Unit`) [[run]]: auto-calls `.provide(())` and returns a resolved
+     *  handler ready to feed into `withTool`. */
+    def run[F[_]: Async, R](handler: A => F[R])(using
+        Decoder[A], Encoder.AsObject[R], OutputSchema[R]
+    ): Tool.Resolved[F] =
+      b.runResult[F, R]((a: A) => handler(a).map(ToolResult.Success(_)))
+
+    /** Plain (`Ctx = Unit`) [[runResult]]: auto-calls `.provide(())` and returns a resolved
+     *  handler ready to feed into `withTool`. */
+    def runResult[F[_]: Async, R](handler: A => F[ToolResult[R]])(using
+        decoder: Decoder[A], encoder: Encoder.AsObject[R], outSchema: OutputSchema[R]
+    ): Tool.Resolved[F] =
+      val finalOutput = b.outSchemaJson.orElse(outSchema.asJson)
+      new Tool[F, Unit, A, R](
+        name = b.toolName,
+        description = b.toolDescription,
+        inputSchema = b.inSchema,
+        outputSchema = finalOutput,
+        handle = (_, a) => handler(a),
+        resultEncoder = encoder
+      )(using decoder).provide(())
