@@ -67,7 +67,7 @@ object ToolBuilder:
     def name(n: String): WithIn[Ctx, Unit] =
       new WithIn[Ctx, Unit](n, s"Tool: $n", JsonSchema.obj().asJson, None)
 
-  final class WithIn[Ctx, A] private[ToolBuilder] (
+  final class WithIn[Ctx, In] private[ToolBuilder] (
       private[ToolBuilder] val toolName: String,
       private[ToolBuilder] val toolDescription: String,
       private[ToolBuilder] val inSchema: Json,
@@ -79,34 +79,34 @@ object ToolBuilder:
         toolDescription: String = this.toolDescription,
         inSchema: Json = this.inSchema,
         outSchemaJson: Option[Json] = this.outSchemaJson
-    ): WithIn[Ctx, A] =
-      new WithIn[Ctx, A](toolName, toolDescription, inSchema, outSchemaJson)
+    ): WithIn[Ctx, In] =
+      new WithIn[Ctx, In](toolName, toolDescription, inSchema, outSchemaJson)
 
-    def description(d: String): WithIn[Ctx, A] =
+    def description(d: String): WithIn[Ctx, In] =
       copy(toolDescription = d)
 
-    def inputSchema(json: Json): WithIn[Ctx, A] =
+    def inputSchema(json: Json): WithIn[Ctx, In] =
       copy(inSchema = json)
 
-    def inputSchema(schema: Schema): WithIn[Ctx, A] =
+    def inputSchema(schema: Schema): WithIn[Ctx, In] =
       copy(inSchema = schema.asJson)
 
-    def outputSchema(json: Json): WithIn[Ctx, A] =
+    def outputSchema(json: Json): WithIn[Ctx, In] =
       copy(outSchemaJson = Some(json))
 
-    def outputSchema(schema: Schema): WithIn[Ctx, A] =
+    def outputSchema(schema: Schema): WithIn[Ctx, In] =
       copy(outSchemaJson = Some(schema.asJson))
 
-    def in[A2](using JsonSchema[A2], Decoder[A2]): WithIn[Ctx, A2] =
-      new WithIn[Ctx, A2](toolName, toolDescription, JsonSchema.toJson[A2], outSchemaJson)
+    def in[A](using JsonSchema[A], Decoder[A]): WithIn[Ctx, A] =
+      new WithIn[Ctx, A](toolName, toolDescription, JsonSchema.toJson[A], outSchemaJson)
 
     /** Override the output schema with the schema derived from `R`. */
-    def out[R: JsonSchema]: WithIn[Ctx, A] =
+    def out[R: JsonSchema]: WithIn[Ctx, In] =
       copy(outSchemaJson = Some(JsonSchema.toJson[R]))
 
     /** Promote a `Ctx = Unit` builder into one parameterised on a custom `Ctx`. */
-    def contextual[NewCtx]: WithIn[NewCtx, A] =
-      new WithIn[NewCtx, A](toolName, toolDescription, inSchema, outSchemaJson)
+    def contextual[NewCtx]: WithIn[NewCtx, In] =
+      new WithIn[NewCtx, In](toolName, toolDescription, inSchema, outSchemaJson)
 
   // Terminal `run` / `runResult` are extension methods so the receiver type
   // (`WithIn[Ctx, A]` vs `WithIn[Unit, A]`) drives the dispatch — Scala 3 picks
