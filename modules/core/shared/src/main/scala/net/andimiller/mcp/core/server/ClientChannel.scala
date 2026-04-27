@@ -20,6 +20,7 @@ import net.andimiller.mcp.core.protocol.jsonrpc.Message
 trait ClientChannel[F[_]]:
   def sink: NotificationSink[F]
   def requester: ServerRequester[F]
+  def cancellation: CancellationRegistry[F]
   def subscribe: Stream[F, Message]
 
 object ClientChannel:
@@ -27,12 +28,14 @@ object ClientChannel:
   /** Create a live ClientChannel backed by a single shared Topic. */
   def create[F[_]: Async]: Resource[F, ClientChannel[F]] =
     for
-      topic <- Resource.eval(Topic[F, Message])
-      req   <- Resource.eval(ServerRequester.create[F](msg => topic.publish1(msg).void))
+      topic  <- Resource.eval(Topic[F, Message])
+      req    <- Resource.eval(ServerRequester.create[F](msg => topic.publish1(msg).void))
+      cancel <- Resource.eval(CancellationRegistry.create[F])
     yield new ClientChannel[F]:
-      val sink: NotificationSink[F]     = NotificationSink.fromTopic(topic)
-      val requester: ServerRequester[F] = req
-      def subscribe: Stream[F, Message] = topic.subscribe(256)
+      val sink: NotificationSink[F]              = NotificationSink.fromTopic(topic)
+      val requester: ServerRequester[F]          = req
+      val cancellation: CancellationRegistry[F]  = cancel
+      def subscribe: Stream[F, Message]          = topic.subscribe(256)
 
   /**
    * Build a ClientChannel that wraps an existing [[NotificationSink]] (e.g. a user-provided
@@ -42,18 +45,21 @@ object ClientChannel:
    */
   def fromSink[F[_]: Async](existing: NotificationSink[F]): Resource[F, ClientChannel[F]] =
     for
-      topic <- Resource.eval(Topic[F, Message])
-      req   <- Resource.eval(ServerRequester.create[F](msg => topic.publish1(msg).void))
+      topic  <- Resource.eval(Topic[F, Message])
+      req    <- Resource.eval(ServerRequester.create[F](msg => topic.publish1(msg).void))
+      cancel <- Resource.eval(CancellationRegistry.create[F])
     yield new ClientChannel[F]:
-      val sink: NotificationSink[F]     = existing
-      val requester: ServerRequester[F] = req
-      def subscribe: Stream[F, Message] = existing.subscribe.merge(topic.subscribe(256))
+      val sink: NotificationSink[F]              = existing
+      val requester: ServerRequester[F]          = req
+      val cancellation: CancellationRegistry[F]  = cancel
+      def subscribe: Stream[F, Message]          = existing.subscribe.merge(topic.subscribe(256))
 
   /** A no-op channel for transports/tests that don't support server-initiated traffic. */
   def noop[F[_]: Async]: F[ClientChannel[F]] =
     ServerRequester.noop[F].map { req =>
       new ClientChannel[F]:
-        val sink: NotificationSink[F]     = NotificationSink.noop[F]
-        val requester: ServerRequester[F] = req
-        def subscribe: Stream[F, Message] = Stream.empty
+        val sink: NotificationSink[F]              = NotificationSink.noop[F]
+        val requester: ServerRequester[F]          = req
+        val cancellation: CancellationRegistry[F]  = CancellationRegistry.noop[F]
+        def subscribe: Stream[F, Message]          = Stream.empty
     }

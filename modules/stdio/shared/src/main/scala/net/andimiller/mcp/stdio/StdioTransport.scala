@@ -8,7 +8,7 @@ import io.circe.parser.decode
 import io.circe.syntax.*
 import net.andimiller.mcp.core.protocol.jsonrpc.Message
 import net.andimiller.mcp.core.transport.MessageChannel
-import net.andimiller.mcp.core.server.{ClientChannel, Server, ServerSession, SessionContext}
+import net.andimiller.mcp.core.server.{ClientChannel, Server, ServerSession, ServerSessionConfig, SessionContext}
 import net.andimiller.mcp.core.state.SessionRefs
 import net.andimiller.mcp.core.codecs.CirceCodecs.given
 
@@ -49,10 +49,14 @@ object StdioTransport:
    *
    * This will block until stdin is closed or an error occurs.
    */
-  def run[F[_]: Async: Console](server: Server[F], clientChannel: ClientChannel[F]): F[Unit] =
+  def run[F[_]: Async: Console](
+    server: Server[F],
+    clientChannel: ClientChannel[F],
+    config: ServerSessionConfig = ServerSessionConfig.default
+  ): F[Unit] =
     for
       channel <- StdioTransport.channel[F]
-      session  = new ServerSession[F](server, channel, clientChannel)
+      session  = new ServerSession[F](server, channel, clientChannel, config)
       _       <- session.run
     yield ()
 
@@ -61,8 +65,11 @@ object StdioTransport:
    * transport's outbound traffic. Use the `SessionContext`-taking overload if the server
    * itself needs access to the channel (e.g. for notifications or elicitation requests).
    */
+  def run[F[_]: Async: Console](server: Server[F], config: ServerSessionConfig): F[Unit] =
+    ClientChannel.create[F].use(cc => run(server, cc, config))
+
   def run[F[_]: Async: Console](server: Server[F]): F[Unit] =
-    ClientChannel.create[F].use(cc => run(server, cc))
+    run(server, ServerSessionConfig.default)
 
   /**
    * Run a server built from a [[SessionContext]] factory — the unified shape that grants
@@ -71,11 +78,17 @@ object StdioTransport:
    *
    * Stdio is single-session, so the context's id is the literal `"stdio"`.
    */
-  def run[F[_]: Async: Console](factory: SessionContext[F] => F[Server[F]]): F[Unit] =
+  def run[F[_]: Async: Console](
+    factory: SessionContext[F] => F[Server[F]],
+    config: ServerSessionConfig
+  ): F[Unit] =
     ClientChannel.create[F].use { cc =>
       val ctx = SessionContext[F]("stdio", cc, SessionRefs.inMemory[F])
-      factory(ctx).flatMap(run(_, cc))
+      factory(ctx).flatMap(run(_, cc, config))
     }
+
+  def run[F[_]: Async: Console](factory: SessionContext[F] => F[Server[F]]): F[Unit] =
+    run(factory, ServerSessionConfig.default)
 
   /**
    * Convenience method to run a server from an `F`-wrapped server.

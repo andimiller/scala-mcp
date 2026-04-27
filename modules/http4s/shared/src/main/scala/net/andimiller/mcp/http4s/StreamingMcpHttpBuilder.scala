@@ -274,7 +274,7 @@ class StreamingMcpHttpBuilder[F[_]: Async, Ctx] private[http4s] (
                 (cc, _)        = ccPair
                 ctx            = SessionContext(id, cc, refsFactory(id))
                 server        <- newSessionFactory(id)(ctx)
-                handler        = new RequestHandler[F](server, cc.requester)
+                handler        = new RequestHandler[F](server, cc.requester, cc.cancellation)
                 subscriptions <- Ref.of[F, Set[String]](Set.empty)
               yield McpSession(id, handler, cc, subscriptions)
             Resource.eval(factory.create(reconstruct))

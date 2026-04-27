@@ -115,7 +115,7 @@ object StreamableHttpTransport:
       (cc, _)        = ccPair
       ctx            = SessionContext[F](id, cc, refsFactory(id))
       server        <- serverFactory(id, ctx)
-      handler        = new RequestHandler[F](server, cc.requester)
+      handler        = new RequestHandler[F](server, cc.requester, cc.cancellation)
       subscriptions <- Ref.of[F, Set[String]](Set.empty)
       session        = McpSession(id, handler, cc, subscriptions)
       _             <- store.put(session)
@@ -138,7 +138,7 @@ object StreamableHttpTransport:
       (cc, _)        = ccPair
       ctx            = SessionContext[F](id, cc, refsFactory(id))
       server        <- serverFactory(id, user, ctx)
-      handler        = new RequestHandler[F](server, cc.requester)
+      handler        = new RequestHandler[F](server, cc.requester, cc.cancellation)
       subscriptions <- Ref.of[F, Set[String]](Set.empty)
       session        = McpSession(id, handler, cc, subscriptions)
       _             <- store.put(session)
@@ -215,7 +215,10 @@ object StreamableHttpTransport:
       case req @ DELETE -> Root / "mcp" =>
         getSessionId(req) match
           case None => BadRequest("Missing Mcp-Session-Id header")
-          case Some(sid) => store.remove(sid) *> Ok("Session terminated")
+          case Some(sid) =>
+            store.get(sid).flatMap(_.traverse_(_.clientChannel.cancellation.cancelAll)) *>
+              store.remove(sid) *>
+              Ok("Session terminated")
     }
 
   /** Authenticated variant — every request runs through `authenticate`, and on subsequent
@@ -311,7 +314,9 @@ object StreamableHttpTransport:
               case Some(sid) =>
                 store.getUser(sid).flatMap {
                   case Some(storedUser) if storedUser === user =>
-                    store.remove(sid) *> Ok("Session terminated")
+                    store.get(sid).flatMap(_.traverse_(_.clientChannel.cancellation.cancelAll)) *>
+                      store.remove(sid) *>
+                      Ok("Session terminated")
                   case Some(_) => Forbidden("Credential mismatch")
                   case None    => NotFound("Session not found")
                 }

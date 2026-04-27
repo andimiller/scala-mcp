@@ -18,18 +18,29 @@ import net.andimiller.mcp.core.protocol.jsonrpc.{JsonRpcError, Message, RequestI
  *
  * This is transport-agnostic and can be shared between stdio and HTTP transports.
  */
-class RequestHandler[F[_]: Async](server: Server[F], requester: ServerRequester[F]):
+class RequestHandler[F[_]: Async](
+  server: Server[F],
+  requester: ServerRequester[F],
+  cancellation: CancellationRegistry[F]
+):
+
+  /** Methods that bypass the cancellation registry. `initialize` MUST NOT be cancelled per spec
+   *  (MCP 2025-11-25); `ping` is trivial and used for liveness, so cancelling it is pointless. */
+  private def isUncancellable(method: String): Boolean =
+    method == "initialize" || method == "ping"
 
   /**
    * Handle a single incoming message and optionally produce a response.
    */
   def handle(message: Message): F[Option[Message]] = message match
     case Message.Request(_, id, method, params) =>
-      handleRequest(id, method, params)
-        .map(Some(_))
-        .handleErrorWith { error =>
-          Some(Message.errorResponse(id, JsonRpcError.internalError(error.getMessage))).pure[F]
-        }
+      val dispatched =
+        if isUncancellable(method) then handleRequest(id, method, params).map(Some(_))
+        else cancellation.track(id)(handleRequest(id, method, params))
+
+      dispatched.handleErrorWith { error =>
+        Some(Message.errorResponse(id, JsonRpcError.internalError(error.getMessage))).pure[F]
+      }
 
     case Message.Notification(_, method, params) =>
       handleNotification(method, params)
@@ -136,7 +147,9 @@ class RequestHandler[F[_]: Async](server: Server[F], requester: ServerRequester[
         Async[F].unit
 
       case "notifications/cancelled" =>
-        Async[F].unit
+        params.flatMap(_.as[CancelledNotificationParams].toOption) match
+          case Some(p) => cancellation.cancel(p.requestId)
+          case None    => Async[F].unit
 
       case _ =>
         Async[F].unit

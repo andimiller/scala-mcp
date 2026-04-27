@@ -58,9 +58,10 @@ trait Server[F[_]]:
 class ServerSession[F[_]: Async](
   server: Server[F],
   channel: MessageChannel[F],
-  clientChannel: ClientChannel[F]
+  clientChannel: ClientChannel[F],
+  config: ServerSessionConfig = ServerSessionConfig.default
 ):
-  private val handler = new RequestHandler[F](server, clientChannel.requester)
+  private val handler = new RequestHandler[F](server, clientChannel.requester, clientChannel.cancellation)
 
   /**
    * Run the server session, processing incoming messages and forwarding server-initiated
@@ -72,9 +73,8 @@ class ServerSession[F[_]: Async](
    * with sequential `evalMap`.
    */
   def run: F[Unit] =
-    val maxConcurrent = 16
     val inbound: Stream[F, Unit] =
-      channel.incoming.parEvalMapUnordered(maxConcurrent) { message =>
+      channel.incoming.parEvalMapUnordered(config.maxConcurrent) { message =>
         handler.handle(message).flatMap {
           case Some(response) => channel.send(response)
           case None           => Async[F].unit

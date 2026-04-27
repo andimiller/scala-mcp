@@ -9,7 +9,7 @@ import io.circe.parser.decode
 import io.circe.syntax.*
 import net.andimiller.mcp.core.codecs.CirceCodecs.given
 import net.andimiller.mcp.core.protocol.jsonrpc.Message
-import net.andimiller.mcp.core.server.{CapabilityTracker, NotificationSink, RequestHandler, Server as McpServer, ServerBuilder, ServerRequester, SessionContext}
+import net.andimiller.mcp.core.server.{CancellationRegistry, CapabilityTracker, NotificationSink, RequestHandler, Server as McpServer, ServerBuilder, ServerRequester, SessionContext}
 import org.http4s.*
 import org.http4s.dsl.Http4sDsl
 import org.http4s.headers.{`Content-Type`, Location}
@@ -65,9 +65,10 @@ object McpHttp:
     HttpRoutes.of[F] {
       case req @ POST -> Root / "mcp" =>
         for
-          s        <- server
+          s         <- server
           requester <- ServerRequester.noop[F]
-          handler   = new RequestHandler[F](s, requester)
+          cancel     = CancellationRegistry.noop[F]
+          handler    = new RequestHandler[F](s, requester, cancel)
           body     <- req.bodyText.compile.string
           resp <- decode[Message](body) match
                     case Right(message) =>
