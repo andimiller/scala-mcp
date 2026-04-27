@@ -4,9 +4,9 @@ import cats.effect.IO
 import io.circe.{Decoder, Encoder}
 import net.andimiller.mcp.core.protocol.*
 import net.andimiller.mcp.core.schema.JsonSchema
-import net.andimiller.mcp.core.server.{McpDsl, Prompt, Server, ServerBuilder}
+import net.andimiller.mcp.core.server.{Prompt, Server, ServerBuilder, tool}
 
-class McpGoldenSuiteSuite extends McpGoldenSuite, McpDsl[IO]:
+class McpGoldenSuiteSuite extends McpGoldenSuite:
   override def goldenFileName = "test-server.json"
 
   case class EchoRequest(message: String) derives JsonSchema, Decoder

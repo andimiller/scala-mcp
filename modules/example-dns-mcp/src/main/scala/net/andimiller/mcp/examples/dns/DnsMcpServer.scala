@@ -9,7 +9,7 @@ import net.andimiller.mcp.core.schema.{JsonSchema, description}
 import net.andimiller.mcp.core.server.*
 import net.andimiller.mcp.http4s.McpHttp
 
-object DnsMcpServer extends IOApp.Simple, McpDsl[IO]:
+object DnsMcpServer extends IOApp.Simple:
 
   // ── request / response types ──────────────────────────────────────
 

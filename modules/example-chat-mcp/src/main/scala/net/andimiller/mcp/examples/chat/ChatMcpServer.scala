@@ -71,7 +71,7 @@ case class ChatMessageView(sender: String, content: String, timestamp: Long) der
 
 // ── Server ───────────────────────────────────────────────────────────
 
-object ChatMcpServer extends IOApp.Simple, McpDsl[IO]:
+object ChatMcpServer extends IOApp.Simple:
 
   final def run: IO[Unit] =
     (for

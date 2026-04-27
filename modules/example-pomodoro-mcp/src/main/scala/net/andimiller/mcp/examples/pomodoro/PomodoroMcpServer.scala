@@ -24,7 +24,7 @@ case class MessageResponse(message: String) derives Encoder.AsObject, JsonSchema
 
 // ── shared builder setup ────────────────────────────────────────────
 
-object PomodoroMcpServer extends IOApp.Simple, McpDsl[IO]:
+object PomodoroMcpServer extends IOApp.Simple:
 
   /** Wires all tools, resources, prompts and capabilities onto the given builder.
     * Call `.stateful[PomodoroTimer]` internally so callers only need a `Unit`-context builder.
