@@ -1,14 +1,13 @@
 package net.andimiller.mcp.stdio
 
+import scala.concurrent.duration.*
+
 import cats.effect.IO
 import cats.effect.kernel.Deferred
 import cats.effect.kernel.Ref
 import cats.effect.std.Queue
 import cats.syntax.all.*
-import fs2.Stream
-import io.circe.Json
-import io.circe.syntax.*
-import munit.CatsEffectSuite
+
 import net.andimiller.mcp.core.protocol.*
 import net.andimiller.mcp.core.protocol.content.Content
 import net.andimiller.mcp.core.protocol.jsonrpc.Message
@@ -16,7 +15,10 @@ import net.andimiller.mcp.core.protocol.jsonrpc.RequestId
 import net.andimiller.mcp.core.server.*
 import net.andimiller.mcp.core.transport.MessageChannel
 
-import scala.concurrent.duration.*
+import fs2.Stream
+import io.circe.Json
+import io.circe.syntax.*
+import munit.CatsEffectSuite
 
 class StdioTransportSuite extends CatsEffectSuite:
 

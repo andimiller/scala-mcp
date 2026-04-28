@@ -1,6 +1,7 @@
 package net.andimiller.mcp.tapir
 
 import net.andimiller.mcp.core.schema.JsonSchema
+
 import sttp.tapir.Schema
 import sttp.tapir.docs.apispec.schema.TapirSchemaToJsonSchema
 

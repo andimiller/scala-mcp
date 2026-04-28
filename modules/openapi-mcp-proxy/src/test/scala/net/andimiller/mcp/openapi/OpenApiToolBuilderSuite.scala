@@ -1,11 +1,13 @@
 package net.andimiller.mcp.openapi
 
 import cats.effect.IO
+import cats.syntax.all.*
+
 import munit.CatsEffectSuite
-import org.http4s.client.Client
 import org.http4s.HttpApp
 import org.http4s.Response
 import org.http4s.Status
+import org.http4s.client.Client
 import sttp.apispec.openapi.OpenAPI
 import sttp.apispec.openapi.circe.given
 
@@ -129,7 +131,7 @@ class OpenApiToolBuilderSuite extends CatsEffectSuite:
       spec <- parseSpec(petStoreSpec)
       tools = OpenApiToolBuilder.buildTools(spec, List("listPets"), dummyClient, "https://petstore.example.com/v1")
     yield
-      val tool  = tools.find(_.name == "listPets").get
+      val tool  = tools.find(_.name === "listPets").get
       val props = tool.inputSchema.hcursor.downField("properties")
       assert(props.downField("limit").focus.isDefined, "should have 'limit' property")
       val required = tool.inputSchema.hcursor.downField("required").as[List[String]].getOrElse(Nil)
@@ -141,7 +143,7 @@ class OpenApiToolBuilderSuite extends CatsEffectSuite:
       spec <- parseSpec(petStoreSpec)
       tools = OpenApiToolBuilder.buildTools(spec, List("listPets"), dummyClient, "https://petstore.example.com/v1")
     yield
-      val tool = tools.find(_.name == "listPets").get
+      val tool = tools.find(_.name === "listPets").get
       assertEquals(tool.description, "List all pets")
   }
 
@@ -150,7 +152,7 @@ class OpenApiToolBuilderSuite extends CatsEffectSuite:
       spec <- parseSpec(petStoreSpec)
       tools = OpenApiToolBuilder.buildTools(spec, List("getPetById"), dummyClient, "https://petstore.example.com/v1")
     yield
-      val tool     = tools.find(_.name == "getPetById").get
+      val tool     = tools.find(_.name === "getPetById").get
       val required = tool.inputSchema.hcursor.downField("required").as[List[String]].getOrElse(Nil)
       assert(required.contains("petId"), "petId should be required")
   }
@@ -160,7 +162,7 @@ class OpenApiToolBuilderSuite extends CatsEffectSuite:
       spec <- parseSpec(petStoreSpec)
       tools = OpenApiToolBuilder.buildTools(spec, List("createPet"), dummyClient, "https://petstore.example.com/v1")
     yield
-      val tool  = tools.find(_.name == "createPet").get
+      val tool  = tools.find(_.name === "createPet").get
       val props = tool.inputSchema.hcursor.downField("properties")
       assert(props.downField("body").focus.isDefined, "should have 'body' property")
       val required = tool.inputSchema.hcursor.downField("required").as[List[String]].getOrElse(Nil)
@@ -172,7 +174,7 @@ class OpenApiToolBuilderSuite extends CatsEffectSuite:
       spec <- parseSpec(petStoreSpec)
       tools = OpenApiToolBuilder.buildTools(spec, List("getPetById"), dummyClient, "https://petstore.example.com/v1")
     yield
-      val tool      = tools.find(_.name == "getPetById").get
+      val tool      = tools.find(_.name === "getPetById").get
       val outputStr = tool.outputSchema.get.noSpaces
       assert(!outputStr.contains("$ref"), s"outputSchema should have no $$ref: $outputStr")
   }
@@ -182,7 +184,7 @@ class OpenApiToolBuilderSuite extends CatsEffectSuite:
       spec <- parseSpec(petStoreSpec)
       tools = OpenApiToolBuilder.buildTools(spec, List("listPets"), dummyClient, "https://petstore.example.com/v1")
     yield
-      val tool = tools.find(_.name == "listPets").get
+      val tool = tools.find(_.name === "listPets").get
       val out  = tool.outputSchema.get
       val typ  = out.hcursor.downField("type").as[String].getOrElse("")
       assertEquals(typ, "object", "array outputSchema should be wrapped in object")
@@ -197,7 +199,7 @@ class OpenApiToolBuilderSuite extends CatsEffectSuite:
       spec <- parseSpec(petStoreSpec)
       tools = OpenApiToolBuilder.buildTools(spec, List("healthCheck"), dummyClient, "https://petstore.example.com/v1")
     yield
-      val tool = tools.find(_.name == "healthCheck").get
+      val tool = tools.find(_.name === "healthCheck").get
       val typ  = tool.outputSchema.get.hcursor.downField("type").as[String].getOrElse("")
       assertEquals(typ, "object")
   }
@@ -207,7 +209,7 @@ class OpenApiToolBuilderSuite extends CatsEffectSuite:
       spec <- parseSpec(petStoreSpec)
       tools = OpenApiToolBuilder.buildTools(spec, List("healthCheck"), dummyClient, "https://petstore.example.com/v1")
     yield
-      val tool  = tools.find(_.name == "healthCheck").get
+      val tool  = tools.find(_.name === "healthCheck").get
       val props = tool.inputSchema.hcursor.downField("properties").focus.flatMap(_.asObject)
       assert(props.exists(_.isEmpty), "healthCheck should have empty properties")
   }
@@ -235,7 +237,7 @@ class OpenApiToolBuilderSuite extends CatsEffectSuite:
         ops.map(_._1).toSet,
         Set("listPets", "createPet", "getPetById", "healthCheck")
       )
-      val listPets = ops.find(_._1 == "listPets").get
+      val listPets = ops.find(_._1 === "listPets").get
       assertEquals(listPets._2, "GET")
       assertEquals(listPets._3, "/pets")
   }

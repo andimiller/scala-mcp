@@ -1,18 +1,20 @@
 package net.andimiller.mcp.core.server
 
+import scala.concurrent.duration.FiniteDuration
+import scala.util.hashing.MurmurHash3
+
 import cats.effect.kernel.Async
 import cats.effect.kernel.Deferred
 import cats.effect.kernel.Ref
 import cats.syntax.all.*
-import io.circe.Json
+
 import net.andimiller.mcp.core.protocol.ClientCapabilities
 import net.andimiller.mcp.core.protocol.jsonrpc.ErrorCode
 import net.andimiller.mcp.core.protocol.jsonrpc.JsonRpcError
 import net.andimiller.mcp.core.protocol.jsonrpc.Message
 import net.andimiller.mcp.core.protocol.jsonrpc.RequestId
 
-import scala.concurrent.duration.FiniteDuration
-import scala.util.hashing.MurmurHash3
+import io.circe.Json
 
 /** Send server-initiated JSON-RPC requests to the client and await correlated responses.
   *

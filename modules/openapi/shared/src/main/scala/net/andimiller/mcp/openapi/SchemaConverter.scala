@@ -1,17 +1,17 @@
 package net.andimiller.mcp.openapi
 
+import scala.collection.immutable.ListMap
+
 import io.circe.Json
 import io.circe.syntax.*
-import sttp.apispec.ExampleSingleValue
 import sttp.apispec.ExampleMultipleValue
+import sttp.apispec.ExampleSingleValue
 import sttp.apispec.ExampleValue
 import sttp.apispec.Schema
 import sttp.apispec.SchemaLike
 import sttp.apispec.openapi.Reference
 import sttp.apispec.openapi.ReferenceOr
 import sttp.apispec.openapi.circe.given
-
-import scala.collection.immutable.ListMap
 
 object SchemaConverter:
 

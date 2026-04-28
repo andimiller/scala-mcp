@@ -1,6 +1,7 @@
 package net.andimiller.mcp.core.server
 
 import cats.effect.kernel.Async
+
 import net.andimiller.mcp.core.state.SessionRefs
 
 /** Per-session context handed to user-supplied state creators.

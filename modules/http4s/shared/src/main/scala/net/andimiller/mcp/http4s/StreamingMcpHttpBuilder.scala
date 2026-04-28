@@ -7,10 +7,12 @@ import cats.effect.kernel.Ref
 import cats.effect.kernel.Resource
 import cats.effect.std.UUIDGen
 import cats.syntax.all.*
-import com.comcast.ip4s.*
+
 import net.andimiller.mcp.core.protocol.*
 import net.andimiller.mcp.core.server.*
 import net.andimiller.mcp.core.state.SessionRefs
+
+import com.comcast.ip4s.*
 import org.http4s.*
 import org.http4s.ember.server.EmberServerBuilder
 

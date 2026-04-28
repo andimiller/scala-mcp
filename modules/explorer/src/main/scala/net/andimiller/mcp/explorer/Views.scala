@@ -1,9 +1,12 @@
 package net.andimiller.mcp.explorer
 
+import cats.syntax.all.*
+
 import net.andimiller.mcp.core.protocol.*
 import net.andimiller.mcp.core.protocol.content.Content
-import tyrian.*
+
 import tyrian.Html.*
+import tyrian.*
 
 object Views:
 
@@ -16,7 +19,7 @@ object Views:
   def view(model: Model): Html[Msg] =
     div(`class` := Styles.container)(
       header(model),
-      if model.connection == ConnectionStatus.Disconnected || model.connection == ConnectionStatus.Connecting then
+      if model.connection === ConnectionStatus.Disconnected || model.connection === ConnectionStatus.Connecting then
         connectView
       else mainContent(model)
     )
@@ -80,13 +83,13 @@ object Views:
     div(`class` := Styles.sidebar)(
       div(`class` := Styles.tabs)(
         ul(
-          li(`class` := (if model.selectedTab == Tab.Tools then Styles.activeTab else Styles.tab))(
+          li(`class` := (if model.selectedTab === Tab.Tools then Styles.activeTab else Styles.tab))(
             a(onClick(Msg.SelectTab(Tab.Tools)))("Tools")
           ),
-          li(`class` := (if model.selectedTab == Tab.Resources then Styles.activeTab else Styles.tab))(
+          li(`class` := (if model.selectedTab === Tab.Resources then Styles.activeTab else Styles.tab))(
             a(onClick(Msg.SelectTab(Tab.Resources)))("Resources")
           ),
-          li(`class` := (if model.selectedTab == Tab.Prompts then Styles.activeTab else Styles.tab))(
+          li(`class` := (if model.selectedTab === Tab.Prompts then Styles.activeTab else Styles.tab))(
             a(onClick(Msg.SelectTab(Tab.Prompts)))("Prompts")
           )
         )
@@ -98,7 +101,7 @@ object Views:
             else
               model.tools.map(t =>
                 div(
-                  `class` := (if model.selectedTool == Some(t.name) then Styles.selectedItem else Styles.listItem),
+                  `class` := (if model.selectedTool === Some(t.name) then Styles.selectedItem else Styles.listItem),
                   onClick(Msg.SelectTool(t.name))
                 )(b(t.name))
               )
@@ -107,13 +110,13 @@ object Views:
             else
               model.resources.map(r =>
                 div(
-                  `class` := (if model.selectedResource == Some(r.uri) then Styles.selectedItem else Styles.listItem),
+                  `class` := (if model.selectedResource === Some(r.uri) then Styles.selectedItem else Styles.listItem),
                   onClick(Msg.SelectResource(r.uri))
                 )(b(r.name))
               ) ++
                 model.resourceTemplates.map(t =>
                   div(
-                    `class` := (if model.selectedResource == Some(t.uriTemplate) then Styles.selectedItem
+                    `class` := (if model.selectedResource === Some(t.uriTemplate) then Styles.selectedItem
                                 else Styles.listItem),
                     onClick(Msg.SelectResource(t.uriTemplate))
                   )(b(t.name))
@@ -123,7 +126,7 @@ object Views:
             else
               model.prompts.map(p =>
                 div(
-                  `class` := (if model.selectedPrompt == Some(p.name) then Styles.selectedItem else Styles.listItem),
+                  `class` := (if model.selectedPrompt === Some(p.name) then Styles.selectedItem else Styles.listItem),
                   onClick(Msg.SelectPrompt(p.name))
                 )(b(p.name))
               )
@@ -134,18 +137,18 @@ object Views:
     div(`class` := Styles.detail)(
       model.selectedTab match
         case Tab.Tools =>
-          model.selectedTool.flatMap(n => model.tools.find(_.name == n)) match
+          model.selectedTool.flatMap(n => model.tools.find(_.name === n)) match
             case Some(tool) => toolView(model, tool)
             case None       => div(`class` := Styles.emptyState)("Select a tool")
         case Tab.Resources =>
           model.selectedResource.flatMap(u =>
-            model.resources.find(_.uri == u).orElse(model.resourceTemplates.find(_.uriTemplate == u))
+            model.resources.find(_.uri === u).orElse(model.resourceTemplates.find(_.uriTemplate === u))
           ) match
             case Some(r: ResourceDefinition)         => resourceView(model, r)
             case Some(t: ResourceTemplateDefinition) => templateView(model, t)
             case None                                => div(`class` := Styles.emptyState)("Select a resource")
         case Tab.Prompts =>
-          model.selectedPrompt.flatMap(n => model.prompts.find(_.name == n)) match
+          model.selectedPrompt.flatMap(n => model.prompts.find(_.name === n)) match
             case Some(p) => promptView(model, p)
             case None    => div(`class` := Styles.emptyState)("Select a prompt")
     )

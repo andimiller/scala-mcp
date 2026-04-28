@@ -3,6 +3,7 @@ package net.andimiller.mcp.core.server
 import cats.effect.kernel.Async
 import cats.effect.kernel.Ref
 import cats.syntax.all.*
+
 import net.andimiller.mcp.core.protocol.*
 
 /** Default implementation of the MCP Server trait.

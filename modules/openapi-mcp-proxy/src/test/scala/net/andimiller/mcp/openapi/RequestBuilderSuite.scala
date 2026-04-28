@@ -2,16 +2,17 @@ package net.andimiller.mcp.openapi
 
 import cats.effect.IO
 import cats.effect.kernel.Ref
+
 import io.circe.Json
 import io.circe.syntax.*
 import munit.CatsEffectSuite
-import org.http4s.circe.*
 import org.http4s.EntityEncoder
 import org.http4s.HttpApp
 import org.http4s.Method
 import org.http4s.Request
 import org.http4s.Response
 import org.http4s.Status
+import org.http4s.circe.*
 import org.http4s.client.Client
 
 class RequestBuilderSuite extends CatsEffectSuite:

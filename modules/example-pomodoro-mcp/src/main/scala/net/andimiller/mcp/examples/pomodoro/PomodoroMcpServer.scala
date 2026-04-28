@@ -1,10 +1,10 @@
 package net.andimiller.mcp.examples.pomodoro
 
+import scala.concurrent.duration.*
+
 import cats.effect.*
 import cats.syntax.all.*
-import com.comcast.ip4s.*
-import io.circe.Decoder
-import io.circe.Encoder
+
 import net.andimiller.mcp.core.protocol.PromptArgument
 import net.andimiller.mcp.core.protocol.PromptMessage
 import net.andimiller.mcp.core.protocol.ResourceContent
@@ -14,7 +14,9 @@ import net.andimiller.mcp.core.server.*
 import net.andimiller.mcp.http4s.McpHttp
 import net.andimiller.mcp.http4s.StreamingMcpHttpBuilder
 
-import scala.concurrent.duration.*
+import com.comcast.ip4s.*
+import io.circe.Decoder
+import io.circe.Encoder
 
 // ── request / response types ────────────────────────────────────────
 

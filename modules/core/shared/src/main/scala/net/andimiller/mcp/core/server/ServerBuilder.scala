@@ -2,6 +2,7 @@ package net.andimiller.mcp.core.server
 
 import cats.effect.kernel.Async
 import cats.syntax.functor.*
+
 import net.andimiller.mcp.core.protocol.*
 
 class ServerBuilder[F[_]: Async](

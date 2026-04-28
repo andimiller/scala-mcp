@@ -1,7 +1,8 @@
 package net.andimiller.mcp.explorer
 
-import io.circe.Json
 import net.andimiller.mcp.core.protocol.*
+
+import io.circe.Json
 
 enum Msg:
 

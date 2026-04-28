@@ -1,7 +1,7 @@
 package net.andimiller.mcp.core.schema
 
-import munit.FunSuite
 import io.circe.Json
+import munit.FunSuite
 import sttp.apispec.*
 
 class JsonSchemaSuite extends FunSuite:

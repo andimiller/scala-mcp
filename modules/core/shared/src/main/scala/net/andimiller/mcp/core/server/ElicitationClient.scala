@@ -1,14 +1,16 @@
 package net.andimiller.mcp.core.server
 
+import scala.concurrent.duration.FiniteDuration
+
 import cats.effect.kernel.Async
 import cats.syntax.all.*
-import io.circe.Codec
-import io.circe.Json
-import io.circe.syntax.*
+
 import net.andimiller.mcp.core.protocol.*
 import net.andimiller.mcp.core.schema.JsonSchema
 
-import scala.concurrent.duration.FiniteDuration
+import io.circe.Codec
+import io.circe.Json
+import io.circe.syntax.*
 
 /** Server-side API for issuing `elicitation/create` requests to the client.
   *
@@ -53,7 +55,7 @@ object ElicitationClient:
             val params = ElicitationCreateRequest(message, JsonSchema.toJson[A]).asJson
             requester.request("elicitation/create", Some(params), timeout).map {
               case Left(err) =>
-                if err.code == ServerRequester.TimeoutErrorCode then Left(ElicitationError.Timeout)
+                if err.code === ServerRequester.TimeoutErrorCode then Left(ElicitationError.Timeout)
                 else Left(ElicitationError.Rpc(err))
               case Right(json) =>
                 json.as[ElicitationCreateResponse] match

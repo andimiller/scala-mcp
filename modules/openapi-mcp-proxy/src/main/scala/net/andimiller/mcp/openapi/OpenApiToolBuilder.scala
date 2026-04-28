@@ -1,8 +1,10 @@
 package net.andimiller.mcp.openapi
 
 import cats.effect.IO
+
 import net.andimiller.mcp.core.server.Tool
 import net.andimiller.mcp.core.server.Tool.toResolved
+
 import org.http4s.Method
 import org.http4s.client.Client
 import sttp.apispec.openapi.OpenAPI

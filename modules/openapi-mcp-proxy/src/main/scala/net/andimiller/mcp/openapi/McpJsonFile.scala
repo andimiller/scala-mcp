@@ -1,13 +1,14 @@
 package net.andimiller.mcp.openapi
 
-import cats.effect.IO
-import io.circe.Json
-import io.circe.JsonObject
-import io.circe.parser.{parse => parseJson}
-
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
+
+import cats.effect.IO
+
+import io.circe.Json
+import io.circe.JsonObject
+import io.circe.parser.parse as parseJson
 
 object McpJsonFile:
 

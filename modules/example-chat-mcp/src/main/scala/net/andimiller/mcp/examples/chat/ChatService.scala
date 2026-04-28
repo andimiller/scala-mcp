@@ -2,6 +2,7 @@ package net.andimiller.mcp.examples.chat
 
 import cats.effect.IO
 import cats.syntax.all.*
+
 import dev.profunktor.redis4cats.RedisCommands
 import io.circe.Decoder
 import io.circe.Encoder

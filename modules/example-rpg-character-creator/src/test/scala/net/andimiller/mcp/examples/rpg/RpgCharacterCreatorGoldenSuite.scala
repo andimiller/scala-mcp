@@ -1,6 +1,7 @@
 package net.andimiller.mcp.examples.rpg
 
 import cats.effect.IO
+
 import net.andimiller.mcp.core.server.Server
 import net.andimiller.mcp.golden.McpGoldenSuite
 import net.andimiller.mcp.http4s.McpHttp

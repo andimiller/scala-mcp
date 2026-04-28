@@ -1,12 +1,14 @@
 package net.andimiller.mcp.redis
 
+import scala.concurrent.duration.*
+
 import cats.effect.kernel.Async
+
+import net.andimiller.mcp.http4s.StreamingMcpHttpBuilder
+
 import dev.profunktor.redis4cats.RedisCommands
 import dev.profunktor.redis4cats.pubsub.PubSubCommands
 import fs2.Stream
-import net.andimiller.mcp.http4s.StreamingMcpHttpBuilder
-
-import scala.concurrent.duration.*
 
 /** Convenience wiring for configuring a [[StreamingMcpHttpBuilder]] with Redis-backed session management.
   *

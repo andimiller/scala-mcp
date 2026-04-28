@@ -1,8 +1,8 @@
 package net.andimiller.mcp.examples.dns
 
-import cats.effect.IO
-
 import scala.scalajs.js
+
+import cats.effect.IO
 
 /** Pure functional interface to DNS resolution, backed by Node.js `dns` module. */
 trait Dns[F[_]]:
@@ -31,8 +31,11 @@ object Dns:
         DnsNative.resolve(
           hostname,
           (err, result) =>
-            if err != null then cb(Left(new Exception(err.message)))
-            else cb(Right(result.toList))
+            Option(err)
+              .map(e => cb(Left(new Exception(e.message))))
+              .getOrElse {
+                cb(Right(result.toList))
+              }
         )
       }
 
@@ -45,13 +48,15 @@ object Dns:
           hostname,
           "MX",
           (err, result) =>
-            if err != null then cb(Left(new Exception(err.message)))
-            else
-              val records = result.toList.map { r =>
-                val mx = r.asInstanceOf[NativeMxRecord]
-                (mx.exchange, mx.priority)
+            Option(err)
+              .map(e => cb(Left(new Exception(e.message))))
+              .getOrElse {
+                val records = result.toList.map { r =>
+                  val mx = r.asInstanceOf[NativeMxRecord]
+                  (mx.exchange, mx.priority)
+                }
+                cb(Right(records))
               }
-              cb(Right(records))
         )
       }
 
@@ -61,13 +66,15 @@ object Dns:
           hostname,
           "TXT",
           (err, result) =>
-            if err != null then cb(Left(new Exception(err.message)))
-            else
-              // TXT records come back as Array[Array[String]], we flatten and join chunks
-              val records = result.toList.map { r =>
-                r.asInstanceOf[js.Array[String]].toList.mkString
+            Option(err)
+              .map(e => cb(Left(new Exception(e.message))))
+              .getOrElse {
+                // TXT records come back as Array[Array[String]], we flatten and join chunks
+                val records = result.toList.map { r =>
+                  r.asInstanceOf[js.Array[String]].toList.mkString
+                }
+                cb(Right(records))
               }
-              cb(Right(records))
         )
       }
 
@@ -82,8 +89,11 @@ object Dns:
         DnsNative.reverse(
           ip,
           (err, result) =>
-            if err != null then cb(Left(new Exception(err.message)))
-            else cb(Right(result.toList))
+            Option(err)
+              .map(e => cb(Left(new Exception(e.message))))
+              .getOrElse {
+                cb(Right(result.toList))
+              }
         )
       }
 
@@ -93,7 +103,10 @@ object Dns:
           hostname,
           rrtype,
           (err, result) =>
-            if err != null then cb(Left(new Exception(err.message)))
-            else cb(Right(result.toList.map(_.asInstanceOf[String])))
+            Option(err)
+              .map(e => cb(Left(new Exception(e.message))))
+              .getOrElse {
+                cb(Right(result.toList.map(_.asInstanceOf[String])))
+              }
         )
       }

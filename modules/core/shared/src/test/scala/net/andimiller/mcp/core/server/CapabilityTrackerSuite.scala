@@ -1,7 +1,8 @@
 package net.andimiller.mcp.core.server
 
-import munit.FunSuite
 import net.andimiller.mcp.core.protocol.*
+
+import munit.FunSuite
 
 class CapabilityTrackerSuite extends FunSuite:
 

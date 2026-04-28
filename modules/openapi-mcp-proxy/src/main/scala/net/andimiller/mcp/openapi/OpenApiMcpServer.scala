@@ -4,10 +4,12 @@ import cats.effect.ExitCode
 import cats.effect.IO
 import cats.effect.std.Console
 import cats.syntax.all.*
-import com.monovore.decline.*
-import com.monovore.decline.effect.CommandIOApp
+
 import net.andimiller.mcp.core.server.ServerBuilder
 import net.andimiller.mcp.stdio.StdioTransport
+
+import com.monovore.decline.*
+import com.monovore.decline.effect.CommandIOApp
 import org.http4s.ember.client.EmberClientBuilder
 
 object OpenApiMcpServer
@@ -118,7 +120,7 @@ object OpenApiMcpServer
         allOps    = OpenApiToolBuilder.listOperationIds(spec)
         allIds    = allOps.map(_._1).toSet
         selected <-
-          if operationIds == List("*") then
+          if operationIds === List("*") then
             val allIdsList = allOps.map(_._1)
             if allIdsList.size > 10 then
               for

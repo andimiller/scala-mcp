@@ -1,6 +1,8 @@
 package net.andimiller.mcp.openapi
 
 import cats.effect.IO
+import cats.syntax.all.*
+
 import munit.CatsEffectSuite
 import sttp.apispec.openapi.OpenAPI
 import sttp.apispec.openapi.circe.given
@@ -117,7 +119,7 @@ class OpenApiOperationSuite extends CatsEffectSuite:
     for
       spec      <- parseSpec(petStoreSpec)
       operations = OpenApiOperation.build(spec, List("listPets"))
-      op         = operations.find(_.definition.name == "listPets").get
+      op         = operations.find(_.definition.name === "listPets").get
     yield
       val props = op.definition.inputSchema.hcursor.downField("properties")
       assert(props.downField("limit").focus.isDefined, "should have 'limit' property")
@@ -129,7 +131,7 @@ class OpenApiOperationSuite extends CatsEffectSuite:
     for
       spec      <- parseSpec(petStoreSpec)
       operations = OpenApiOperation.build(spec, List("listPets"))
-      op         = operations.find(_.definition.name == "listPets").get
+      op         = operations.find(_.definition.name === "listPets").get
     yield assertEquals(op.definition.description, "List all pets")
   }
 
@@ -137,7 +139,7 @@ class OpenApiOperationSuite extends CatsEffectSuite:
     for
       spec      <- parseSpec(petStoreSpec)
       operations = OpenApiOperation.build(spec, List("getPetById"))
-      op         = operations.find(_.definition.name == "getPetById").get
+      op         = operations.find(_.definition.name === "getPetById").get
     yield
       val required = op.definition.inputSchema.hcursor.downField("required").as[List[String]].getOrElse(Nil)
       assert(required.contains("petId"), "petId should be required")
@@ -147,7 +149,7 @@ class OpenApiOperationSuite extends CatsEffectSuite:
     for
       spec      <- parseSpec(petStoreSpec)
       operations = OpenApiOperation.build(spec, List("createPet"))
-      op         = operations.find(_.definition.name == "createPet").get
+      op         = operations.find(_.definition.name === "createPet").get
     yield
       val props = op.definition.inputSchema.hcursor.downField("properties")
       assert(props.downField("body").focus.isDefined, "should have 'body' property")
@@ -159,7 +161,7 @@ class OpenApiOperationSuite extends CatsEffectSuite:
     for
       spec      <- parseSpec(petStoreSpec)
       operations = OpenApiOperation.build(spec, List("getPetById"))
-      op         = operations.find(_.definition.name == "getPetById").get
+      op         = operations.find(_.definition.name === "getPetById").get
     yield
       val outputStr = op.definition.outputSchema.get.noSpaces
       assert(!outputStr.contains("$ref"), s"outputSchema should have no $$ref: $outputStr")
@@ -169,7 +171,7 @@ class OpenApiOperationSuite extends CatsEffectSuite:
     for
       spec      <- parseSpec(petStoreSpec)
       operations = OpenApiOperation.build(spec, List("listPets"))
-      op         = operations.find(_.definition.name == "listPets").get
+      op         = operations.find(_.definition.name === "listPets").get
     yield
       val out = op.definition.outputSchema.get
       val typ = out.hcursor.downField("type").as[String].getOrElse("")
@@ -184,7 +186,7 @@ class OpenApiOperationSuite extends CatsEffectSuite:
     for
       spec      <- parseSpec(petStoreSpec)
       operations = OpenApiOperation.build(spec, List("healthCheck"))
-      op         = operations.find(_.definition.name == "healthCheck").get
+      op         = operations.find(_.definition.name === "healthCheck").get
     yield
       val typ = op.definition.outputSchema.get.hcursor.downField("type").as[String].getOrElse("")
       assertEquals(typ, "object")
@@ -194,7 +196,7 @@ class OpenApiOperationSuite extends CatsEffectSuite:
     for
       spec      <- parseSpec(petStoreSpec)
       operations = OpenApiOperation.build(spec, List("healthCheck"))
-      op         = operations.find(_.definition.name == "healthCheck").get
+      op         = operations.find(_.definition.name === "healthCheck").get
     yield
       val props = op.definition.inputSchema.hcursor.downField("properties").focus.flatMap(_.asObject)
       assert(props.exists(_.isEmpty), "healthCheck should have empty properties")
@@ -219,7 +221,7 @@ class OpenApiOperationSuite extends CatsEffectSuite:
         ops.map(_._1).toSet,
         Set("listPets", "createPet", "getPetById", "healthCheck")
       )
-      val listPets = ops.find(_._1 == "listPets").get
+      val listPets = ops.find(_._1 === "listPets").get
       assertEquals(listPets._2, "GET")
       assertEquals(listPets._3, "/pets")
   }
@@ -228,7 +230,7 @@ class OpenApiOperationSuite extends CatsEffectSuite:
     for
       spec      <- parseSpec(petStoreSpec)
       operations = OpenApiOperation.build(spec, List("createPet"))
-      op         = operations.find(_.definition.name == "createPet").get
+      op         = operations.find(_.definition.name === "createPet").get
     yield
       assertEquals(op.method, "POST")
       assertEquals(op.pathPattern, "/pets")
@@ -238,7 +240,7 @@ class OpenApiOperationSuite extends CatsEffectSuite:
     for
       spec      <- parseSpec(petStoreSpec)
       operations = OpenApiOperation.build(spec, List("getPetById"))
-      op         = operations.find(_.definition.name == "getPetById").get
+      op         = operations.find(_.definition.name === "getPetById").get
     yield
       assertEquals(op.resolvedOperation.pathParams.map(_.name), List("petId"))
       assert(op.resolvedOperation.pathParams.head.required, "petId should be required")
@@ -249,6 +251,6 @@ class OpenApiOperationSuite extends CatsEffectSuite:
     for
       spec      <- parseSpec(petStoreSpec)
       operations = OpenApiOperation.build(spec, List("createPet"))
-      op         = operations.find(_.definition.name == "createPet").get
+      op         = operations.find(_.definition.name === "createPet").get
     yield assert(op.resolvedOperation.hasBody, "createPet should have body")
   }

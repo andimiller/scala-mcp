@@ -2,9 +2,11 @@ package net.andimiller.mcp.core.server
 
 import cats.effect.kernel.Async
 import cats.syntax.all.*
-import fs2.Stream
+
 import net.andimiller.mcp.core.protocol.*
 import net.andimiller.mcp.core.transport.MessageChannel
+
+import fs2.Stream
 
 /** Core MCP server interface.
   *

@@ -1,17 +1,18 @@
 package net.andimiller.mcp.core.codecs
 
-import io.circe.parser.parse
-import io.circe.syntax.*
-import io.circe.Decoder
-import io.circe.Encoder
-import io.circe.Json
-import munit.FunSuite
 import net.andimiller.mcp.core.codecs.CirceCodecs.given
-import net.andimiller.mcp.core.protocol.content.Content
 import net.andimiller.mcp.core.protocol.PromptRole
+import net.andimiller.mcp.core.protocol.content.Content
 import net.andimiller.mcp.core.protocol.jsonrpc.JsonRpcError
 import net.andimiller.mcp.core.protocol.jsonrpc.Message
 import net.andimiller.mcp.core.protocol.jsonrpc.RequestId
+
+import io.circe.Decoder
+import io.circe.Encoder
+import io.circe.Json
+import io.circe.parser.parse
+import io.circe.syntax.*
+import munit.FunSuite
 
 class CirceCodecsSuite extends FunSuite:
 

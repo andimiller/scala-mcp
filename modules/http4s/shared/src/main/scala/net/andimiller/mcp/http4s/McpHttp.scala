@@ -6,22 +6,24 @@ import cats.effect.Resource
 import cats.effect.kernel.Async
 import cats.effect.std.UUIDGen
 import cats.syntax.all.*
-import io.circe.parser.decode
-import io.circe.syntax.*
+
 import net.andimiller.mcp.core.codecs.CirceCodecs.given
 import net.andimiller.mcp.core.protocol.jsonrpc.Message
 import net.andimiller.mcp.core.server.CancellationRegistry
 import net.andimiller.mcp.core.server.CapabilityTracker
 import net.andimiller.mcp.core.server.RequestHandler
-import net.andimiller.mcp.core.server.Server as McpServer
 import net.andimiller.mcp.core.server.ServerRequester
 import net.andimiller.mcp.core.server.SessionContext
+import net.andimiller.mcp.core.server.Server as McpServer
+
+import io.circe.parser.decode
+import io.circe.syntax.*
 import org.http4s.*
 import org.http4s.dsl.Http4sDsl
-import org.http4s.headers.`Content-Type`
-import org.http4s.headers.Location
-import org.http4s.implicits.*
 import org.http4s.ember.server.EmberServerBuilder
+import org.http4s.headers.Location
+import org.http4s.headers.`Content-Type`
+import org.http4s.implicits.*
 import org.http4s.server.Router
 
 object McpHttp:

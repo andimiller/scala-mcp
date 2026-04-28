@@ -1,13 +1,14 @@
 package net.andimiller.mcp.core.schema
 
+import scala.annotation.nowarn
+import scala.collection.immutable.ListMap
+import scala.compiletime.*
+import scala.deriving.Mirror
+
 import io.circe.Json
 import io.circe.syntax.*
 import sttp.apispec.*
 import sttp.apispec.circe.given
-import scala.collection.immutable.ListMap
-import scala.compiletime.*
-import scala.deriving.Mirror
-import scala.annotation.nowarn
 
 case class description(value: String) extends scala.annotation.StaticAnnotation
 

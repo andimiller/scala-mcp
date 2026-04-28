@@ -1,15 +1,10 @@
 package net.andimiller.mcp.examples.chat
 
+import scala.concurrent.duration.*
+
 import cats.effect.*
 import cats.syntax.all.*
-import com.comcast.ip4s.*
-import io.circe.Decoder
-import io.circe.Encoder
-import dev.profunktor.redis4cats.Redis
-import dev.profunktor.redis4cats.connection.RedisClient
-import dev.profunktor.redis4cats.data.RedisCodec
-import dev.profunktor.redis4cats.pubsub.PubSub
-import dev.profunktor.redis4cats.effect.Log.Stdout.given
+
 import net.andimiller.mcp.core.protocol.PromptMessage
 import net.andimiller.mcp.core.protocol.ResourceContent
 import net.andimiller.mcp.core.schema.JsonSchema
@@ -20,7 +15,14 @@ import net.andimiller.mcp.core.state.StateRef
 import net.andimiller.mcp.http4s.McpHttp
 import net.andimiller.mcp.redis.McpRedis
 
-import scala.concurrent.duration.*
+import com.comcast.ip4s.*
+import dev.profunktor.redis4cats.Redis
+import dev.profunktor.redis4cats.connection.RedisClient
+import dev.profunktor.redis4cats.data.RedisCodec
+import dev.profunktor.redis4cats.effect.Log.Stdout.given
+import dev.profunktor.redis4cats.pubsub.PubSub
+import io.circe.Decoder
+import io.circe.Encoder
 
 // ── Per-session context ──────────────────────────────────────────────
 

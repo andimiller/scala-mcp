@@ -1,6 +1,7 @@
 package net.andimiller.mcp.openapi
 
 import cats.effect.IO
+
 import munit.CatsEffectSuite
 import sttp.apispec.openapi.OpenAPI
 import sttp.apispec.openapi.circe.given

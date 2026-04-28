@@ -2,6 +2,10 @@ package net.andimiller.mcp.golden
 
 import cats.effect.IO
 import cats.effect.std.Env
+
+import net.andimiller.mcp.core.protocol.*
+import net.andimiller.mcp.core.server.Server
+
 import fs2.Stream
 import fs2.io.file.Files
 import fs2.io.file.Path
@@ -9,8 +13,6 @@ import fs2.text
 import io.circe.Encoder
 import io.circe.syntax.*
 import munit.CatsEffectSuite
-import net.andimiller.mcp.core.protocol.*
-import net.andimiller.mcp.core.server.Server
 
 abstract class McpGoldenSuite(using sourcecode.File) extends CatsEffectSuite:
 

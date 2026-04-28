@@ -1,10 +1,12 @@
 package net.andimiller.mcp.openapi
 
+import scala.annotation.nowarn
+
 import cats.effect.IO
+
 import munit.CatsEffectSuite
 import org.http4s.HttpApp
 import org.http4s.client.Client
-import scala.annotation.nowarn
 
 class SpecLoaderSuite extends CatsEffectSuite:
 
@@ -13,7 +15,7 @@ class SpecLoaderSuite extends CatsEffectSuite:
 
   private def fixturePath(name: String): String =
     val url = getClass.getClassLoader.getResource(name)
-    assert(url != null, s"missing test resource: $name")
+    assert(url != null, s"missing test resource: $name") // scalafix:ok
     url.getPath
 
   test("load: parses a JSON OpenAPI spec from a local file") {

@@ -1,6 +1,7 @@
 package net.andimiller.mcp.explorer
 
 import cats.effect.IO
+
 import tyrian.*
 
 object Main extends TyrianIOApp[Msg, Model]:

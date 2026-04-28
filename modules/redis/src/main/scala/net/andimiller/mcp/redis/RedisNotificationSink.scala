@@ -3,15 +3,17 @@ package net.andimiller.mcp.redis
 import cats.effect.kernel.Async
 import cats.effect.kernel.Resource
 import cats.syntax.all.*
+
+import net.andimiller.mcp.core.codecs.CirceCodecs.given
+import net.andimiller.mcp.core.protocol.jsonrpc.Message
+import net.andimiller.mcp.core.server.NotificationSink
+
 import dev.profunktor.redis4cats.data.RedisChannel
 import dev.profunktor.redis4cats.pubsub.PubSubCommands
 import fs2.Stream
 import io.circe.Json
 import io.circe.parser.decode
 import io.circe.syntax.*
-import net.andimiller.mcp.core.codecs.CirceCodecs.given
-import net.andimiller.mcp.core.protocol.jsonrpc.Message
-import net.andimiller.mcp.core.server.NotificationSink
 
 /** A [[NotificationSink]] backed by Redis pub/sub, enabling notifications to route across multiple server instances.
   *

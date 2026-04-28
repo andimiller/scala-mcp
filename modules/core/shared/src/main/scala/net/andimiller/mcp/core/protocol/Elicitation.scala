@@ -1,9 +1,10 @@
 package net.andimiller.mcp.core.protocol
 
+import net.andimiller.mcp.core.protocol.jsonrpc.JsonRpcError
+
 import io.circe.Decoder
 import io.circe.Encoder
 import io.circe.Json
-import net.andimiller.mcp.core.protocol.jsonrpc.JsonRpcError
 
 /** Server→client `elicitation/create` request envelope (form mode). */
 case class ElicitationCreateRequest(

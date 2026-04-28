@@ -1,8 +1,10 @@
 package net.andimiller.mcp.core.transport
 
 import cats.effect.kernel.Async
-import fs2.Stream
+
 import net.andimiller.mcp.core.protocol.jsonrpc.Message
+
+import fs2.Stream
 
 /** Transport-agnostic abstraction for bidirectional message communication.
   *

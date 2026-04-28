@@ -1,13 +1,15 @@
 package net.andimiller.mcp.examples.pomodoro
 
+import scala.concurrent.duration.*
+
+import cats.effect.Fiber
 import cats.effect.IO
 import cats.effect.Ref
-import cats.effect.Fiber
 import cats.syntax.all.*
-import io.circe.Json
+
 import net.andimiller.mcp.core.server.NotificationSink
 
-import scala.concurrent.duration.*
+import io.circe.Json
 
 /** Core Pomodoro timer logic.
   *
@@ -109,17 +111,17 @@ class PomodoroTimer(
       s   <- state.get
       h   <- history.get
     yield s match
-      case TimerState.Running(startedAt, dur, label) if label == name =>
+      case TimerState.Running(startedAt, dur, label) if label === name =>
         val elapsed   = (now - startedAt).millis
         val remaining = (dur - elapsed).max(Duration.Zero)
         Some(s"Running: $label — ${remaining.toMinutes}m ${remaining.toSeconds % 60}s remaining")
-      case TimerState.Paused(elapsed, dur, label) if label == name =>
+      case TimerState.Paused(elapsed, dur, label) if label === name =>
         val remaining = (dur - elapsed).max(Duration.Zero)
         Some(s"Paused: $label — ${remaining.toMinutes}m ${remaining.toSeconds % 60}s remaining")
-      case TimerState.Completed(label, completedAt) if label == name =>
+      case TimerState.Completed(label, completedAt) if label === name =>
         Some(s"Completed: $label at ${java.time.Instant.ofEpochMilli(completedAt)}")
       case _ =>
-        h.find(_.label == name).map { r =>
+        h.find(_.label === name).map { r =>
           s"Completed: ${r.label} (${r.duration.toMinutes}min) at ${java.time.Instant.ofEpochMilli(r.completedAt)}"
         }
 

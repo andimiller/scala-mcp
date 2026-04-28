@@ -2,15 +2,16 @@ package net.andimiller.mcp.openapi
 
 import cats.effect.IO
 import cats.syntax.all.*
+
 import fs2.io.file.Files
 import fs2.io.file.Path
 import io.circe.Json
 import io.circe.yaml.Parser as YamlParser
-import org.http4s.client.Client
-import org.http4s.headers.Accept
 import org.http4s.MediaType
 import org.http4s.Request
 import org.http4s.Uri
+import org.http4s.client.Client
+import org.http4s.headers.Accept
 import sttp.apispec.openapi.OpenAPI
 import sttp.apispec.openapi.circe.given
 

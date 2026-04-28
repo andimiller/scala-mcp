@@ -1,7 +1,14 @@
 package net.andimiller.mcp.openapi
 
-import io.circe.Json
+import scala.collection.immutable.ListMap
+
+import cats.syntax.all.*
+
 import net.andimiller.mcp.core.protocol.ToolDefinition
+
+import io.circe.Json
+import sttp.apispec.ExampleValue
+import sttp.apispec.SchemaLike
 import sttp.apispec.openapi.OpenAPI
 import sttp.apispec.openapi.Operation
 import sttp.apispec.openapi.Parameter
@@ -9,10 +16,6 @@ import sttp.apispec.openapi.ParameterIn
 import sttp.apispec.openapi.PathItem
 import sttp.apispec.openapi.ResponsesCodeKey
 import sttp.apispec.openapi.ResponsesDefaultKey
-import sttp.apispec.ExampleValue
-import sttp.apispec.SchemaLike
-
-import scala.collection.immutable.ListMap
 
 case class ResolvedParam(name: String, required: Boolean)
 
@@ -79,9 +82,9 @@ object OpenApiOperation:
   ): OpenApiOperation =
     val params = operation.parameters.flatMap(SchemaConverter.resolveParameter(_, components.parameters))
 
-    val pathParams   = params.filter(_.in == ParameterIn.Path)
-    val queryParams  = params.filter(_.in == ParameterIn.Query)
-    val headerParams = params.filter(_.in == ParameterIn.Header)
+    val pathParams   = params.filter(_.in.value === ParameterIn.Path.value)
+    val queryParams  = params.filter(_.in.value === ParameterIn.Query.value)
+    val headerParams = params.filter(_.in.value === ParameterIn.Header.value)
 
     val paramProperties: ListMap[String, Json] = ListMap.from(
       (pathParams ++ queryParams ++ headerParams).map { p =>

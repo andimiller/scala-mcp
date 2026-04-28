@@ -1,21 +1,23 @@
 package net.andimiller.mcp.stdio
 
+import cats.effect.LiftIO
 import cats.effect.kernel.Async
 import cats.effect.std.Console
 import cats.syntax.all.*
-import fs2.Stream
-import io.circe.parser.decode
-import io.circe.syntax.*
+
+import net.andimiller.mcp.core.codecs.CirceCodecs.given
 import net.andimiller.mcp.core.protocol.jsonrpc.Message
-import net.andimiller.mcp.core.transport.MessageChannel
 import net.andimiller.mcp.core.server.ClientChannel
 import net.andimiller.mcp.core.server.Server
 import net.andimiller.mcp.core.server.ServerSession
 import net.andimiller.mcp.core.server.ServerSessionConfig
 import net.andimiller.mcp.core.server.SessionContext
 import net.andimiller.mcp.core.state.SessionRefs
-import net.andimiller.mcp.core.codecs.CirceCodecs.given
-import cats.effect.LiftIO
+import net.andimiller.mcp.core.transport.MessageChannel
+
+import fs2.Stream
+import io.circe.parser.decode
+import io.circe.syntax.*
 
 /** Transport implementation using stdin/stdout for communication.
   *

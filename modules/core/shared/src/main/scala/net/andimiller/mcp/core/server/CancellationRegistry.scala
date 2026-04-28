@@ -5,6 +5,7 @@ import cats.effect.kernel.Deferred
 import cats.effect.kernel.Ref
 import cats.effect.syntax.all.*
 import cats.syntax.all.*
+
 import net.andimiller.mcp.core.protocol.jsonrpc.RequestId
 
 /** Per-session registry of in-flight requests that supports cooperative cancellation.

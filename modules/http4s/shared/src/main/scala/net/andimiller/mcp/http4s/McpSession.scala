@@ -1,6 +1,7 @@
 package net.andimiller.mcp.http4s
 
 import cats.effect.kernel.Ref
+
 import net.andimiller.mcp.core.server.ClientChannel
 import net.andimiller.mcp.core.server.RequestHandler
 

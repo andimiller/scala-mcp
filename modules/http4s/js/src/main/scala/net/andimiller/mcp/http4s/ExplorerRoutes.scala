@@ -2,6 +2,7 @@ package net.andimiller.mcp.http4s
 
 import cats.effect.kernel.Async
 import cats.syntax.all.*
+
 import fs2.io.file.Files
 import fs2.io.file.Path as FsPath
 import org.http4s.*

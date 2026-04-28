@@ -3,9 +3,11 @@ package net.andimiller.mcp.core.server
 import cats.effect.kernel.Async
 import cats.effect.kernel.Resource
 import cats.syntax.all.*
+
+import net.andimiller.mcp.core.protocol.jsonrpc.Message
+
 import fs2.Stream
 import fs2.concurrent.Topic
-import net.andimiller.mcp.core.protocol.jsonrpc.Message
 
 /** Bundle of every server→client communication primitive.
   *

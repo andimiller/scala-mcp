@@ -1,9 +1,9 @@
 package net.andimiller.mcp.examples.dice
 
-import cats.parse.Parser as P
-import cats.parse.Parser0 as P0
 import cats.parse.Numbers
 import cats.parse.Rfc5234.wsp
+import cats.parse.Parser as P
+import cats.parse.Parser0 as P0
 
 /** Dice notation parser for expressions like "1d6", "2d20 + 5", "3d4 - 2", "2d6 + 1d2 - 1".
   *

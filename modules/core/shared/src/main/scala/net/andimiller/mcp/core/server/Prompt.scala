@@ -2,8 +2,10 @@ package net.andimiller.mcp.core.server
 
 import cats.effect.kernel.Async
 import cats.syntax.functor.*
-import io.circe.Json
+
 import net.andimiller.mcp.core.protocol.*
+
+import io.circe.Json
 
 class Prompt[F[_], Ctx](
     val name: String,

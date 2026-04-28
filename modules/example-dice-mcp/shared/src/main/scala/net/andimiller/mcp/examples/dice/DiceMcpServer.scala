@@ -5,9 +5,7 @@ import cats.effect.IOApp
 import cats.effect.Ref
 import cats.effect.std.Random
 import cats.syntax.all.*
-import io.circe.Codec
-import io.circe.Decoder
-import io.circe.Encoder
+
 import net.andimiller.mcp.core.protocol.ElicitResult
 import net.andimiller.mcp.core.protocol.ElicitationError
 import net.andimiller.mcp.core.protocol.PromptArgument
@@ -16,13 +14,17 @@ import net.andimiller.mcp.core.protocol.ToolResult
 import net.andimiller.mcp.core.schema.JsonSchema
 import net.andimiller.mcp.core.schema.description
 import net.andimiller.mcp.core.schema.example
-import net.andimiller.mcp.core.server.tool
 import net.andimiller.mcp.core.server.ElicitationClient
 import net.andimiller.mcp.core.server.McpResource
 import net.andimiller.mcp.core.server.Prompt
 import net.andimiller.mcp.core.server.Server
 import net.andimiller.mcp.core.server.ServerBuilder
+import net.andimiller.mcp.core.server.tool
 import net.andimiller.mcp.stdio.StdioTransport
+
+import io.circe.Codec
+import io.circe.Decoder
+import io.circe.Encoder
 import sttp.apispec.Schema
 
 object DiceMcpServer extends IOApp.Simple:
@@ -158,7 +160,7 @@ object DiceMcpServer extends IOApp.Simple:
             def elicitChoice(round: Int): IO[Either[ElicitationError, ElicitResult[DiceChoice]]] =
               r.elicitation.requestForm[DiceChoice](
                 message =
-                  if round == 0 then "Choose a dice to roll"
+                  if round === 0 then "Choose a dice to roll"
                   else "Choose another dice — or decline to stop"
               )
 

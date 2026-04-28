@@ -1,19 +1,21 @@
 package net.andimiller.mcp.redis
 
+import scala.concurrent.duration.FiniteDuration
+
 import cats.effect.kernel.Async
 import cats.effect.kernel.Ref
 import cats.syntax.all.*
-import dev.profunktor.redis4cats.RedisCommands
-import io.circe.Decoder
-import io.circe.Encoder
-import io.circe.parser.decode
-import io.circe.syntax.*
+
 import net.andimiller.mcp.http4s.AuthenticatedSessionStore
 import net.andimiller.mcp.http4s.McpSession
 import net.andimiller.mcp.http4s.SessionStore
 import net.andimiller.mcp.http4s.SessionStoreFactory
 
-import scala.concurrent.duration.FiniteDuration
+import dev.profunktor.redis4cats.RedisCommands
+import io.circe.Decoder
+import io.circe.Encoder
+import io.circe.parser.decode
+import io.circe.syntax.*
 
 /** A [[SessionStore]] that uses a Redis hash for session registry (with TTL) and a local in-memory cache for live
   * `McpSession` objects (which contain non-serializable handles like request handlers and notification sinks).

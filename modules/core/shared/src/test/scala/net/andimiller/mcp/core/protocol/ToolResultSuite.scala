@@ -1,11 +1,12 @@
 package net.andimiller.mcp.core.protocol
 
+import net.andimiller.mcp.core.protocol.content.Content
+import net.andimiller.mcp.core.schema.JsonSchema
+
 import io.circe.Encoder
 import io.circe.Json
 import io.circe.syntax.*
 import munit.FunSuite
-import net.andimiller.mcp.core.protocol.content.Content
-import net.andimiller.mcp.core.schema.JsonSchema
 
 class ToolResultSuite extends FunSuite:
 

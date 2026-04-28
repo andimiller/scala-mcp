@@ -1,11 +1,12 @@
 package net.andimiller.mcp.openapi
 
-import munit.FunSuite
 import scala.collection.immutable.ListMap
-import sttp.apispec.Schema
-import sttp.apispec.SchemaType
-import sttp.apispec.SchemaLike
+
 import io.circe.Json
+import munit.FunSuite
+import sttp.apispec.Schema
+import sttp.apispec.SchemaLike
+import sttp.apispec.SchemaType
 
 class SchemaConverterSuite extends FunSuite:
 

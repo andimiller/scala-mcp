@@ -2,9 +2,11 @@ package net.andimiller.mcp.openapi
 
 import cats.effect.IO
 import cats.syntax.all.*
-import io.circe.Json
+
 import net.andimiller.mcp.core.protocol.ToolResult
 import net.andimiller.mcp.core.protocol.content.Content
+
+import io.circe.Json
 import org.http4s.EntityDecoder
 import org.http4s.Header
 import org.http4s.Headers

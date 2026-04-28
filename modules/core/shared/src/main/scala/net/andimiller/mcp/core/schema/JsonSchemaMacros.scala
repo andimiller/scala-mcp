@@ -1,6 +1,7 @@
 package net.andimiller.mcp.core.schema
 
 import scala.quoted.*
+
 import sttp.apispec.ExampleSingleValue
 import sttp.apispec.ExampleValue
 

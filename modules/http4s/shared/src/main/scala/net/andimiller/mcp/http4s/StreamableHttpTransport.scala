@@ -6,13 +6,7 @@ import cats.effect.kernel.Ref
 import cats.effect.kernel.Resource
 import cats.effect.std.UUIDGen
 import cats.syntax.all.*
-import io.circe.parser.decode
-import io.circe.syntax.*
-import org.http4s.*
-import org.http4s.dsl.Http4sDsl
-import org.http4s.headers.`Content-Type`
-import org.typelevel.ci.*
-import fs2.Stream
+
 import net.andimiller.mcp.core.codecs.CirceCodecs.given
 import net.andimiller.mcp.core.protocol.jsonrpc.Message
 import net.andimiller.mcp.core.server.ClientChannel
@@ -21,6 +15,14 @@ import net.andimiller.mcp.core.server.RequestHandler
 import net.andimiller.mcp.core.server.Server
 import net.andimiller.mcp.core.server.SessionContext
 import net.andimiller.mcp.core.state.SessionRefs
+
+import fs2.Stream
+import io.circe.parser.decode
+import io.circe.syntax.*
+import org.http4s.*
+import org.http4s.dsl.Http4sDsl
+import org.http4s.headers.`Content-Type`
+import org.typelevel.ci.*
 
 /** Streamable HTTP transport for MCP (spec 2025-03-26).
   *

@@ -1,8 +1,9 @@
 package net.andimiller.mcp.openapi
 
-import io.circe.Json
 import java.nio.file.Path
 import java.nio.file.Paths
+
+import io.circe.Json
 
 enum ConfigFormat:
 

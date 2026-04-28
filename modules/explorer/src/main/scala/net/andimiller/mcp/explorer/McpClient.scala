@@ -1,12 +1,14 @@
 package net.andimiller.mcp.explorer
 
 import cats.syntax.all.*
-import io.circe.{Decoder as CirceDecoder, *}
-import io.circe.syntax.*
-import io.circe.parser.*
+
+import net.andimiller.mcp.core.codecs.CirceCodecs.given
 import net.andimiller.mcp.core.protocol.*
 import net.andimiller.mcp.core.protocol.jsonrpc.{Message as JsonRpcMessage, *}
-import net.andimiller.mcp.core.codecs.CirceCodecs.given
+
+import io.circe.parser.*
+import io.circe.syntax.*
+import io.circe.{Decoder as CirceDecoder, *}
 import tyrian.http.*
 
 object McpClient:

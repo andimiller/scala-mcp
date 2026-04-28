@@ -1,7 +1,8 @@
 package net.andimiller.mcp.tapir
 
-import io.circe.syntax.*
 import net.andimiller.mcp.core.schema.JsonSchema
+
+import io.circe.syntax.*
 import sttp.apispec.circe.given
 import sttp.tapir.Schema
 import sttp.tapir.Schema.annotations.description

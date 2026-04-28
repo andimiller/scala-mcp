@@ -1,15 +1,17 @@
 package net.andimiller.mcp.redis
 
+import scala.concurrent.duration.FiniteDuration
+
 import cats.effect.kernel.Async
 import cats.syntax.all.*
+
+import net.andimiller.mcp.core.state.StateRef
+
 import dev.profunktor.redis4cats.RedisCommands
 import io.circe.Decoder
 import io.circe.Encoder
 import io.circe.parser.decode
 import io.circe.syntax.*
-import net.andimiller.mcp.core.state.StateRef
-
-import scala.concurrent.duration.FiniteDuration
 
 /** A [[StateRef]] backed by a field in a Redis hash, with TTL on the hash key.
   *

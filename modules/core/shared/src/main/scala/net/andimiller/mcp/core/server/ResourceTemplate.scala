@@ -1,6 +1,7 @@
 package net.andimiller.mcp.core.server
 
 import cats.effect.kernel.Async
+
 import net.andimiller.mcp.core.protocol.*
 
 class ResourceTemplate[F[_], Ctx](

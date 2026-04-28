@@ -5,10 +5,7 @@ import cats.effect.IO
 import cats.effect.IOApp
 import cats.effect.Ref
 import cats.syntax.all.*
-import com.comcast.ip4s.*
-import io.circe.Codec
-import io.circe.Decoder
-import io.circe.Encoder
+
 import net.andimiller.enumerive.circe.LabelCodec
 import net.andimiller.mcp.core.protocol.ElicitResult
 import net.andimiller.mcp.core.protocol.ElicitationError
@@ -16,10 +13,15 @@ import net.andimiller.mcp.core.protocol.ToolResult
 import net.andimiller.mcp.core.schema.JsonSchema
 import net.andimiller.mcp.core.schema.description
 import net.andimiller.mcp.core.schema.example
-import net.andimiller.mcp.core.server.contextualTool
 import net.andimiller.mcp.core.server.ElicitationClient
+import net.andimiller.mcp.core.server.contextualTool
 import net.andimiller.mcp.http4s.McpHttp
 import net.andimiller.mcp.http4s.StreamingMcpHttpBuilder
+
+import com.comcast.ip4s.*
+import io.circe.Codec
+import io.circe.Decoder
+import io.circe.Encoder
 import sttp.apispec.Schema
 
 /** Loosely D&D 5e–themed character creator demonstrating multi-step elicitation over HTTP.

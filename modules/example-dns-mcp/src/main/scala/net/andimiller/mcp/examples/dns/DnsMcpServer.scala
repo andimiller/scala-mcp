@@ -2,15 +2,17 @@ package net.andimiller.mcp.examples.dns
 
 import cats.effect.*
 import cats.syntax.all.*
-import com.comcast.ip4s.{Dns as _, *}
-import io.circe.Decoder
-import io.circe.Encoder
+
 import net.andimiller.mcp.core.protocol.PromptArgument
 import net.andimiller.mcp.core.protocol.PromptMessage
 import net.andimiller.mcp.core.schema.JsonSchema
 import net.andimiller.mcp.core.schema.description
 import net.andimiller.mcp.core.server.*
 import net.andimiller.mcp.http4s.McpHttp
+
+import com.comcast.ip4s.{Dns as _, *}
+import io.circe.Decoder
+import io.circe.Encoder
 
 object DnsMcpServer extends IOApp.Simple:
 

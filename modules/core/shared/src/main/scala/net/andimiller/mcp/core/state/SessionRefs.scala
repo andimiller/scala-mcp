@@ -3,6 +3,7 @@ package net.andimiller.mcp.core.state
 import cats.effect.kernel.Async
 import cats.effect.kernel.Ref
 import cats.syntax.all.*
+
 import io.circe.Decoder
 import io.circe.Encoder
 

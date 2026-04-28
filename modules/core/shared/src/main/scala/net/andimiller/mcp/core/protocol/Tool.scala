@@ -1,13 +1,14 @@
 package net.andimiller.mcp.core.protocol
 
-import io.circe.Encoder
+import net.andimiller.mcp.core.codecs.CirceCodecs.given
+import net.andimiller.mcp.core.protocol.content.Content
+import net.andimiller.mcp.core.schema.JsonSchema
+
 import io.circe.Decoder
+import io.circe.Encoder
 import io.circe.Json
 import io.circe.JsonObject
 import io.circe.syntax.*
-import net.andimiller.mcp.core.protocol.content.Content
-import net.andimiller.mcp.core.codecs.CirceCodecs.given
-import net.andimiller.mcp.core.schema.JsonSchema
 import sttp.apispec.circe.given
 
 /** Tool definition in MCP protocol */

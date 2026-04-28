@@ -4,11 +4,13 @@ import cats.Applicative
 import cats.effect.kernel.Concurrent
 import cats.effect.kernel.Resource
 import cats.syntax.all.*
+
+import net.andimiller.mcp.core.protocol.jsonrpc.Message
+
 import fs2.Stream
 import fs2.concurrent.Topic
 import io.circe.Json
 import io.circe.syntax.*
-import net.andimiller.mcp.core.protocol.jsonrpc.Message
 
 /** Abstraction for sending server-initiated notifications to clients.
   *

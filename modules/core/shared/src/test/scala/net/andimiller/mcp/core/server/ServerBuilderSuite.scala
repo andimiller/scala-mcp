@@ -1,10 +1,12 @@
 package net.andimiller.mcp.core.server
 
 import cats.effect.IO
-import io.circe.Json
-import munit.CatsEffectSuite
+
 import net.andimiller.mcp.core.protocol.*
 import net.andimiller.mcp.core.protocol.content.Content
+
+import io.circe.Json
+import munit.CatsEffectSuite
 
 class ServerBuilderSuite extends CatsEffectSuite:
 

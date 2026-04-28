@@ -1,16 +1,18 @@
 package net.andimiller.mcp.examples.pomodoro
 
+import scala.concurrent.duration.*
+
 import cats.effect.*
+
+import net.andimiller.mcp.http4s.McpHttp
+import net.andimiller.mcp.redis.McpRedis
+
 import com.comcast.ip4s.*
 import dev.profunktor.redis4cats.Redis
 import dev.profunktor.redis4cats.connection.RedisClient
 import dev.profunktor.redis4cats.data.RedisCodec
 import dev.profunktor.redis4cats.effect.Log.Stdout.given
 import dev.profunktor.redis4cats.pubsub.PubSub
-import net.andimiller.mcp.http4s.McpHttp
-import net.andimiller.mcp.redis.McpRedis
-
-import scala.concurrent.duration.*
 
 object PomodoroMcpServerRedis extends IOApp.Simple:
 

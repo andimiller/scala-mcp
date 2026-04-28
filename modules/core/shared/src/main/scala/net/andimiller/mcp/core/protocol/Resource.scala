@@ -1,7 +1,7 @@
 package net.andimiller.mcp.core.protocol
 
-import io.circe.Encoder
 import io.circe.Decoder
+import io.circe.Encoder
 
 /** Resource definition in MCP protocol */
 case class ResourceDefinition(

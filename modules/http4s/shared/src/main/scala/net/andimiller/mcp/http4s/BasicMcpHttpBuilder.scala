@@ -1,12 +1,14 @@
 package net.andimiller.mcp.http4s
 
-import cats.effect.kernel.Async
 import cats.effect.IO
 import cats.effect.Resource
+import cats.effect.kernel.Async
 import cats.syntax.all.*
-import com.comcast.ip4s.*
+
 import net.andimiller.mcp.core.protocol.*
 import net.andimiller.mcp.core.server.*
+
+import com.comcast.ip4s.*
 import org.http4s.*
 
 class BasicMcpHttpBuilder[F[_]: Async] private[http4s] (

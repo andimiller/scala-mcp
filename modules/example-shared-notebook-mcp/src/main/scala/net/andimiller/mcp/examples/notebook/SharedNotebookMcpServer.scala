@@ -3,15 +3,17 @@ package net.andimiller.mcp.examples.notebook
 import cats.Eq
 import cats.effect.*
 import cats.syntax.all.*
-import com.comcast.ip4s.*
-import io.circe.Decoder
-import io.circe.Encoder
+
 import net.andimiller.mcp.core.protocol.PromptMessage
 import net.andimiller.mcp.core.protocol.ResourceContent
 import net.andimiller.mcp.core.schema.JsonSchema
 import net.andimiller.mcp.core.schema.description
 import net.andimiller.mcp.core.server.*
 import net.andimiller.mcp.http4s.McpHttp
+
+import com.comcast.ip4s.*
+import io.circe.Decoder
+import io.circe.Encoder
 import org.http4s.Header
 import org.http4s.Request
 import org.http4s.Response
@@ -38,7 +40,7 @@ object SharedNotebookMcpServer extends IOApp.Simple:
   private def decodeBasicAuth(request: Request[IO]): Option[UserContext] =
     request.headers.get[Authorization].flatMap {
       case Authorization(org.http4s.BasicCredentials(username, password)) =>
-        users.get(username).filter(_ == password).map(_ => UserContext(username))
+        users.get(username).filter(_ === password).map(_ => UserContext(username))
       case _ => None
     }
 

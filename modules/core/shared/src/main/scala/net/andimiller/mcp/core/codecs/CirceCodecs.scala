@@ -1,10 +1,11 @@
 package net.andimiller.mcp.core.codecs
 
+import net.andimiller.mcp.core.protocol.*
+import net.andimiller.mcp.core.protocol.content.*
+import net.andimiller.mcp.core.protocol.jsonrpc.*
+
 import io.circe.*
 import io.circe.syntax.*
-import net.andimiller.mcp.core.protocol.*
-import net.andimiller.mcp.core.protocol.jsonrpc.*
-import net.andimiller.mcp.core.protocol.content.*
 
 /** Custom Circe codecs for MCP protocol types that need special encoding.
   *

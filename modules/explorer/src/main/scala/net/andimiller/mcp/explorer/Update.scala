@@ -1,9 +1,12 @@
 package net.andimiller.mcp.explorer
 
 import cats.effect.IO
-import io.circe.{Decoder as CirceDecoder, *}
-import io.circe.parser.*
+import cats.syntax.all.*
+
 import net.andimiller.mcp.core.protocol.*
+
+import io.circe.parser.*
+import io.circe.{Decoder as CirceDecoder, *}
 import tyrian.*
 import tyrian.http.{Decoder as HttpDecoder, *}
 
@@ -21,7 +24,7 @@ object Update:
   private def httpDecodeWithSession(onOk: (InitializeResponse, String) => Msg, onErr: String => Msg): HttpDecoder[Msg] =
     HttpDecoder[Msg](
       resp =>
-        val sid = resp.headers.find(_._1.toLowerCase == "mcp-session-id").map(_._2).getOrElse("")
+        val sid = resp.headers.find(_._1.toLowerCase === "mcp-session-id").map(_._2).getOrElse("")
         McpClient.parseResp[InitializeResponse](resp.body) match
           case Right(a) => onOk(a, sid)
           case Left(e)  => onErr(e),

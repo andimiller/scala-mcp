@@ -4,13 +4,15 @@ import cats.effect.IO
 import cats.effect.kernel.Deferred
 import cats.effect.kernel.Ref
 import cats.syntax.all.*
+
+import net.andimiller.mcp.core.protocol.*
+import net.andimiller.mcp.core.protocol.jsonrpc.Message
+import net.andimiller.mcp.core.schema.JsonSchema
+
 import io.circe.Codec
 import io.circe.Json
 import io.circe.syntax.*
 import munit.CatsEffectSuite
-import net.andimiller.mcp.core.protocol.*
-import net.andimiller.mcp.core.protocol.jsonrpc.Message
-import net.andimiller.mcp.core.schema.JsonSchema
 
 class ElicitationClientSuite extends CatsEffectSuite:
 

@@ -1,13 +1,15 @@
 package net.andimiller.mcp.redis
 
+import scala.concurrent.duration.FiniteDuration
+
 import cats.effect.kernel.Async
-import dev.profunktor.redis4cats.RedisCommands
-import io.circe.Decoder
-import io.circe.Encoder
+
 import net.andimiller.mcp.core.state.SessionRefs
 import net.andimiller.mcp.core.state.StateRef
 
-import scala.concurrent.duration.FiniteDuration
+import dev.profunktor.redis4cats.RedisCommands
+import io.circe.Decoder
+import io.circe.Encoder
 
 /** A [[SessionRefs]] backed by Redis hash fields, keyed by session ID.
   *

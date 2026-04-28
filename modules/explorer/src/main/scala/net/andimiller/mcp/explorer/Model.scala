@@ -1,6 +1,9 @@
 package net.andimiller.mcp.explorer
 
+import cats.Eq
+
 import net.andimiller.mcp.core.protocol.*
+
 import org.scalajs.dom
 
 enum ConnectionStatus:
@@ -17,6 +20,10 @@ enum ConnectionStatus:
 
   case Error(message: String)
 
+object ConnectionStatus:
+
+  given Eq[ConnectionStatus] = Eq.fromUniversalEquals
+
 enum Tab:
 
   case Tools
@@ -24,6 +31,10 @@ enum Tab:
   case Resources
 
   case Prompts
+
+object Tab:
+
+  given Eq[Tab] = Eq.fromUniversalEquals
 
 case class Model(
     serverUrl: String,

@@ -1,25 +1,27 @@
 package net.andimiller.mcp.http4s
 
+import scala.concurrent.duration.*
+
 import cats.effect.IO
 import cats.effect.kernel.Deferred
 import cats.effect.std.UUIDGen
 import cats.syntax.all.*
-import io.circe.Json
-import io.circe.syntax.*
-import io.circe.parser.decode
-import munit.CatsEffectSuite
+
 import net.andimiller.mcp.core.codecs.CirceCodecs.given
 import net.andimiller.mcp.core.protocol.*
 import net.andimiller.mcp.core.protocol.content.Content
 import net.andimiller.mcp.core.protocol.jsonrpc.Message
 import net.andimiller.mcp.core.protocol.jsonrpc.RequestId
 import net.andimiller.mcp.core.server.*
+
+import io.circe.Json
+import io.circe.parser.decode
+import io.circe.syntax.*
+import munit.CatsEffectSuite
 import org.http4s.*
 import org.http4s.headers.`Content-Type`
 import org.http4s.implicits.*
 import org.typelevel.ci.*
-
-import scala.concurrent.duration.*
 
 class StreamableHttpTransportSuite extends CatsEffectSuite:
 
@@ -93,7 +95,7 @@ class StreamableHttpTransportSuite extends CatsEffectSuite:
   private def initSession(routes: HttpRoutes[IO]): IO[String] =
     for
       resp <- postJson(routes, initBody(1L))
-      _    <- IO.raiseUnless(resp.status == Status.Ok)(new Exception(s"init failed: ${resp.status}"))
+      _    <- IO.raiseUnless(resp.status === Status.Ok)(new Exception(s"init failed: ${resp.status}"))
       sid  <- IO.fromOption(resp.headers.get(mcpSessionId).map(_.head.value))(
                new Exception("missing Mcp-Session-Id header")
              )

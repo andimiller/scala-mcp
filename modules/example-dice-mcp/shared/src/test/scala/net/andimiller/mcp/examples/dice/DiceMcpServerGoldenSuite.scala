@@ -3,6 +3,7 @@ package net.andimiller.mcp.examples.dice
 import cats.effect.IO
 import cats.effect.Ref
 import cats.effect.std.Random
+
 import net.andimiller.mcp.core.server.ElicitationClient
 import net.andimiller.mcp.core.server.Server
 import net.andimiller.mcp.core.server.ServerRequester

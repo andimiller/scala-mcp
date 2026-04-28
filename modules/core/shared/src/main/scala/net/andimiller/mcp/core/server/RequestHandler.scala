@@ -2,12 +2,14 @@ package net.andimiller.mcp.core.server
 
 import cats.effect.kernel.Async
 import cats.syntax.all.*
-import io.circe.Json
-import io.circe.syntax.*
+
 import net.andimiller.mcp.core.protocol.*
 import net.andimiller.mcp.core.protocol.jsonrpc.JsonRpcError
 import net.andimiller.mcp.core.protocol.jsonrpc.Message
 import net.andimiller.mcp.core.protocol.jsonrpc.RequestId
+
+import io.circe.Json
+import io.circe.syntax.*
 
 /** Pure request→response message handler extracted from ServerSession.
   *
@@ -28,7 +30,7 @@ class RequestHandler[F[_]: Async](
     * `ping` is trivial and used for liveness, so cancelling it is pointless.
     */
   private def isUncancellable(method: String): Boolean =
-    method == "initialize" || method == "ping"
+    method === "initialize" || method === "ping"
 
   /** Handle a single incoming message and optionally produce a response. */
   def handle(message: Message): F[Option[Message]] = message match

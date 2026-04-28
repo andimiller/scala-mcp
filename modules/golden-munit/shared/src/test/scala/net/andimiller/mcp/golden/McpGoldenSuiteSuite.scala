@@ -1,14 +1,16 @@
 package net.andimiller.mcp.golden
 
 import cats.effect.IO
-import io.circe.Decoder
-import io.circe.Encoder
+
 import net.andimiller.mcp.core.protocol.*
 import net.andimiller.mcp.core.schema.JsonSchema
 import net.andimiller.mcp.core.server.Prompt
 import net.andimiller.mcp.core.server.Server
 import net.andimiller.mcp.core.server.ServerBuilder
 import net.andimiller.mcp.core.server.tool
+
+import io.circe.Decoder
+import io.circe.Encoder
 
 class McpGoldenSuiteSuite extends McpGoldenSuite:
 

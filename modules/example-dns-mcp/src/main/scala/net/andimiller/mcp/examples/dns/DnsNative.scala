@@ -6,9 +6,9 @@ import scala.scalajs.js.annotation.JSImport
 @js.native
 trait NativeMxRecord extends js.Object:
 
-  val exchange: String = js.native
+  val exchange: String = js.native // scalafix:ok
 
-  val priority: Int = js.native
+  val priority: Int = js.native // scalafix:ok
 
 @js.native
 @JSImport("dns", JSImport.Default)

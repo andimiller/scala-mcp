@@ -1,16 +1,18 @@
 package net.andimiller.mcp.core.server
 
+import scala.concurrent.duration.*
+
 import cats.effect.IO
 import cats.effect.kernel.Deferred
-import io.circe.Json
-import io.circe.syntax.*
-import munit.CatsEffectSuite
+
 import net.andimiller.mcp.core.protocol.*
 import net.andimiller.mcp.core.protocol.content.Content
 import net.andimiller.mcp.core.protocol.jsonrpc.Message
 import net.andimiller.mcp.core.protocol.jsonrpc.RequestId
 
-import scala.concurrent.duration.*
+import io.circe.Json
+import io.circe.syntax.*
+import munit.CatsEffectSuite
 
 class RequestHandlerCancellationSuite extends CatsEffectSuite:
 

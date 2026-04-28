@@ -1,10 +1,11 @@
 package net.andimiller.mcp.core.protocol
 
-import io.circe.Encoder
-import io.circe.Decoder
-import io.circe.Json
-import net.andimiller.mcp.core.protocol.content.Content
 import net.andimiller.mcp.core.codecs.CirceCodecs.given
+import net.andimiller.mcp.core.protocol.content.Content
+
+import io.circe.Decoder
+import io.circe.Encoder
+import io.circe.Json
 
 /** Role in a prompt message */
 enum PromptRole:
