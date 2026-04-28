@@ -298,7 +298,6 @@ object StreamingMcpHttpBuilder:
 
   extension [Ctx](builder: StreamingMcpHttpBuilder[IO, Ctx])
     def serve: Resource[IO, org.http4s.server.Server] =
-      given UUIDGen[IO] = UUIDGen.fromSync[IO]
       builder.routes.flatMap { mcpRoutes =>
         val app = McpHttp.buildApp(mcpRoutes, builder.mConfig)
         EmberServerBuilder.default[IO]

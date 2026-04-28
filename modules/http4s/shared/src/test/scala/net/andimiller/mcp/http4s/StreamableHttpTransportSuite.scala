@@ -24,8 +24,6 @@ class StreamableHttpTransportSuite extends CatsEffectSuite:
 
   override def munitIOTimeout: FiniteDuration = 10.seconds
 
-  given UUIDGen[IO] = UUIDGen.fromSync[IO]
-
   private val mcpSessionId = ci"Mcp-Session-Id"
 
   private def echoTool: Tool.Resolved[IO] =

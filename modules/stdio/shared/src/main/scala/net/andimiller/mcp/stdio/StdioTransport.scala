@@ -11,6 +11,7 @@ import net.andimiller.mcp.core.transport.MessageChannel
 import net.andimiller.mcp.core.server.{ClientChannel, Server, ServerSession, ServerSessionConfig, SessionContext}
 import net.andimiller.mcp.core.state.SessionRefs
 import net.andimiller.mcp.core.codecs.CirceCodecs.given
+import cats.effect.LiftIO
 
 /**
  * Transport implementation using stdin/stdout for communication.
@@ -25,12 +26,13 @@ object StdioTransport:
    *
    * Reads JSON-RPC messages from stdin (one per line) and writes responses to stdout.
    */
-  def channel[F[_]: Async: Console]: F[MessageChannel[F]] =
+  def channel[F[_]: Async: LiftIO: Console]: F[MessageChannel[F]] =
     val console = Console[F]
     new MessageChannel[F]:
 
       def incoming: Stream[F, Message] =
-        Stream.repeatEval(console.readLine)
+        fs2.io.stdin[F](1024)
+          .through(fs2.text.utf8.decode)
           .filter(_.trim.nonEmpty)
           .evalMap { line =>
             decode[Message](line) match
@@ -49,7 +51,7 @@ object StdioTransport:
    *
    * This will block until stdin is closed or an error occurs.
    */
-  def run[F[_]: Async: Console](
+  def run[F[_]: Async: LiftIO: Console](
     server: Server[F],
     clientChannel: ClientChannel[F],
     config: ServerSessionConfig = ServerSessionConfig.default
@@ -65,10 +67,10 @@ object StdioTransport:
    * transport's outbound traffic. Use the `SessionContext`-taking overload if the server
    * itself needs access to the channel (e.g. for notifications or elicitation requests).
    */
-  def run[F[_]: Async: Console](server: Server[F], config: ServerSessionConfig): F[Unit] =
+  def run[F[_]: Async: LiftIO: Console](server: Server[F], config: ServerSessionConfig): F[Unit] =
     ClientChannel.create[F].use(cc => run(server, cc, config))
 
-  def run[F[_]: Async: Console](server: Server[F]): F[Unit] =
+  def run[F[_]: Async: LiftIO: Console](server: Server[F]): F[Unit] =
     run(server, ServerSessionConfig.default)
 
   /**
@@ -78,7 +80,7 @@ object StdioTransport:
    *
    * Stdio is single-session, so the context's id is the literal `"stdio"`.
    */
-  def run[F[_]: Async: Console](
+  def run[F[_]: Async: LiftIO: Console](
     factory: SessionContext[F] => F[Server[F]],
     config: ServerSessionConfig
   ): F[Unit] =
@@ -87,11 +89,11 @@ object StdioTransport:
       factory(ctx).flatMap(run(_, cc, config))
     }
 
-  def run[F[_]: Async: Console](factory: SessionContext[F] => F[Server[F]]): F[Unit] =
+  def run[F[_]: Async: LiftIO: Console](factory: SessionContext[F] => F[Server[F]]): F[Unit] =
     run(factory, ServerSessionConfig.default)
 
   /**
    * Convenience method to run a server from an `F`-wrapped server.
    */
-  def runServer[F[_]: Async: Console](serverF: F[Server[F]]): F[Unit] =
+  def runServer[F[_]: Async: LiftIO: Console](serverF: F[Server[F]]): F[Unit] =
     serverF.flatMap(run[F])

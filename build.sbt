@@ -76,6 +76,7 @@ lazy val stdio = crossProject(JVMPlatform, JSPlatform, NativePlatform)
   .jsSettings(noCoverage*)
   .nativeSettings(noCoverage*)
   .dependsOn(core)
+  .settings(libraryDependencies ++= Seq("co.fs2" %%% "fs2-io" % "3.13.0"))
 
 lazy val http4s = crossProject(JVMPlatform, JSPlatform)
   .in(file("modules/http4s"))
