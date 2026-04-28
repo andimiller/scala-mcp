@@ -1,7 +1,7 @@
 package net.andimiller.mcp.examples.dice
 
 import cats.parse.{Parser as P, Parser0 as P0, Numbers}
-import cats.parse.Rfc5234.{wsp, digit}
+import cats.parse.Rfc5234.wsp
 
 /**
  * Dice notation parser for expressions like "1d6", "2d20 + 5", "3d4 - 2", "2d6 + 1d2 - 1".

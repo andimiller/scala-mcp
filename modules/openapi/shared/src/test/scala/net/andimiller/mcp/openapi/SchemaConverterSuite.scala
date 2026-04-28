@@ -4,7 +4,6 @@ import munit.FunSuite
 import scala.collection.immutable.ListMap
 import sttp.apispec.{Schema, SchemaType, SchemaLike}
 import io.circe.Json
-import io.circe.syntax.*
 
 class SchemaConverterSuite extends FunSuite:
 

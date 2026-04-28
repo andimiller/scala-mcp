@@ -11,8 +11,6 @@ import net.andimiller.mcp.core.server.*
 import net.andimiller.mcp.core.state.SessionRefs
 import org.http4s.*
 import org.http4s.ember.server.EmberServerBuilder
-import org.http4s.server.Router
-import org.http4s.server.middleware.GZip
 
 type Append[A, B] = B match
   case Unit => A

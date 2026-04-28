@@ -1,10 +1,8 @@
 package net.andimiller.mcp.examples.pomodoro
 
-import cats.effect.{IO, Ref, Resource, Fiber, Temporal}
-import cats.effect.syntax.all.*
+import cats.effect.{IO, Ref, Fiber}
 import cats.syntax.all.*
 import io.circe.Json
-import io.circe.syntax.*
 import net.andimiller.mcp.core.server.NotificationSink
 
 import scala.concurrent.duration.*

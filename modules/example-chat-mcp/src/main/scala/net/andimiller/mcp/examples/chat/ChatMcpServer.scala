@@ -5,12 +5,11 @@ import cats.syntax.all.*
 import com.comcast.ip4s.*
 import io.circe.{Decoder, Encoder}
 import dev.profunktor.redis4cats.Redis
-import dev.profunktor.redis4cats.RedisCommands
 import dev.profunktor.redis4cats.connection.RedisClient
 import dev.profunktor.redis4cats.data.RedisCodec
 import dev.profunktor.redis4cats.pubsub.PubSub
 import dev.profunktor.redis4cats.effect.Log.Stdout.given
-import net.andimiller.mcp.core.protocol.{PromptArgument, PromptMessage, ResourceContent}
+import net.andimiller.mcp.core.protocol.{PromptMessage, ResourceContent}
 import net.andimiller.mcp.core.schema.{JsonSchema, description}
 import net.andimiller.mcp.core.server.*
 import net.andimiller.mcp.core.state.{SessionRefs, StateRef}

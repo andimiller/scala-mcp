@@ -1,10 +1,9 @@
 package net.andimiller.mcp.examples.dice
 
-import cats.effect.{IO, IOApp, Ref, Resource}
+import cats.effect.{IO, IOApp, Ref}
 import cats.effect.std.Random
 import cats.syntax.all.*
 import io.circe.{Codec, Decoder, Encoder}
-import io.circe.syntax.*
 import net.andimiller.mcp.core.protocol.{ElicitResult, ElicitationError, PromptArgument, PromptMessage, ToolResult}
 import net.andimiller.mcp.core.schema.{JsonSchema, description, example}
 import net.andimiller.mcp.core.server.{tool, ElicitationClient, McpResource, Prompt, Server, ServerBuilder}

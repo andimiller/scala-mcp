@@ -8,7 +8,6 @@ import fs2.Stream
 import io.circe.Json
 import io.circe.syntax.*
 import munit.CatsEffectSuite
-import net.andimiller.mcp.core.codecs.CirceCodecs.given
 import net.andimiller.mcp.core.protocol.*
 import net.andimiller.mcp.core.protocol.content.Content
 import net.andimiller.mcp.core.protocol.jsonrpc.{Message, RequestId}

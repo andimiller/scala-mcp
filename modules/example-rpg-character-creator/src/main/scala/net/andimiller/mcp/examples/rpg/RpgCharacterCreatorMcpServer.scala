@@ -5,7 +5,6 @@ import cats.effect.{IO, IOApp, Ref}
 import cats.syntax.all.*
 import com.comcast.ip4s.*
 import io.circe.{Codec, Decoder, Encoder}
-import io.circe.syntax.*
 import net.andimiller.enumerive.circe.LabelCodec
 import net.andimiller.mcp.core.protocol.{ElicitResult, ElicitationError, ToolResult}
 import net.andimiller.mcp.core.schema.{JsonSchema, description, example}

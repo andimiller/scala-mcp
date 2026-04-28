@@ -4,7 +4,6 @@ import cats.effect.kernel.Async
 import cats.syntax.functor.*
 import io.circe.Json
 import net.andimiller.mcp.core.protocol.*
-import net.andimiller.mcp.core.protocol.ToolResult.given
 
 class Tool[F[_], Ctx, In, Out](
     val name: String,

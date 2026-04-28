@@ -5,14 +5,9 @@ import cats.effect.std.Console
 import cats.syntax.all.*
 import com.monovore.decline.*
 import com.monovore.decline.effect.CommandIOApp
-import io.circe.Json
-import io.circe.parser.{parse => parseJson}
-import io.circe.syntax.*
 import net.andimiller.mcp.core.server.ServerBuilder
 import net.andimiller.mcp.stdio.StdioTransport
 import org.http4s.ember.client.EmberClientBuilder
-
-import java.nio.file.{Files, Path, Paths}
 
 object OpenApiMcpServer extends CommandIOApp(
   name = "openapi-mcp-proxy",

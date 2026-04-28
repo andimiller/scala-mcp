@@ -1,7 +1,6 @@
 package net.andimiller.mcp.http4s
 
 import cats.effect.kernel.{Async, Ref}
-import cats.effect.kernel.Resource
 import cats.syntax.all.*
 
 /**

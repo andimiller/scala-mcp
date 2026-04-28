@@ -1,6 +1,5 @@
 package net.andimiller.mcp.explorer
 
-import io.circe.Json
 import net.andimiller.mcp.core.protocol.*
 import org.scalajs.dom
 

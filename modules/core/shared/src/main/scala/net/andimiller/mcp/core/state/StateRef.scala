@@ -2,7 +2,6 @@ package net.andimiller.mcp.core.state
 
 import cats.Functor
 import cats.effect.kernel.Ref
-import cats.syntax.all.*
 
 /**
  * A `Ref`-like abstraction for state that can be backed by in-memory or external storage (e.g. Redis).

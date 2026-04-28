@@ -3,7 +3,6 @@ package net.andimiller.mcp.core.protocol
 import io.circe.{Encoder, Json}
 import io.circe.syntax.*
 import munit.FunSuite
-import net.andimiller.mcp.core.protocol.ToolResult.given
 import net.andimiller.mcp.core.protocol.content.Content
 import net.andimiller.mcp.core.schema.JsonSchema
 

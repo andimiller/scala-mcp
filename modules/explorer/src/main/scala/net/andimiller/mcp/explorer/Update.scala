@@ -4,7 +4,6 @@ import cats.effect.IO
 import io.circe.{Decoder as CirceDecoder, *}
 import io.circe.parser.*
 import net.andimiller.mcp.core.protocol.*
-import net.andimiller.mcp.core.codecs.CirceCodecs.given
 import tyrian.*
 import tyrian.http.{Decoder as HttpDecoder, *}
 

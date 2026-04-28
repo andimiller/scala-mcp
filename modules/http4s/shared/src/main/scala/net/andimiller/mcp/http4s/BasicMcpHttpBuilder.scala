@@ -7,9 +7,6 @@ import com.comcast.ip4s.*
 import net.andimiller.mcp.core.protocol.*
 import net.andimiller.mcp.core.server.*
 import org.http4s.*
-import org.http4s.ember.server.EmberServerBuilder
-import org.http4s.server.Router
-import org.http4s.server.middleware.GZip
 
 class BasicMcpHttpBuilder[F[_]: Async] private[http4s] (
     val mName: String,

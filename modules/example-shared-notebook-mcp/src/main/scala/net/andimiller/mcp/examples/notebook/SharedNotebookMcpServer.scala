@@ -5,7 +5,7 @@ import cats.effect.*
 import cats.syntax.all.*
 import com.comcast.ip4s.*
 import io.circe.{Decoder, Encoder}
-import net.andimiller.mcp.core.protocol.{PromptArgument, PromptMessage, ResourceContent}
+import net.andimiller.mcp.core.protocol.{PromptMessage, ResourceContent}
 import net.andimiller.mcp.core.schema.{JsonSchema, description}
 import net.andimiller.mcp.core.server.*
 import net.andimiller.mcp.http4s.McpHttp

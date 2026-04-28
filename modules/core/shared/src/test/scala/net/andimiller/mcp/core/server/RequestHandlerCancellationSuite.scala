@@ -2,11 +2,9 @@ package net.andimiller.mcp.core.server
 
 import cats.effect.IO
 import cats.effect.kernel.Deferred
-import cats.syntax.all.*
 import io.circe.Json
 import io.circe.syntax.*
 import munit.CatsEffectSuite
-import net.andimiller.mcp.core.codecs.CirceCodecs.given
 import net.andimiller.mcp.core.protocol.*
 import net.andimiller.mcp.core.protocol.content.Content
 import net.andimiller.mcp.core.protocol.jsonrpc.{Message, RequestId}

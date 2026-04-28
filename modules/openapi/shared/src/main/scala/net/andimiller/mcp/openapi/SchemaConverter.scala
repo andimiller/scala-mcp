@@ -2,7 +2,7 @@ package net.andimiller.mcp.openapi
 
 import io.circe.Json
 import io.circe.syntax.*
-import sttp.apispec.{ExampleSingleValue, ExampleMultipleValue, ExampleValue, Schema, SchemaLike, AnySchema, SchemaType}
+import sttp.apispec.{ExampleSingleValue, ExampleMultipleValue, ExampleValue, Schema, SchemaLike}
 import sttp.apispec.openapi.{Reference, ReferenceOr}
 import sttp.apispec.openapi.circe.given
 

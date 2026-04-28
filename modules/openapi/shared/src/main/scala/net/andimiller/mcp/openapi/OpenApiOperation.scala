@@ -1,11 +1,9 @@
 package net.andimiller.mcp.openapi
 
 import io.circe.Json
-import io.circe.syntax.*
 import net.andimiller.mcp.core.protocol.ToolDefinition
-import sttp.apispec.openapi.{OpenAPI, Operation, Parameter, ParameterIn, PathItem, RequestBody, Response, ResponsesCodeKey, ResponsesDefaultKey}
-import sttp.apispec.openapi.circe.given
-import sttp.apispec.{ExampleValue, SchemaLike, SchemaType, Schema, AnySchema}
+import sttp.apispec.openapi.{OpenAPI, Operation, Parameter, ParameterIn, PathItem, ResponsesCodeKey, ResponsesDefaultKey}
+import sttp.apispec.{ExampleValue, SchemaLike}
 
 import scala.collection.immutable.ListMap
 

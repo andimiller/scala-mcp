@@ -3,7 +3,6 @@ package net.andimiller.mcp.core.protocol
 import io.circe.parser.parse
 import io.circe.syntax.*
 import munit.FunSuite
-import net.andimiller.mcp.core.codecs.CirceCodecs.given
 import net.andimiller.mcp.core.protocol.jsonrpc.RequestId
 
 class CancellationSuite extends FunSuite:

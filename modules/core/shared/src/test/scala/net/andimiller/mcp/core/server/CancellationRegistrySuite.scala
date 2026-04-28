@@ -2,7 +2,6 @@ package net.andimiller.mcp.core.server
 
 import cats.effect.IO
 import cats.effect.kernel.Deferred
-import cats.syntax.all.*
 import munit.CatsEffectSuite
 import net.andimiller.mcp.core.protocol.jsonrpc.RequestId
 

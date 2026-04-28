@@ -3,7 +3,6 @@ package net.andimiller.mcp.openapi
 import cats.effect.IO
 import io.circe.{Json, JsonObject}
 import io.circe.parser.{parse => parseJson}
-import io.circe.syntax.*
 
 import java.nio.file.{Files, Path, Paths}
 

@@ -4,7 +4,6 @@ import cats.effect.kernel.Async
 import cats.syntax.all.*
 import io.circe.Json
 import io.circe.syntax.*
-import net.andimiller.mcp.core.codecs.CirceCodecs.given
 import net.andimiller.mcp.core.protocol.*
 import net.andimiller.mcp.core.protocol.jsonrpc.{JsonRpcError, Message, RequestId}
 

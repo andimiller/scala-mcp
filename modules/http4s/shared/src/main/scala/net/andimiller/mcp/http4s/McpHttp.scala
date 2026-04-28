@@ -9,14 +9,13 @@ import io.circe.parser.decode
 import io.circe.syntax.*
 import net.andimiller.mcp.core.codecs.CirceCodecs.given
 import net.andimiller.mcp.core.protocol.jsonrpc.Message
-import net.andimiller.mcp.core.server.{CancellationRegistry, CapabilityTracker, NotificationSink, RequestHandler, Server as McpServer, ServerBuilder, ServerRequester, SessionContext}
+import net.andimiller.mcp.core.server.{CancellationRegistry, CapabilityTracker, RequestHandler, Server as McpServer, ServerRequester, SessionContext}
 import org.http4s.*
 import org.http4s.dsl.Http4sDsl
 import org.http4s.headers.{`Content-Type`, Location}
 import org.http4s.implicits.*
 import org.http4s.ember.server.EmberServerBuilder
 import org.http4s.server.Router
-import org.typelevel.ci.*
 
 object McpHttp:
 
