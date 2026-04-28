@@ -83,3 +83,9 @@ tags
 .docusaurus
 node_modules
 website/build
+
+### sbt-scalafmt-defaults ###
+# Scalafmt configuration file is automatically downloaded by `sbt-scalafmt-defaults`
+# https://github.com/alejandrohdezma/sbt-scalafmt-defaults
+
+.scalafmt.conf
