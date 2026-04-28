@@ -6,6 +6,7 @@ import net.andimiller.mcp.golden.McpGoldenSuite
 import net.andimiller.mcp.http4s.McpHttp
 
 class PomodoroMcpServerGoldenSuite extends McpGoldenSuite:
+
   override def goldenFileName = "pomodoro-mcp.json"
 
   def server: IO[Server[IO]] =

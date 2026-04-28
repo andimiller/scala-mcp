@@ -16,17 +16,20 @@ object PomodoroMcpServerRedis extends IOApp.Simple:
 
   final def run: IO[Unit] =
     (for
-      client <- RedisClient[IO].from("redis://localhost:6379")
-      redis  <- Redis[IO].fromClient(client, RedisCodec.Utf8)
-      pubSub <- PubSub.mkPubSubConnection[IO, String, String](client, RedisCodec.Utf8)
+      client   <- RedisClient[IO].from("redis://localhost:6379")
+      redis    <- Redis[IO].fromClient(client, RedisCodec.Utf8)
+      pubSub   <- PubSub.mkPubSubConnection[IO, String, String](client, RedisCodec.Utf8)
       configure = McpRedis.configure[IO, Unit](redis, pubSub, 1.hour)
-      server <- PomodoroMcpServer.configure(
-        configure(
-          McpHttp.streaming[IO]
-            .name("pomodoro-mcp")
-            .version("1.0.0")
-            .port(port"25001")
-            .withExplorer(redirectToRoot = true)
-        )
-      ).serve
+      server   <- PomodoroMcpServer
+                  .configure(
+                    configure(
+                      McpHttp
+                        .streaming[IO]
+                        .name("pomodoro-mcp")
+                        .version("1.0.0")
+                        .port(port"25001")
+                        .withExplorer(redirectToRoot = true)
+                    )
+                  )
+                  .serve
     yield server).useForever

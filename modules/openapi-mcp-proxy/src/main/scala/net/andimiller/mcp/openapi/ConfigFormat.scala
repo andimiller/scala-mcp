@@ -1,16 +1,20 @@
 package net.andimiller.mcp.openapi
 
 import io.circe.Json
-import java.nio.file.{Path, Paths}
+import java.nio.file.Path
+import java.nio.file.Paths
 
 enum ConfigFormat:
+
   case Claude, ClaudeDesktop, Cursor, OpenCode
 
   def filePath: Path = this match
     case Claude        => Paths.get(".mcp.json")
-    case ClaudeDesktop => Paths.get(System.getProperty("user.home"), "Library", "Application Support", "Claude", "claude_desktop_config.json")
-    case Cursor        => Paths.get(".cursor", "mcp.json")
-    case OpenCode      => Paths.get("opencode.json")
+    case ClaudeDesktop =>
+      Paths.get(System.getProperty("user.home"), "Library", "Application Support", "Claude",
+        "claude_desktop_config.json")
+    case Cursor   => Paths.get(".cursor", "mcp.json")
+    case OpenCode => Paths.get("opencode.json")
 
   def serversKey: String = this match
     case Claude | ClaudeDesktop => "mcpServers"
@@ -20,10 +24,11 @@ enum ConfigFormat:
   def emptyFile: Json = this match
     case Claude | ClaudeDesktop => Json.obj("mcpServers" -> Json.obj())
     case Cursor                 => Json.obj("mcpServers" -> Json.obj())
-    case OpenCode => Json.obj(
-      "$schema" -> Json.fromString("https://opencode.ai/config.json"),
-      "mcp"     -> Json.obj()
-    )
+    case OpenCode               =>
+      Json.obj(
+        "$schema" -> Json.fromString("https://opencode.ai/config.json"),
+        "mcp"     -> Json.obj()
+      )
 
   def mkEntry(specSource: String, operationIds: List[String]): Json = this match
     case Claude | ClaudeDesktop | Cursor =>

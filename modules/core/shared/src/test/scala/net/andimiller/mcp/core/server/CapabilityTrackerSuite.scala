@@ -67,7 +67,7 @@ class CapabilityTrackerSuite extends FunSuite:
   }
 
   test("toServerCapabilities reflects the tracker state") {
-    val t   = CapabilityTracker.empty.withToolAdded.withResourceSubscriptions.withLogging
+    val t    = CapabilityTracker.empty.withToolAdded.withResourceSubscriptions.withLogging
     val caps = t.toServerCapabilities
     assertEquals(caps.tools, Some(ToolCapabilities()))
     assertEquals(caps.resources, Some(ResourceCapabilities(subscribe = Some(true))))

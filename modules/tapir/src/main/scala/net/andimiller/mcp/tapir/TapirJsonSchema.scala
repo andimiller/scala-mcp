@@ -5,5 +5,6 @@ import sttp.tapir.Schema
 import sttp.tapir.docs.apispec.schema.TapirSchemaToJsonSchema
 
 given [A](using s: Schema[A]): JsonSchema[A] with
+
   def schema: sttp.apispec.Schema =
     TapirSchemaToJsonSchema(s, markOptionsAsNullable = false)

@@ -10,6 +10,7 @@ import cats.Applicative
   *   given a URI string, returns Some((extracted_value, remaining_string)) or None
   */
 case class UriPath[A](template: String, parse: String => Option[(A, String)]):
+
   def map[B](f: A => B): UriPath[B] =
     UriPath(template, s => parse(s).map((a, rest) => (f(a), rest)))
 
@@ -27,7 +28,7 @@ object UriPath:
     UriPath(
       s"{$name}",
       s =>
-        val idx = s.indexOf('/')
+        val idx     = s.indexOf('/')
         val segment = if idx < 0 then s else s.substring(0, idx)
         Option.when(segment.nonEmpty)((segment, s.drop(segment.length)))
     )
@@ -37,6 +38,7 @@ object UriPath:
     UriPath("", s => Some((s, "")))
 
   given Applicative[UriPath] with
+
     def pure[A](a: A): UriPath[A] =
       UriPath("", s => Some((a, s)))
 
@@ -47,13 +49,18 @@ object UriPath:
       )
 
 trait PathParam[A]:
+
   def parse(s: String): Option[A]
 
 object PathParam:
+
   given PathParam[String] = s => Some(s)
-  given PathParam[Int]    = _.toIntOption
-  given PathParam[Long]   = _.toLongOption
+
+  given PathParam[Int] = _.toIntOption
+
+  given PathParam[Long] = _.toLongOption
 
 extension (p: UriPath[String])
+
   def as[A](using pp: PathParam[A]): UriPath[A] =
     p.mapOption(pp.parse)

@@ -22,5 +22,6 @@ object OpenApiToolBuilder:
     operations.map { op =>
       val method = Method.fromString(op.method).getOrElse(Method.GET)
       op.definition.toResolved[IO](args =>
-        RequestBuilder.execute(client, baseUrl, method, op.pathPattern, op.resolvedOperation, args))
+        RequestBuilder.execute(client, baseUrl, method, op.pathPattern, op.resolvedOperation, args)
+      )
     }

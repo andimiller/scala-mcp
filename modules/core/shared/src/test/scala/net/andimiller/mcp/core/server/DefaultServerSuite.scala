@@ -10,38 +10,37 @@ class DefaultServerSuite extends CatsEffectSuite:
 
   private def textTool(n: String): Tool.Resolved[IO] =
     new Tool.Resolved[IO]:
-      val name         = n
-      val description  = ""
-      val inputSchema  = Json.obj()
-      val outputSchema = None
+      val name                                          = n
+      val description                                   = ""
+      val inputSchema                                   = Json.obj()
+      val outputSchema                                  = None
       def handle(arguments: Json): IO[CallToolResponse] =
         IO.pure(CallToolResponse(List(Content.Text(n)), None, false))
 
   private def directResource(resourceUri: String): McpResource.Resolved[IO] =
     new McpResource.Resolved[IO]:
-      val uri         = resourceUri
-      val name        = "n"
-      val description = None
-      val mimeType    = None
+      val uri                         = resourceUri
+      val name                        = "n"
+      val description                 = None
+      val mimeType                    = None
       def read(): IO[ResourceContent] =
         IO.pure(ResourceContent.text(resourceUri, "direct", None))
 
   private def templatedResource(prefix: String): ResourceTemplate.Resolved[IO] =
     new ResourceTemplate.Resolved[IO]:
-      val uriTemplate = s"$prefix/{id}"
-      val name        = "tpl"
-      val description = None
-      val mimeType    = None
+      val uriTemplate                                    = s"$prefix/{id}"
+      val name                                           = "tpl"
+      val description                                    = None
+      val mimeType                                       = None
       def read(uri: String): Option[IO[ResourceContent]] =
-        if uri.startsWith(s"$prefix/") then
-          Some(IO.pure(ResourceContent.text(uri, "from-template", None)))
+        if uri.startsWith(s"$prefix/") then Some(IO.pure(ResourceContent.text(uri, "from-template", None)))
         else None
 
   private def server(
-    tools: List[Tool.Resolved[IO]] = Nil,
-    resources: List[McpResource.Resolved[IO]] = Nil,
-    templates: List[ResourceTemplate.Resolved[IO]] = Nil,
-    prompts: List[Prompt.Resolved[IO]] = Nil
+      tools: List[Tool.Resolved[IO]] = Nil,
+      resources: List[McpResource.Resolved[IO]] = Nil,
+      templates: List[ResourceTemplate.Resolved[IO]] = Nil,
+      prompts: List[Prompt.Resolved[IO]] = Nil
   ): IO[DefaultServer[IO]] =
     DefaultServer[IO](
       info = Implementation("t", "0"),

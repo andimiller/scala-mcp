@@ -11,24 +11,28 @@ class Prompt[F[_], Ctx](
     val arguments: List[PromptArgument],
     val handler: (Ctx, Map[String, Json]) => F[GetPromptResponse]
 ):
+
   def provide(ctx: Ctx): Prompt.Resolved[F] =
     val self = this
     new Prompt.Resolved[F]:
-      val name = self.name
-      val description = self.description
-      val arguments = self.arguments
+      val name                                                    = self.name
+      val description                                             = self.description
+      val arguments                                               = self.arguments
       def get(arguments: Map[String, Json]): F[GetPromptResponse] = self.handler(ctx, arguments)
 
 object Prompt:
 
   trait Resolved[F[_]]:
+
     def name: String
+
     def description: Option[String]
+
     def arguments: List[PromptArgument]
+
     def get(arguments: Map[String, Json]): F[GetPromptResponse]
 
-  extension [F[_]](prompt: Prompt[F, Unit])
-    def resolve: Resolved[F] = prompt.provide(())
+  extension [F[_]](prompt: Prompt[F, Unit]) def resolve: Resolved[F] = prompt.provide(())
 
   def builder: PromptBuilder.Empty[Unit] =
     new PromptBuilder.Empty[Unit]
@@ -36,14 +40,12 @@ object Prompt:
   def contextual[Ctx]: PromptBuilder.Empty[Ctx] =
     new PromptBuilder.Empty[Ctx]
 
-  /**
-   * Create a simple prompt with static messages.
-   */
+  /** Create a simple prompt with static messages. */
   def static[F[_]: Async](
-    promptName: String,
-    messages: List[PromptMessage],
-    promptDescription: Option[String] = None,
-    promptArguments: List[PromptArgument] = Nil
+      promptName: String,
+      messages: List[PromptMessage],
+      promptDescription: Option[String] = None,
+      promptArguments: List[PromptArgument] = Nil
   ): Prompt[F, Unit] =
     new Prompt[F, Unit](
       name = promptName,
@@ -52,14 +54,12 @@ object Prompt:
       handler = (_, _) => Async[F].pure(GetPromptResponse(promptDescription, messages))
     )
 
-  /**
-   * Create a dynamic prompt that generates messages based on arguments.
-   */
+  /** Create a dynamic prompt that generates messages based on arguments. */
   def dynamic[F[_]: Async](
-    promptName: String,
-    generator: Map[String, Json] => F[List[PromptMessage]],
-    promptDescription: Option[String] = None,
-    promptArguments: List[PromptArgument] = Nil
+      promptName: String,
+      generator: Map[String, Json] => F[List[PromptMessage]],
+      promptDescription: Option[String] = None,
+      promptArguments: List[PromptArgument] = Nil
   ): Prompt[F, Unit] =
     new Prompt[F, Unit](
       name = promptName,
@@ -71,6 +71,7 @@ object Prompt:
 object PromptBuilder:
 
   final class Empty[Ctx]:
+
     def name(n: String): Builder[Ctx] =
       new Builder[Ctx](n, None, Nil)
 
@@ -94,6 +95,7 @@ object PromptBuilder:
       copy(promptArguments = promptArguments :+ PromptArgument(name, description, required))
 
   extension [Ctx](b: Builder[Ctx])
+
     def generate[F[_]: Async](generator: (Ctx, Map[String, Json]) => F[List[PromptMessage]]): Prompt[F, Ctx] =
       val desc = b.promptDescription
       new Prompt[F, Ctx](
@@ -104,6 +106,7 @@ object PromptBuilder:
       )
 
   extension (b: Builder[Unit])
+
     def messages[F[_]: Async](msgs: List[PromptMessage]): Prompt[F, Unit] =
       Prompt.static[F](b.promptName, msgs, b.promptDescription, b.promptArguments)
 

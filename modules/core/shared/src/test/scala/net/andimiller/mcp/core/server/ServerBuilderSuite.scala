@@ -10,27 +10,27 @@ class ServerBuilderSuite extends CatsEffectSuite:
 
   private def stubTool(n: String): Tool.Resolved[IO] =
     new Tool.Resolved[IO]:
-      val name         = n
-      val description  = s"tool $n"
-      val inputSchema  = Json.obj()
-      val outputSchema = None
+      val name                                          = n
+      val description                                   = s"tool $n"
+      val inputSchema                                   = Json.obj()
+      val outputSchema                                  = None
       def handle(arguments: Json): IO[CallToolResponse] =
         IO.pure(CallToolResponse(List(Content.Text(n)), None, false))
 
   private def stubResource(suffix: String): McpResource.Resolved[IO] =
     new McpResource.Resolved[IO]:
-      val uri         = "stub://" + suffix
-      val name        = suffix
-      val description = None
-      val mimeType    = None
+      val uri                         = "stub://" + suffix
+      val name                        = suffix
+      val description                 = None
+      val mimeType                    = None
       def read(): IO[ResourceContent] =
         IO.pure(ResourceContent.text(uri, "x", None))
 
   private def stubPrompt(n: String): Prompt.Resolved[IO] =
     new Prompt.Resolved[IO]:
-      val name        = n
-      val description = None
-      val arguments   = Nil
+      val name                                                     = n
+      val description                                              = None
+      val arguments                                                = Nil
       def get(arguments: Map[String, Json]): IO[GetPromptResponse] =
         IO.pure(GetPromptResponse(None, Nil))
 
@@ -76,11 +76,10 @@ class ServerBuilderSuite extends CatsEffectSuite:
   }
 
   test("enableResourceSubscriptions sets subscribe on resources capability") {
-    for
-      server <- ServerBuilder[IO]("s", "1")
-                  .withResource(stubResource("a"))
-                  .enableResourceSubscriptions
-                  .build
+    for server <- ServerBuilder[IO]("s", "1")
+                    .withResource(stubResource("a"))
+                    .enableResourceSubscriptions
+                    .build
     yield assertEquals(
       server.capabilities.resources,
       Some(ResourceCapabilities(subscribe = Some(true)))

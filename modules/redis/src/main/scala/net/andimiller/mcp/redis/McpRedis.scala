@@ -8,39 +8,40 @@ import net.andimiller.mcp.http4s.StreamingMcpHttpBuilder
 
 import scala.concurrent.duration.*
 
-/**
- * Convenience wiring for configuring a [[StreamingMcpHttpBuilder]] with
- * Redis-backed session management.
- *
- * Usage:
- * {{{
- * McpRedis.configure[IO, MyCtx](redis, pubSub)
- *   .apply(McpHttp.streaming[IO].name("my-server").version("1.0"))
- *   .statefulExternal[MyState]((sink, refs) => ...)
- *   ...
- * }}}
- */
+/** Convenience wiring for configuring a [[StreamingMcpHttpBuilder]] with Redis-backed session management.
+  *
+  * Usage:
+  * {{{
+  * McpRedis.configure[IO, MyCtx](redis, pubSub)
+  *   .apply(McpHttp.streaming[IO].name("my-server").version("1.0"))
+  *   .statefulExternal[MyState]((sink, refs) => ...)
+  *   ...
+  * }}}
+  */
 object McpRedis:
 
-  /**
-   * Returns a pure function that configures a [[StreamingMcpHttpBuilder]] with Redis-backed:
-   * - Session store factory (deferred construction with TTL and local caching)
-   * - Notification sink factory (pub/sub per session)
-   * - Session refs factory (per-session state in Redis)
-   *
-   * The session store is constructed at route-build time, when the builder
-   * can provide a `reconstruct` callback for cache misses.
-   *
-   * @param redis     Redis commands for key-value operations
-   * @param pubSub    Redis pub/sub commands for notifications
-   * @param ttl       TTL for session keys and state (default: 1 hour)
-   */
+  /** Returns a pure function that configures a [[StreamingMcpHttpBuilder]] with Redis-backed:
+    *   - Session store factory (deferred construction with TTL and local caching)
+    *   - Notification sink factory (pub/sub per session)
+    *   - Session refs factory (per-session state in Redis)
+    *
+    * The session store is constructed at route-build time, when the builder can provide a `reconstruct` callback for
+    * cache misses.
+    *
+    * @param redis
+    *   Redis commands for key-value operations
+    * @param pubSub
+    *   Redis pub/sub commands for notifications
+    * @param ttl
+    *   TTL for session keys and state (default: 1 hour)
+    */
   def configure[F[_]: Async, Ctx](
-    redis: RedisCommands[F, String, String],
-    pubSub: PubSubCommands[F, [x] =>> Stream[F, x], String, String],
-    ttl: FiniteDuration = 1.hour
+      redis: RedisCommands[F, String, String],
+      pubSub: PubSubCommands[F, [x] =>> Stream[F, x], String, String],
+      ttl: FiniteDuration = 1.hour
   ): StreamingMcpHttpBuilder[F, Ctx] => StreamingMcpHttpBuilder[F, Ctx] =
-    builder => builder
-      .withNotificationSinkFactory(id => RedisNotificationSink.create(pubSub, id))
-      .withSessionRefsFactory(id => new RedisSessionRefs(redis, id, ttl))
-      .withSessionStoreFactory(new RedisSessionStoreFactory(redis, ttl))
+    builder =>
+      builder
+        .withNotificationSinkFactory(id => RedisNotificationSink.create(pubSub, id))
+        .withSessionRefsFactory(id => new RedisSessionRefs(redis, id, ttl))
+        .withSessionStoreFactory(new RedisSessionStoreFactory(redis, ttl))

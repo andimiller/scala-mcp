@@ -8,8 +8,8 @@ object JsonSchemaMacros:
 
   def getDescriptionsImpl[A: Type](using Quotes): Expr[Map[String, String]] =
     import quotes.reflect.*
-    val sym = TypeRepr.of[A].typeSymbol
-    val params = sym.primaryConstructor.paramSymss.flatten.filter(!_.isType)
+    val sym                                 = TypeRepr.of[A].typeSymbol
+    val params                              = sym.primaryConstructor.paramSymss.flatten.filter(!_.isType)
     val pairs: List[Expr[(String, String)]] = params.flatMap { param =>
       param.annotations.collectFirst {
         case ann if ann.tpe <:< TypeRepr.of[description] =>
@@ -22,8 +22,8 @@ object JsonSchemaMacros:
 
   def getExamplesImpl[A: Type](using Quotes): Expr[Map[String, List[ExampleValue]]] =
     import quotes.reflect.*
-    val sym = TypeRepr.of[A].typeSymbol
-    val params = sym.primaryConstructor.paramSymss.flatten.filter(!_.isType)
+    val sym                                             = TypeRepr.of[A].typeSymbol
+    val params                                          = sym.primaryConstructor.paramSymss.flatten.filter(!_.isType)
     val pairs: List[Expr[(String, List[ExampleValue])]] = params.flatMap { param =>
       val examples: List[Expr[ExampleValue]] = param.annotations.collect {
         case ann if ann.tpe <:< TypeRepr.of[example] =>
@@ -35,9 +35,7 @@ object JsonSchemaMacros:
             case Apply(_, List(Literal(FloatConstant(value))))   => '{ ExampleSingleValue(${ Expr(value) }) }
             case Apply(_, List(Literal(BooleanConstant(value)))) => '{ ExampleSingleValue(${ Expr(value) }) }
       }.reverse
-      if examples.nonEmpty then
-        Some('{ (${ Expr(param.name) }, ${ Expr.ofList(examples) }) })
-      else
-        None
+      if examples.nonEmpty then Some('{ (${ Expr(param.name) }, ${ Expr.ofList(examples) }) })
+      else None
     }
     '{ Map(${ Expr.ofSeq(pairs) }*) }

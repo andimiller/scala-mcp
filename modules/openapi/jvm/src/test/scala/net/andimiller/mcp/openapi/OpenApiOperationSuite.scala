@@ -9,96 +9,96 @@ class OpenApiOperationSuite extends CatsEffectSuite:
 
   val petStoreSpec: String =
     """
-    |openapi: "3.1.0"
-    |info:
-    |  title: Petstore
-    |  version: "1.0.0"
-    |servers:
-    |  - url: https://petstore.example.com/v1
-    |paths:
-    |  /pets:
-    |    get:
-    |      operationId: listPets
-    |      summary: List all pets
-    |      parameters:
-    |        - name: limit
-    |          in: query
-    |          required: false
-    |          schema:
-    |            type: integer
-    |      responses:
-    |        '200':
-    |          description: A list of pets
-    |          content:
-    |            application/json:
-    |              schema:
-    |                type: array
-    |                items:
-    |                  $ref: '#/components/schemas/Pet'
-    |    post:
-    |      operationId: createPet
-    |      summary: Create a pet
-    |      requestBody:
-    |        required: true
-    |        content:
-    |          application/json:
-    |            schema:
-    |              $ref: '#/components/schemas/NewPet'
-    |      responses:
-    |        '201':
-    |          description: The created pet
-    |          content:
-    |            application/json:
-    |              schema:
-    |                $ref: '#/components/schemas/Pet'
-    |  /pets/{petId}:
-    |    get:
-    |      operationId: getPetById
-    |      summary: Get a pet by ID
-    |      parameters:
-    |        - name: petId
-    |          in: path
-    |          required: true
-    |          schema:
-    |            type: string
-    |      responses:
-    |        '200':
-    |          description: A pet
-    |          content:
-    |            application/json:
-    |              schema:
-    |                $ref: '#/components/schemas/Pet'
-    |  /health:
-    |    get:
-    |      operationId: healthCheck
-    |      summary: Health check
-    |      responses:
-    |        '200':
-    |          description: OK
-    |components:
-    |  schemas:
-    |    Pet:
-    |      type: object
-    |      required:
-    |        - id
-    |        - name
-    |      properties:
-    |        id:
-    |          type: integer
-    |        name:
-    |          type: string
-    |        tag:
-    |          type: string
-    |    NewPet:
-    |      type: object
-    |      required:
-    |        - name
-    |      properties:
-    |        name:
-    |          type: string
-    |        tag:
-    |          type: string
-    |""".stripMargin
+      |openapi: "3.1.0"
+      |info:
+      |  title: Petstore
+      |  version: "1.0.0"
+      |servers:
+      |  - url: https://petstore.example.com/v1
+      |paths:
+      |  /pets:
+      |    get:
+      |      operationId: listPets
+      |      summary: List all pets
+      |      parameters:
+      |        - name: limit
+      |          in: query
+      |          required: false
+      |          schema:
+      |            type: integer
+      |      responses:
+      |        '200':
+      |          description: A list of pets
+      |          content:
+      |            application/json:
+      |              schema:
+      |                type: array
+      |                items:
+      |                  $ref: '#/components/schemas/Pet'
+      |    post:
+      |      operationId: createPet
+      |      summary: Create a pet
+      |      requestBody:
+      |        required: true
+      |        content:
+      |          application/json:
+      |            schema:
+      |              $ref: '#/components/schemas/NewPet'
+      |      responses:
+      |        '201':
+      |          description: The created pet
+      |          content:
+      |            application/json:
+      |              schema:
+      |                $ref: '#/components/schemas/Pet'
+      |  /pets/{petId}:
+      |    get:
+      |      operationId: getPetById
+      |      summary: Get a pet by ID
+      |      parameters:
+      |        - name: petId
+      |          in: path
+      |          required: true
+      |          schema:
+      |            type: string
+      |      responses:
+      |        '200':
+      |          description: A pet
+      |          content:
+      |            application/json:
+      |              schema:
+      |                $ref: '#/components/schemas/Pet'
+      |  /health:
+      |    get:
+      |      operationId: healthCheck
+      |      summary: Health check
+      |      responses:
+      |        '200':
+      |          description: OK
+      |components:
+      |  schemas:
+      |    Pet:
+      |      type: object
+      |      required:
+      |        - id
+      |        - name
+      |      properties:
+      |        id:
+      |          type: integer
+      |        name:
+      |          type: string
+      |        tag:
+      |          type: string
+      |    NewPet:
+      |      type: object
+      |      required:
+      |        - name
+      |      properties:
+      |        name:
+      |          type: string
+      |        tag:
+      |          type: string
+      |""".stripMargin
 
   def parseSpec(yaml: String): IO[OpenAPI] =
     for
@@ -108,15 +108,14 @@ class OpenApiOperationSuite extends CatsEffectSuite:
 
   test("builds operations for specified operationIds") {
     for
-      spec       <- parseSpec(petStoreSpec)
+      spec      <- parseSpec(petStoreSpec)
       operations = OpenApiOperation.build(spec, List("listPets", "getPetById", "createPet"))
-    yield
-      assertEquals(operations.map(_.definition.name).toSet, Set("listPets", "getPetById", "createPet"))
+    yield assertEquals(operations.map(_.definition.name).toSet, Set("listPets", "getPetById", "createPet"))
   }
 
   test("listPets operation has correct inputSchema with query param") {
     for
-      spec       <- parseSpec(petStoreSpec)
+      spec      <- parseSpec(petStoreSpec)
       operations = OpenApiOperation.build(spec, List("listPets"))
       op         = operations.find(_.definition.name == "listPets").get
     yield
@@ -128,16 +127,15 @@ class OpenApiOperationSuite extends CatsEffectSuite:
 
   test("listPets operation has correct description") {
     for
-      spec       <- parseSpec(petStoreSpec)
+      spec      <- parseSpec(petStoreSpec)
       operations = OpenApiOperation.build(spec, List("listPets"))
       op         = operations.find(_.definition.name == "listPets").get
-    yield
-      assertEquals(op.definition.description, "List all pets")
+    yield assertEquals(op.definition.description, "List all pets")
   }
 
   test("getPetById operation has path param as required") {
     for
-      spec       <- parseSpec(petStoreSpec)
+      spec      <- parseSpec(petStoreSpec)
       operations = OpenApiOperation.build(spec, List("getPetById"))
       op         = operations.find(_.definition.name == "getPetById").get
     yield
@@ -147,7 +145,7 @@ class OpenApiOperationSuite extends CatsEffectSuite:
 
   test("createPet operation has body as required property") {
     for
-      spec       <- parseSpec(petStoreSpec)
+      spec      <- parseSpec(petStoreSpec)
       operations = OpenApiOperation.build(spec, List("createPet"))
       op         = operations.find(_.definition.name == "createPet").get
     yield
@@ -159,7 +157,7 @@ class OpenApiOperationSuite extends CatsEffectSuite:
 
   test("$ref schemas are resolved (no $ref in output)") {
     for
-      spec       <- parseSpec(petStoreSpec)
+      spec      <- parseSpec(petStoreSpec)
       operations = OpenApiOperation.build(spec, List("getPetById"))
       op         = operations.find(_.definition.name == "getPetById").get
     yield
@@ -169,20 +167,22 @@ class OpenApiOperationSuite extends CatsEffectSuite:
 
   test("array outputSchema is wrapped in object") {
     for
-      spec       <- parseSpec(petStoreSpec)
+      spec      <- parseSpec(petStoreSpec)
       operations = OpenApiOperation.build(spec, List("listPets"))
       op         = operations.find(_.definition.name == "listPets").get
     yield
       val out = op.definition.outputSchema.get
       val typ = out.hcursor.downField("type").as[String].getOrElse("")
       assertEquals(typ, "object", "array outputSchema should be wrapped in object")
-      assert(out.hcursor.downField("properties").downField("items").focus.isDefined,
-        "wrapped schema should have 'items' property")
+      assert(
+        out.hcursor.downField("properties").downField("items").focus.isDefined,
+        "wrapped schema should have 'items' property"
+      )
   }
 
   test("operation with no response schema falls back to object") {
     for
-      spec       <- parseSpec(petStoreSpec)
+      spec      <- parseSpec(petStoreSpec)
       operations = OpenApiOperation.build(spec, List("healthCheck"))
       op         = operations.find(_.definition.name == "healthCheck").get
     yield
@@ -192,7 +192,7 @@ class OpenApiOperationSuite extends CatsEffectSuite:
 
   test("operation with no parameters has empty properties") {
     for
-      spec       <- parseSpec(petStoreSpec)
+      spec      <- parseSpec(petStoreSpec)
       operations = OpenApiOperation.build(spec, List("healthCheck"))
       op         = operations.find(_.definition.name == "healthCheck").get
     yield
@@ -202,7 +202,7 @@ class OpenApiOperationSuite extends CatsEffectSuite:
 
   test("missing operationIds are silently skipped") {
     for
-      spec       <- parseSpec(petStoreSpec)
+      spec      <- parseSpec(petStoreSpec)
       operations = OpenApiOperation.build(spec, List("listPets", "nonExistent"))
     yield
       assertEquals(operations.size, 1)
@@ -212,7 +212,7 @@ class OpenApiOperationSuite extends CatsEffectSuite:
   test("listOperationIds returns all operations from spec") {
     for
       spec <- parseSpec(petStoreSpec)
-      ops  = OpenApiOperation.listOperationIds(spec)
+      ops   = OpenApiOperation.listOperationIds(spec)
     yield
       assertEquals(ops.length, 4)
       assertEquals(
@@ -226,7 +226,7 @@ class OpenApiOperationSuite extends CatsEffectSuite:
 
   test("operations carry correct method and path") {
     for
-      spec       <- parseSpec(petStoreSpec)
+      spec      <- parseSpec(petStoreSpec)
       operations = OpenApiOperation.build(spec, List("createPet"))
       op         = operations.find(_.definition.name == "createPet").get
     yield
@@ -236,7 +236,7 @@ class OpenApiOperationSuite extends CatsEffectSuite:
 
   test("operations carry resolved operation details") {
     for
-      spec       <- parseSpec(petStoreSpec)
+      spec      <- parseSpec(petStoreSpec)
       operations = OpenApiOperation.build(spec, List("getPetById"))
       op         = operations.find(_.definition.name == "getPetById").get
     yield
@@ -247,9 +247,8 @@ class OpenApiOperationSuite extends CatsEffectSuite:
 
   test("createPet operation has body in resolved operation") {
     for
-      spec       <- parseSpec(petStoreSpec)
+      spec      <- parseSpec(petStoreSpec)
       operations = OpenApiOperation.build(spec, List("createPet"))
       op         = operations.find(_.definition.name == "createPet").get
-    yield
-      assert(op.resolvedOperation.hasBody, "createPet should have body")
+    yield assert(op.resolvedOperation.hasBody, "createPet should have body")
   }

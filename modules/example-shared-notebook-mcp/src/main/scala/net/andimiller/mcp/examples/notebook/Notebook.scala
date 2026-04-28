@@ -1,38 +1,39 @@
 package net.andimiller.mcp.examples.notebook
 
-import cats.effect.kernel.{Async, Ref}
+import cats.effect.kernel.Async
+import cats.effect.kernel.Ref
 import cats.syntax.all.*
 
 case class Note(
-  id: String,
-  title: String,
-  content: String,
-  owner: String,
-  sharedWith: Set[String] = Set.empty
+    id: String,
+    title: String,
+    content: String,
+    owner: String,
+    sharedWith: Set[String] = Set.empty
 )
 
 case class NoteSummary(
-  id: String,
-  title: String,
-  owner: String
+    id: String,
+    title: String,
+    owner: String
 )
 
 class Notebook[F[_]: Async](
-  notes: Ref[F, Map[String, Note]],
-  counter: Ref[F, Int]
+    notes: Ref[F, Map[String, Note]],
+    counter: Ref[F, Int]
 ):
 
   def writeNote(owner: String, title: String, content: String): F[Note] =
     for
-      id <- counter.getAndUpdate(_ + 1).map(i => s"note-$i")
+      id       <- counter.getAndUpdate(_ + 1).map(i => s"note-$i")
       existing <- notes.get.map(_.values.find(n => n.owner == owner && n.title == title))
-      note <- existing match
-        case Some(existingNote) =>
-          val updated = existingNote.copy(content = content)
-          notes.update(_ + (updated.id -> updated)).as(updated)
-        case None =>
-          val note = Note(id, title, content, owner)
-          notes.update(_ + (note.id -> note)).as(note)
+      note     <- existing match
+                case Some(existingNote) =>
+                  val updated = existingNote.copy(content = content)
+                  notes.update(_ + (updated.id -> updated)).as(updated)
+                case None =>
+                  val note = Note(id, title, content, owner)
+                  notes.update(_ + (note.id -> note)).as(note)
     yield note
 
   def readNote(noteId: String, reader: String): F[Option[Note]] =
@@ -77,6 +78,7 @@ class Notebook[F[_]: Async](
     notes.get.map(_.get(noteId).filter(n => n.owner == viewer || n.sharedWith.contains(viewer)))
 
 object Notebook:
+
   def create[F[_]: Async]: F[Notebook[F]] =
     for
       notes   <- Ref.of[F, Map[String, Note]](Map.empty)

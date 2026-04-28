@@ -1,35 +1,58 @@
 package net.andimiller.mcp.examples.dice
 
-import cats.effect.{IO, IOApp, Ref}
+import cats.effect.IO
+import cats.effect.IOApp
+import cats.effect.Ref
 import cats.effect.std.Random
 import cats.syntax.all.*
-import io.circe.{Codec, Decoder, Encoder}
-import net.andimiller.mcp.core.protocol.{ElicitResult, ElicitationError, PromptArgument, PromptMessage, ToolResult}
-import net.andimiller.mcp.core.schema.{JsonSchema, description, example}
-import net.andimiller.mcp.core.server.{tool, ElicitationClient, McpResource, Prompt, Server, ServerBuilder}
+import io.circe.Codec
+import io.circe.Decoder
+import io.circe.Encoder
+import net.andimiller.mcp.core.protocol.ElicitResult
+import net.andimiller.mcp.core.protocol.ElicitationError
+import net.andimiller.mcp.core.protocol.PromptArgument
+import net.andimiller.mcp.core.protocol.PromptMessage
+import net.andimiller.mcp.core.protocol.ToolResult
+import net.andimiller.mcp.core.schema.JsonSchema
+import net.andimiller.mcp.core.schema.description
+import net.andimiller.mcp.core.schema.example
+import net.andimiller.mcp.core.server.tool
+import net.andimiller.mcp.core.server.ElicitationClient
+import net.andimiller.mcp.core.server.McpResource
+import net.andimiller.mcp.core.server.Prompt
+import net.andimiller.mcp.core.server.Server
+import net.andimiller.mcp.core.server.ServerBuilder
 import net.andimiller.mcp.stdio.StdioTransport
 import sttp.apispec.Schema
 
 object DiceMcpServer extends IOApp.Simple:
 
   case class DiceResources(
-    rollHistory: Ref[IO, List[DiceRoller.RollResult]],
-    random: Random[IO],
-    elicitation: ElicitationClient[IO]
+      rollHistory: Ref[IO, List[DiceRoller.RollResult]],
+      random: Random[IO],
+      elicitation: ElicitationClient[IO]
   )
 
   case class RollCustomRequest() derives JsonSchema, Decoder
 
   enum DiceFace(val sides: Int):
-    case D2   extends DiceFace(2)
-    case D4   extends DiceFace(4)
-    case D6   extends DiceFace(6)
-    case D12  extends DiceFace(12)
-    case D20  extends DiceFace(20)
+
+    case D2 extends DiceFace(2)
+
+    case D4 extends DiceFace(4)
+
+    case D6 extends DiceFace(6)
+
+    case D12 extends DiceFace(12)
+
+    case D20 extends DiceFace(20)
+
     case D100 extends DiceFace(100)
 
   object DiceFace:
+
     val all: List[DiceFace] = List(D2, D4, D6, D12, D20, D100)
+
     private def label(d: DiceFace): String = s"d${d.sides}"
 
     given Codec[DiceFace] = Codec.from(
@@ -46,84 +69,91 @@ object DiceMcpServer extends IOApp.Simple:
     )
 
     given JsonSchema[DiceFace] with
+
       def schema: Schema = JsonSchema.string.withEnum(all.map(label)*)
 
   case class DiceChoice(
-    @description("Which dice to roll")
-    face: DiceFace,
-    @description("How many to roll")
-    @example(1)
-    @example(3)
-    count: Int
-  ) derives JsonSchema, Codec.AsObject
+      @description("Which dice to roll")
+      face: DiceFace,
+      @description("How many to roll")
+      @example(1)
+      @example(3)
+      count: Int
+  ) derives JsonSchema,
+        Codec.AsObject
 
   case class InteractiveRollResult(
-    @description("The full dice expression that was rolled")
-    expression: String,
-    @description("Numeric total of the roll")
-    result: Int,
-    @description("Per-die breakdown of the roll")
-    breakdown: String
-  ) derives JsonSchema, Encoder.AsObject
+      @description("The full dice expression that was rolled")
+      expression: String,
+      @description("Numeric total of the roll")
+      result: Int,
+      @description("Per-die breakdown of the roll")
+      breakdown: String
+  ) derives JsonSchema,
+        Encoder.AsObject
 
   case class RollDiceRequest(
-    @description("Dice notation (e.g., '1d6', '2d20 + 5', '3d4 - 2')")
-    @example("1d6")
-    @example("2d20 + 5")
-    dice: String,
-    @description("Number of times to roll (defaults to 1)")
-    @example(1)
-    @example(3)
-    rolls: Option[Int] = None
-  ) derives JsonSchema, Decoder
+      @description("Dice notation (e.g., '1d6', '2d20 + 5', '3d4 - 2')")
+      @example("1d6")
+      @example("2d20 + 5")
+      dice: String,
+      @description("Number of times to roll (defaults to 1)")
+      @example(1)
+      @example(3)
+      rolls: Option[Int] = None
+  ) derives JsonSchema,
+        Decoder
 
   case class RollResult(
-    expression: String,
-    min: Int,
-    max: Int,
-    result: Int,
-    breakdown: String
-  ) derives Encoder.AsObject, JsonSchema
+      expression: String,
+      min: Int,
+      max: Int,
+      result: Int,
+      breakdown: String
+  ) derives Encoder.AsObject,
+        JsonSchema
 
   case class RollDiceResponse(
-    rolls: List[RollResult]
-  ) derives Encoder.AsObject, JsonSchema
+      rolls: List[RollResult]
+  ) derives Encoder.AsObject,
+        JsonSchema
 
   def server(r: DiceResources): IO[Server[IO]] =
     ServerBuilder[IO]("dice-mcp", "1.0.0")
       .withTool(
-        tool.name("roll_dice")
+        tool
+          .name("roll_dice")
           .description("Roll dice using standard notation (e.g., '1d6', '2d20 + 5', '3d4 - 2')")
           .in[RollDiceRequest]
           .out[RollDiceResponse]
           .run { request =>
             given Random[IO] = r.random
-            val roller = DiceRoller[IO]
-            val count = request.rolls.getOrElse(1)
+            val roller       = DiceRoller[IO]
+            val count        = request.rolls.getOrElse(1)
             List.fill(count)(roller.rollDice(request.dice)).sequence.flatMap { results =>
               r.rollHistory.update(history => (results ++ history).take(100)) *>
-              IO.pure(RollDiceResponse(
-                rolls = results.map { result =>
-                  RollResult(
-                    expression = result.expression,
-                    min = result.min,
-                    max = result.max,
-                    result = result.result,
-                    breakdown = result.breakdown
+                IO.pure(
+                  RollDiceResponse(
+                    rolls = results.map { result =>
+                      RollResult(
+                        expression = result.expression, min = result.min, max = result.max, result = result.result,
+                        breakdown = result.breakdown
+                      )
+                    }
                   )
-                }
-              ))
+                )
             }
           }
       )
       .withTool(
-        tool.name("roll_interactive")
+        tool
+          .name("roll_interactive")
           .description("Build a dice expression interactively: choose dice + counts, then roll the lot")
           .in[RollCustomRequest]
           .out[InteractiveRollResult]
           .runResult { _ =>
             given Random[IO] = r.random
-            val roller = DiceRoller[IO]
+            val roller       = DiceRoller[IO]
 
             def elicitChoice(round: Int): IO[Either[ElicitationError, ElicitResult[DiceChoice]]] =
               r.elicitation.requestForm[DiceChoice](
@@ -132,7 +162,8 @@ object DiceMcpServer extends IOApp.Simple:
                   else "Choose another dice — or decline to stop"
               )
 
-            def collect(round: Int, acc: List[DiceChoice]): IO[Either[ToolResult[InteractiveRollResult], List[DiceChoice]]] =
+            def collect(round: Int, acc: List[DiceChoice])
+                : IO[Either[ToolResult[InteractiveRollResult], List[DiceChoice]]] =
               elicitChoice(round).flatMap {
                 case Left(ElicitationError.CapabilityMissing) =>
                   IO.pure(Left(ToolResult.Error("This client does not support form elicitation")))
@@ -152,21 +183,24 @@ object DiceMcpServer extends IOApp.Simple:
               case Right(choices) =>
                 val expr = choices.map(c => s"${c.count}d${c.face.sides}").mkString(" + ")
                 roller.rollDice(expr).flatMap { result =>
-                  r.rollHistory.update(h => (result :: h).take(100)).as(
-                    ToolResult.Success(InteractiveRollResult(
-                      expression = result.expression,
-                      result = result.result,
-                      breakdown = result.breakdown
-                    ))
-                  )
+                  r.rollHistory
+                    .update(h => (result :: h).take(100))
+                    .as(
+                      ToolResult.Success(
+                        InteractiveRollResult(
+                          expression = result.expression,
+                          result = result.result,
+                          breakdown = result.breakdown
+                        )
+                      )
+                    )
                 }
             }
           }
       )
       .withResource(
         McpResource.static[IO](
-          resourceUri = "dice://rules/standard",
-          resourceName = "Dice Notation Rules",
+          resourceUri = "dice://rules/standard", resourceName = "Dice Notation Rules",
           resourceDescription = Some("Standard dice notation syntax and examples"),
           resourceMimeType = Some("text/markdown"),
           content = """|# Dice Notation
@@ -201,13 +235,14 @@ object DiceMcpServer extends IOApp.Simple:
           resourceName = "Roll History",
           resourceDescription = Some("Recent dice roll results"),
           resourceMimeType = Some("text/plain"),
-          reader = () => r.rollHistory.get.map { history =>
-            if history.isEmpty then "No rolls yet."
-            else
-              history.zipWithIndex.map { (roll, i) =>
-                s"${i + 1}. ${roll.expression} => ${roll.result} (${roll.breakdown})"
-              }.mkString("\n")
-          }
+          reader = () =>
+            r.rollHistory.get.map { history =>
+              if history.isEmpty then "No rolls yet."
+              else
+                history.zipWithIndex.map { (roll, i) =>
+                  s"${i + 1}. ${roll.expression} => ${roll.result} (${roll.breakdown})"
+                }.mkString("\n")
+            }
         )
       )
       .withPrompt(

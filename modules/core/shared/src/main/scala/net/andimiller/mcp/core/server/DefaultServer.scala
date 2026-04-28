@@ -1,22 +1,22 @@
 package net.andimiller.mcp.core.server
 
-import cats.effect.kernel.{Async, Ref}
+import cats.effect.kernel.Async
+import cats.effect.kernel.Ref
 import cats.syntax.all.*
 import net.andimiller.mcp.core.protocol.*
 
-/**
- * Default implementation of the MCP Server trait.
- *
- * This implementation stores handlers in maps and delegates to them when requests arrive.
- */
+/** Default implementation of the MCP Server trait.
+  *
+  * This implementation stores handlers in maps and delegates to them when requests arrive.
+  */
 class DefaultServer[F[_]: Async](
-  val info: Implementation,
-  val capabilities: ServerCapabilities,
-  toolHandlers: Map[String, Tool.Resolved[F]],
-  resourceHandlers: Map[String, McpResource.Resolved[F]],
-  resourceTemplateHandlers: List[ResourceTemplate.Resolved[F]],
-  promptHandlers: Map[String, Prompt.Resolved[F]],
-  subscriptions: Ref[F, Set[String]]
+    val info: Implementation,
+    val capabilities: ServerCapabilities,
+    toolHandlers: Map[String, Tool.Resolved[F]],
+    resourceHandlers: Map[String, McpResource.Resolved[F]],
+    resourceTemplateHandlers: List[ResourceTemplate.Resolved[F]],
+    promptHandlers: Map[String, Prompt.Resolved[F]],
+    subscriptions: Ref[F, Set[String]]
 ) extends Server[F]:
 
   override def listTools(request: ListToolsRequest): F[ListToolsResponse] =
@@ -101,19 +101,17 @@ class DefaultServer[F[_]: Async](
     Async[F].unit
 
 object DefaultServer:
-  /**
-   * Create a new DefaultServer with the given configuration.
-   */
+
+  /** Create a new DefaultServer with the given configuration. */
   def apply[F[_]: Async](
-    info: Implementation,
-    capabilities: ServerCapabilities,
-    toolHandlers: List[Tool.Resolved[F]] = Nil,
-    resourceHandlers: List[McpResource.Resolved[F]] = Nil,
-    resourceTemplateHandlers: List[ResourceTemplate.Resolved[F]] = Nil,
-    promptHandlers: List[Prompt.Resolved[F]] = Nil
+      info: Implementation,
+      capabilities: ServerCapabilities,
+      toolHandlers: List[Tool.Resolved[F]] = Nil,
+      resourceHandlers: List[McpResource.Resolved[F]] = Nil,
+      resourceTemplateHandlers: List[ResourceTemplate.Resolved[F]] = Nil,
+      promptHandlers: List[Prompt.Resolved[F]] = Nil
   ): F[DefaultServer[F]] =
-    for
-      subscriptions <- Ref.of[F, Set[String]](Set.empty)
+    for subscriptions <- Ref.of[F, Set[String]](Set.empty)
     yield new DefaultServer[F](
       info = info,
       capabilities = capabilities,

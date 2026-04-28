@@ -6,14 +6,19 @@ import io.circe.Json
 import io.circe.syntax.*
 import munit.CatsEffectSuite
 import org.http4s.circe.*
-import org.http4s.{EntityEncoder, HttpApp, Method, Request, Response, Status}
+import org.http4s.EntityEncoder
+import org.http4s.HttpApp
+import org.http4s.Method
+import org.http4s.Request
+import org.http4s.Response
+import org.http4s.Status
 import org.http4s.client.Client
 
 class RequestBuilderSuite extends CatsEffectSuite:
 
   private def recordingClient(
-    captured: Ref[IO, List[Request[IO]]],
-    body: Json = Json.obj("ok" -> true.asJson)
+      captured: Ref[IO, List[Request[IO]]],
+      body: Json = Json.obj("ok" -> true.asJson)
   ): Client[IO] =
     Client.fromHttpApp(HttpApp[IO] { req =>
       req.bodyText.compile.string.flatMap { bodyText =>
@@ -33,11 +38,14 @@ class RequestBuilderSuite extends CatsEffectSuite:
       captured <- Ref.of[IO, List[Request[IO]]](Nil)
       client    = recordingClient(captured)
       _        <- RequestBuilder.execute(
-                    client, "https://api.example.com",
-                    Method.GET, "/users/{id}", op,
-                    Json.obj("id" -> "42".asJson)
-                  )
-      reqs     <- captured.get
+             client,
+             "https://api.example.com",
+             Method.GET,
+             "/users/{id}",
+             op,
+             Json.obj("id" -> "42".asJson)
+           )
+      reqs <- captured.get
     yield
       assertEquals(reqs.length, 1)
       assertEquals(reqs.head.uri.path.toString, "/users/42")
@@ -53,11 +61,14 @@ class RequestBuilderSuite extends CatsEffectSuite:
     for
       captured <- Ref.of[IO, List[Request[IO]]](Nil)
       _        <- RequestBuilder.execute(
-                    recordingClient(captured), "https://api.example.com",
-                    Method.GET, "/items", op,
-                    Json.obj("limit" -> 10.asJson)
-                  )
-      reqs     <- captured.get
+             recordingClient(captured),
+             "https://api.example.com",
+             Method.GET,
+             "/items",
+             op,
+             Json.obj("limit" -> 10.asJson)
+           )
+      reqs <- captured.get
     yield assertEquals(reqs.head.uri.query.params.get("limit"), Some("10"))
   }
 
@@ -71,11 +82,9 @@ class RequestBuilderSuite extends CatsEffectSuite:
     for
       captured <- Ref.of[IO, List[Request[IO]]](Nil)
       _        <- RequestBuilder.execute(
-                    recordingClient(captured), "https://api.example.com",
-                    Method.GET, "/items", op,
-                    Json.obj()
-                  )
-      reqs     <- captured.get
+             recordingClient(captured), "https://api.example.com", Method.GET, "/items", op, Json.obj()
+           )
+      reqs <- captured.get
     yield assertEquals(reqs.head.uri.query.params.get("limit"), None)
   }
 
@@ -89,11 +98,14 @@ class RequestBuilderSuite extends CatsEffectSuite:
     for
       captured <- Ref.of[IO, List[Request[IO]]](Nil)
       _        <- RequestBuilder.execute(
-                    recordingClient(captured), "https://api.example.com",
-                    Method.GET, "/items", op,
-                    Json.obj("X-Trace-Id" -> "abc".asJson)
-                  )
-      reqs     <- captured.get
+             recordingClient(captured),
+             "https://api.example.com",
+             Method.GET,
+             "/items",
+             op,
+             Json.obj("X-Trace-Id" -> "abc".asJson)
+           )
+      reqs <- captured.get
     yield assertEquals(
       reqs.head.headers.get(org.typelevel.ci.CIString("X-Trace-Id")).map(_.head.value),
       Some("abc")
@@ -105,12 +117,15 @@ class RequestBuilderSuite extends CatsEffectSuite:
     for
       captured <- Ref.of[IO, List[Request[IO]]](Nil)
       _        <- RequestBuilder.execute(
-                    recordingClient(captured), "https://api.example.com",
-                    Method.POST, "/items", op,
-                    Json.obj("body" -> Json.obj("name" -> "x".asJson))
-                  )
-      reqs     <- captured.get
-      body     <- reqs.head.bodyText.compile.string
+             recordingClient(captured),
+             "https://api.example.com",
+             Method.POST,
+             "/items",
+             op,
+             Json.obj("body" -> Json.obj("name" -> "x".asJson))
+           )
+      reqs <- captured.get
+      body <- reqs.head.bodyText.compile.string
     yield assertEquals(io.circe.parser.parse(body).toOption, Some(Json.obj("name" -> "x".asJson)))
   }
 
@@ -119,18 +134,16 @@ class RequestBuilderSuite extends CatsEffectSuite:
     for
       captured <- Ref.of[IO, List[Request[IO]]](Nil)
       _        <- RequestBuilder.execute(
-                    recordingClient(captured), "https://api.example.com",
-                    Method.GET, "/items", op,
-                    Json.obj()
-                  )
-      reqs     <- captured.get
-      body     <- reqs.head.bodyText.compile.string
+             recordingClient(captured), "https://api.example.com", Method.GET, "/items", op, Json.obj()
+           )
+      reqs <- captured.get
+      body <- reqs.head.bodyText.compile.string
     yield assertEquals(body, "")
   }
 
   test("non-2xx HTTP response surfaces as ToolResult.Error") {
     import net.andimiller.mcp.core.protocol.ToolResult
-    val op = ResolvedOperation(Nil, Nil, Nil, hasBody = false)
+    val op        = ResolvedOperation(Nil, Nil, Nil, hasBody = false)
     val errClient = Client.fromHttpApp(HttpApp[IO] { _ =>
       IO.pure(Response[IO](Status.NotFound).withEntity("nope"))
     })
@@ -142,7 +155,7 @@ class RequestBuilderSuite extends CatsEffectSuite:
 
   test("array response is wrapped in {items: [...]}") {
     import net.andimiller.mcp.core.protocol.ToolResult
-    val op = ResolvedOperation(Nil, Nil, Nil, hasBody = false)
+    val op          = ResolvedOperation(Nil, Nil, Nil, hasBody = false)
     val arrayClient = Client.fromHttpApp(HttpApp[IO] { _ =>
       IO.pure(Response[IO](Status.Ok).withEntity(Json.arr(Json.fromInt(1), Json.fromInt(2))))
     })

@@ -3,20 +3,18 @@ package net.andimiller.mcp.core.server
 import cats.effect.kernel.Async
 import net.andimiller.mcp.core.state.SessionRefs
 
-/**
- * Per-session context handed to user-supplied state creators.
- *
- * Bundles every primitive a tool/resource/prompt handler might want from its session:
- *   - [[id]]          — stable session identifier (a UUID for HTTP sessions, `"stdio"` for stdio).
- *   - [[channel]]     — bidirectional client channel (notifications + server-initiated requests).
- *   - [[refs]]        — per-session named refs (default in-memory; user-supplied factories can swap
- *                       the implementation, e.g. to Redis).
- *   - [[elicitation]] — pre-built [[ElicitationClient]] backed by the channel's requester.
- *
- * Defined as a trait (not a case class) so future per-session capabilities (e.g. negotiated
- * `ClientCapabilities`, the authenticated user identity) can be added without breaking existing
- * call sites.
- */
+/** Per-session context handed to user-supplied state creators.
+  *
+  * Bundles every primitive a tool/resource/prompt handler might want from its session:
+  *   - [[id]] — stable session identifier (a UUID for HTTP sessions, `"stdio"` for stdio).
+  *   - [[channel]] — bidirectional client channel (notifications + server-initiated requests).
+  *   - [[refs]] — per-session named refs (default in-memory; user-supplied factories can swap the implementation, e.g.
+  *     to Redis).
+  *   - [[elicitation]] — pre-built [[ElicitationClient]] backed by the channel's requester.
+  *
+  * Defined as a trait (not a case class) so future per-session capabilities (e.g. negotiated `ClientCapabilities`, the
+  * authenticated user identity) can be added without breaking existing call sites.
+  */
 trait SessionContext[F[_]]:
 
   def id: String
@@ -38,9 +36,9 @@ object SessionContext:
 
   /** Build a `SessionContext` from its parts. */
   def apply[F[_]: Async](
-    sessionId: String,
-    clientChannel: ClientChannel[F],
-    sessionRefs: SessionRefs[F]
+      sessionId: String,
+      clientChannel: ClientChannel[F],
+      sessionRefs: SessionRefs[F]
   ): SessionContext[F] =
     new SessionContext[F]:
       val id          = sessionId

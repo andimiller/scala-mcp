@@ -1,7 +1,8 @@
 package net.andimiller.mcp.http4s
 
 import cats.effect.kernel.Async
-import cats.effect.{IO, Resource}
+import cats.effect.IO
+import cats.effect.Resource
 import cats.syntax.all.*
 import com.comcast.ip4s.*
 import net.andimiller.mcp.core.protocol.*
@@ -36,9 +37,13 @@ class BasicMcpHttpBuilder[F[_]: Async] private[http4s] (
   // ── Config ──────────────────────────────────────────────────────────
 
   def name(n: String): BasicMcpHttpBuilder[F] = copy(mName = n)
+
   def version(v: String): BasicMcpHttpBuilder[F] = copy(mVersion = v)
+
   def host(h: Host): BasicMcpHttpBuilder[F] = copy(mConfig = mConfig.copy(host = h))
+
   def port(p: Port): BasicMcpHttpBuilder[F] = copy(mConfig = mConfig.copy(port = p))
+
   def withExplorer(redirectToRoot: Boolean = false): BasicMcpHttpBuilder[F] =
     copy(mConfig = mConfig.copy(explorerEnabled = true, rootRedirectToExplorer = redirectToRoot))
 
@@ -66,7 +71,10 @@ class BasicMcpHttpBuilder[F[_]: Async] private[http4s] (
     withResourceTemplate(rt.resolve)
 
   def withResourceTemplates(handlers: ResourceTemplate.Resolved[F]*): BasicMcpHttpBuilder[F] =
-    copy(mResourceTemplates = mResourceTemplates ++ handlers, mCaps = if handlers.nonEmpty then mCaps.withResourceAdded else mCaps)
+    copy(
+      mResourceTemplates = mResourceTemplates ++ handlers,
+      mCaps = if handlers.nonEmpty then mCaps.withResourceAdded else mCaps
+    )
 
   def withPrompt(handler: Prompt.Resolved[F]): BasicMcpHttpBuilder[F] =
     copy(mPrompts = mPrompts :+ handler, mCaps = mCaps.withPromptAdded)
@@ -112,6 +120,7 @@ class BasicMcpHttpBuilder[F[_]: Async] private[http4s] (
 object BasicMcpHttpBuilder:
 
   extension (builder: BasicMcpHttpBuilder[IO])
+
     def serve: Resource[IO, org.http4s.server.Server] =
       Resource.eval(builder.buildServer).flatMap { server =>
         McpHttp.serve(server, builder.mConfig)

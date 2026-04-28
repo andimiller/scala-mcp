@@ -2,7 +2,9 @@ package net.andimiller.mcp.http4s
 
 import cats.Eq
 import cats.effect.IO
-import cats.effect.kernel.{Async, Ref, Resource}
+import cats.effect.kernel.Async
+import cats.effect.kernel.Ref
+import cats.effect.kernel.Resource
 import cats.effect.std.UUIDGen
 import cats.syntax.all.*
 import com.comcast.ip4s.*
@@ -50,7 +52,8 @@ class StreamingMcpHttpBuilder[F[_]: Async, Ctx] private[http4s] (
       mPlainResources: Vector[McpResource.Resolved[F]] = this.mPlainResources,
       mContextResourceResolvers: Vector[Any => McpResource.Resolved[F]] = this.mContextResourceResolvers,
       mPlainResourceTemplates: Vector[ResourceTemplate.Resolved[F]] = this.mPlainResourceTemplates,
-      mContextResourceTemplateResolvers: Vector[Any => ResourceTemplate.Resolved[F]] = this.mContextResourceTemplateResolvers,
+      mContextResourceTemplateResolvers: Vector[Any => ResourceTemplate.Resolved[F]] =
+        this.mContextResourceTemplateResolvers,
       mPlainPrompts: Vector[Prompt.Resolved[F]] = this.mPlainPrompts,
       mContextPromptResolvers: Vector[Any => Prompt.Resolved[F]] = this.mContextPromptResolvers,
       mCaps: CapabilityTracker = this.mCaps,
@@ -60,23 +63,22 @@ class StreamingMcpHttpBuilder[F[_]: Async, Ctx] private[http4s] (
       mSessionStoreFactory: Option[SessionStoreFactory[F]] = this.mSessionStoreFactory
   ): StreamingMcpHttpBuilder[F, Ctx2] =
     new StreamingMcpHttpBuilder[F, Ctx2](
-      mName, mVersion, mConfig, mAuthInfo,
-      mStatefulCreators,
-      mAuthExtractor,
-      mPlainTools, mContextToolResolvers,
-      mPlainResources, mContextResourceResolvers,
-      mPlainResourceTemplates, mContextResourceTemplateResolvers,
-      mPlainPrompts, mContextPromptResolvers,
-      mCaps,
-      mSessionStore, mSinkFactory, mSessionRefsFactory, mSessionStoreFactory
+      mName, mVersion, mConfig, mAuthInfo, mStatefulCreators, mAuthExtractor, mPlainTools, mContextToolResolvers,
+      mPlainResources, mContextResourceResolvers, mPlainResourceTemplates, mContextResourceTemplateResolvers,
+      mPlainPrompts, mContextPromptResolvers, mCaps, mSessionStore, mSinkFactory, mSessionRefsFactory,
+      mSessionStoreFactory
     )
 
   // ── Config ──────────────────────────────────────────────────────────
 
   def name(n: String): StreamingMcpHttpBuilder[F, Ctx] = copy(mName = n)
+
   def version(v: String): StreamingMcpHttpBuilder[F, Ctx] = copy(mVersion = v)
+
   def host(h: Host): StreamingMcpHttpBuilder[F, Ctx] = copy(mConfig = mConfig.copy(host = h))
+
   def port(p: Port): StreamingMcpHttpBuilder[F, Ctx] = copy(mConfig = mConfig.copy(port = p))
+
   def withExplorer(redirectToRoot: Boolean = false): StreamingMcpHttpBuilder[F, Ctx] =
     copy(mConfig = mConfig.copy(explorerEnabled = true, rootRedirectToExplorer = redirectToRoot))
 
@@ -96,23 +98,25 @@ class StreamingMcpHttpBuilder[F[_]: Async, Ctx] private[http4s] (
 
   // ── Context accumulation ──────────────────────────────────────────
 
-  /**
-   * Register a per-session state creator. The creator receives a [[SessionContext]] —
-   * a bundle of `id`, `channel` (notifications + server-initiated requests), and `refs`
-   * (per-session named refs). Use the conveniences `ctx.sink` and `ctx.requester` for the
-   * common cases, or reach for `ctx.channel` directly to grab the full bidirectional channel.
-   *
-   * Multiple `.stateful` calls accumulate in declaration order and produce a tuple-shaped
-   * context type via `Append[S, Ctx]`.
-   */
+  /** Register a per-session state creator. The creator receives a [[SessionContext]] — a bundle of `id`, `channel`
+    * (notifications + server-initiated requests), and `refs` (per-session named refs). Use the conveniences `ctx.sink`
+    * and `ctx.requester` for the common cases, or reach for `ctx.channel` directly to grab the full bidirectional
+    * channel.
+    *
+    * Multiple `.stateful` calls accumulate in declaration order and produce a tuple-shaped context type via
+    * `Append[S, Ctx]`.
+    */
   def stateful[S](create: SessionContext[F] => F[S]): StreamingMcpHttpBuilder[F, Append[S, Ctx]] =
     val widened: SessionContext[F] => F[Any] = ctx => create(ctx).map(_.asInstanceOf[Any])
     copy[Append[S, Ctx]](mStatefulCreators = mStatefulCreators :+ widened)
 
-  def authenticated[U: Eq](extract: Request[F] => F[Option[U]], onUnauthorized: Response[F]): StreamingMcpHttpBuilder[F, Append[U, Ctx]] =
-    val eqAny: Eq[Any] = Eq.instance[Any]((a, b) => summon[Eq[U]].eqv(a.asInstanceOf[U], b.asInstanceOf[U]))
+  def authenticated[U: Eq](
+      extract: Request[F] => F[Option[U]],
+      onUnauthorized: Response[F]
+  ): StreamingMcpHttpBuilder[F, Append[U, Ctx]] =
+    val eqAny: Eq[Any]                               = Eq.instance[Any]((a, b) => summon[Eq[U]].eqv(a.asInstanceOf[U], b.asInstanceOf[U]))
     val widenedExtract: Request[F] => F[Option[Any]] = req => extract(req).map(_.map(_.asInstanceOf[Any]))
-    val info = StreamingMcpHttpBuilder.AuthInfo[F](eqAny, widenedExtract, onUnauthorized)
+    val info                                         = StreamingMcpHttpBuilder.AuthInfo[F](eqAny, widenedExtract, onUnauthorized)
     copy[Append[U, Ctx]](mAuthInfo = Some(info), mAuthExtractor = Some(widenedExtract))
 
   // ── Plain tools ────────────────────────────────────────────────────
@@ -128,8 +132,13 @@ class StreamingMcpHttpBuilder[F[_]: Async, Ctx] private[http4s] (
   def withContextualTool[A, R](tool: Tool[F, Ctx, A, R])(using Async[F]): StreamingMcpHttpBuilder[F, Ctx] =
     withContextualTool(tool, identity)
 
-  def withContextualTool[C, A, R](tool: Tool[F, C, A, R], extract: Ctx => C)(using Async[F]): StreamingMcpHttpBuilder[F, Ctx] =
-    copy(mContextToolResolvers = mContextToolResolvers :+ ((ctx: Any) => tool.provide(extract(ctx.asInstanceOf[Ctx]))), mCaps = mCaps.withToolAdded)
+  def withContextualTool[C, A, R](tool: Tool[F, C, A, R], extract: Ctx => C)(using
+      Async[F]
+  ): StreamingMcpHttpBuilder[F, Ctx] =
+    copy(
+      mContextToolResolvers = mContextToolResolvers :+ ((ctx: Any) => tool.provide(extract(ctx.asInstanceOf[Ctx]))),
+      mCaps = mCaps.withToolAdded
+    )
 
   // ── Plain resources ────────────────────────────────────────────────
 
@@ -140,12 +149,18 @@ class StreamingMcpHttpBuilder[F[_]: Async, Ctx] private[http4s] (
     withResource(resource.resolve)
 
   def withResources(handlers: McpResource.Resolved[F]*): StreamingMcpHttpBuilder[F, Ctx] =
-    copy(mPlainResources = mPlainResources ++ handlers, mCaps = if handlers.nonEmpty then mCaps.withResourceAdded else mCaps)
+    copy(
+      mPlainResources = mPlainResources ++ handlers,
+      mCaps = if handlers.nonEmpty then mCaps.withResourceAdded else mCaps
+    )
 
   // ── Context resources ──────────────────────────────────────────────
 
   def withContextualResource(resource: McpResource[F, Ctx]): StreamingMcpHttpBuilder[F, Ctx] =
-    copy(mContextResourceResolvers = mContextResourceResolvers :+ ((ctx: Any) => resource.provide(ctx.asInstanceOf[Ctx])), mCaps = mCaps.withResourceAdded)
+    copy(
+      mContextResourceResolvers = mContextResourceResolvers :+ ((ctx: Any) => resource.provide(ctx.asInstanceOf[Ctx])),
+      mCaps = mCaps.withResourceAdded
+    )
 
   // ── Plain resource templates ────────────────────────────────────────
 
@@ -156,12 +171,19 @@ class StreamingMcpHttpBuilder[F[_]: Async, Ctx] private[http4s] (
     withResourceTemplate(rt.resolve)
 
   def withResourceTemplates(handlers: ResourceTemplate.Resolved[F]*): StreamingMcpHttpBuilder[F, Ctx] =
-    copy(mPlainResourceTemplates = mPlainResourceTemplates ++ handlers, mCaps = if handlers.nonEmpty then mCaps.withResourceAdded else mCaps)
+    copy(
+      mPlainResourceTemplates = mPlainResourceTemplates ++ handlers,
+      mCaps = if handlers.nonEmpty then mCaps.withResourceAdded else mCaps
+    )
 
   // ── Context resource templates ──────────────────────────────────────
 
   def withContextualResourceTemplate(rt: ResourceTemplate[F, Ctx]): StreamingMcpHttpBuilder[F, Ctx] =
-    copy(mContextResourceTemplateResolvers = mContextResourceTemplateResolvers :+ ((ctx: Any) => rt.provide(ctx.asInstanceOf[Ctx])), mCaps = mCaps.withResourceAdded)
+    copy(
+      mContextResourceTemplateResolvers =
+        mContextResourceTemplateResolvers :+ ((ctx: Any) => rt.provide(ctx.asInstanceOf[Ctx])),
+      mCaps = mCaps.withResourceAdded
+    )
 
   // ── Plain prompts ──────────────────────────────────────────────────
 
@@ -177,7 +199,10 @@ class StreamingMcpHttpBuilder[F[_]: Async, Ctx] private[http4s] (
   // ── Context prompts ────────────────────────────────────────────────
 
   def withContextualPrompt(prompt: Prompt[F, Ctx]): StreamingMcpHttpBuilder[F, Ctx] =
-    copy(mContextPromptResolvers = mContextPromptResolvers :+ ((ctx: Any) => prompt.provide(ctx.asInstanceOf[Ctx])), mCaps = mCaps.withPromptAdded)
+    copy(
+      mContextPromptResolvers = mContextPromptResolvers :+ ((ctx: Any) => prompt.provide(ctx.asInstanceOf[Ctx])),
+      mCaps = mCaps.withPromptAdded
+    )
 
   // ── Capabilities ──────────────────────────────────────────────────
 
@@ -198,10 +223,9 @@ class StreamingMcpHttpBuilder[F[_]: Async, Ctx] private[http4s] (
 
   // ── Build session ──────────────────────────────────────────────────
 
-  /** Build a standalone Server[F] using a no-op client channel and in-memory session refs.
-    * Useful for golden testing where only catalog queries (listTools, etc.) are needed —
-    * tools that issue server-initiated requests will get [[ServerRequester]]'s "not
-    * configured" response if exercised against this server.
+  /** Build a standalone Server[F] using a no-op client channel and in-memory session refs. Useful for golden testing
+    * where only catalog queries (listTools, etc.) are needed — tools that issue server-initiated requests will get
+    * [[ServerRequester]]'s "not configured" response if exercised against this server.
     */
   def buildServer: F[Server[F]] =
     ClientChannel.noop[F].flatMap { cc =>
@@ -210,10 +234,10 @@ class StreamingMcpHttpBuilder[F[_]: Async, Ctx] private[http4s] (
     }
 
   private def resolveAll(ctx: Any): F[Server[F]] =
-    val tools = mPlainTools ++ mContextToolResolvers.map(_(ctx))
-    val resources = mPlainResources ++ mContextResourceResolvers.map(_(ctx))
+    val tools             = mPlainTools ++ mContextToolResolvers.map(_(ctx))
+    val resources         = mPlainResources ++ mContextResourceResolvers.map(_(ctx))
     val resourceTemplates = mPlainResourceTemplates ++ mContextResourceTemplateResolvers.map(_(ctx))
-    val prompts = mPlainPrompts ++ mContextPromptResolvers.map(_(ctx))
+    val prompts           = mPlainPrompts ++ mContextPromptResolvers.map(_(ctx))
     DefaultServer[F](
       info = Implementation(mName, mVersion),
       capabilities = mCaps.toServerCapabilities,
@@ -223,8 +247,9 @@ class StreamingMcpHttpBuilder[F[_]: Async, Ctx] private[http4s] (
       promptHandlers = prompts.toList
     ).widen[Server[F]]
 
-  /** Run all registered `.stateful` creators against a single [[SessionContext]] in
-   *  declaration order, prepending each result onto the accumulated context tuple. */
+  /** Run all registered `.stateful` creators against a single [[SessionContext]] in declaration order, prepending each
+    * result onto the accumulated context tuple.
+    */
   private def createStatefulContext(ctx: SessionContext[F]): F[Any] =
     mStatefulCreators.foldLeft(Async[F].pure(()): F[Any]) { (ctxF, creator) =>
       ctxF.flatMap(acc => creator(ctx).map(value => StreamingMcpHttpBuilder.prependContext(value, acc)))
@@ -251,14 +276,20 @@ class StreamingMcpHttpBuilder[F[_]: Async, Ctx] private[http4s] (
     mAuthInfo match
       case Some(info) =>
         val extractReq: Request[F] => F[Option[Any]] = mAuthExtractor.getOrElse(_ => Async[F].pure(None))
-        val storeR = mSessionStore match
-          case Some(store: AuthenticatedSessionStore[F, Any] @unchecked) => Resource.pure[F, AuthenticatedSessionStore[F, Any]](store)
+        val storeR                                   = mSessionStore match
+          case Some(store: AuthenticatedSessionStore[F, Any] @unchecked) =>
+            Resource.pure[F, AuthenticatedSessionStore[F, Any]](store)
           case _ => Resource.eval(AuthenticatedSessionStore.inMemory[F, Any])
         storeR.flatMap { store =>
           val serverF: (String, Any, SessionContext[F]) => F[Server[F]] =
             (id, user, ctx) => newAuthenticatedSessionFactory(id)(user, ctx)
           StreamableHttpTransport.authenticatedRoutes[F, Any](
-            extractReq, serverF, Async[F].pure(info.onForbidden), sinkFactory, refsFactory, store
+            extractReq,
+            serverF,
+            Async[F].pure(info.onForbidden),
+            sinkFactory,
+            refsFactory,
+            store
           )(using Async[F], summon[UUIDGen[F]], info.eqAny)
         }
       case None =>
@@ -286,7 +317,7 @@ class StreamingMcpHttpBuilder[F[_]: Async, Ctx] private[http4s] (
 
 object StreamingMcpHttpBuilder:
 
-  private[http4s] final case class AuthInfo[F[_]](
+  final private[http4s] case class AuthInfo[F[_]](
       eqAny: Eq[Any],
       extract: Request[F] => F[Option[Any]],
       onForbidden: Response[F]
@@ -297,10 +328,12 @@ object StreamingMcpHttpBuilder:
     case _  => (head, tail)
 
   extension [Ctx](builder: StreamingMcpHttpBuilder[IO, Ctx])
+
     def serve: Resource[IO, org.http4s.server.Server] =
       builder.routes.flatMap { mcpRoutes =>
         val app = McpHttp.buildApp(mcpRoutes, builder.mConfig)
-        EmberServerBuilder.default[IO]
+        EmberServerBuilder
+          .default[IO]
           .withHost(builder.mConfig.host)
           .withPort(builder.mConfig.port)
           .withHttpApp(app)

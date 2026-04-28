@@ -1,9 +1,11 @@
 package net.andimiller.mcp.core.server
 
 import cats.effect.IO
-import cats.effect.kernel.{Deferred, Ref}
+import cats.effect.kernel.Deferred
+import cats.effect.kernel.Ref
 import cats.syntax.all.*
-import io.circe.{Codec, Json}
+import io.circe.Codec
+import io.circe.Json
 import io.circe.syntax.*
 import munit.CatsEffectSuite
 import net.andimiller.mcp.core.protocol.*
@@ -22,14 +24,14 @@ class ElicitationClientSuite extends CatsEffectSuite:
       published   <- Ref.of[IO, Vector[Message]](Vector.empty)
       requestSeen <- Deferred[IO, Message.Request]
       requester   <- ServerRequester.create[IO] { msg =>
-                       published.update(_ :+ msg) *> (msg match
-                         case r: Message.Request => requestSeen.complete(r).void
-                         case _                  => IO.unit)
-                     }
-      _           <- requester.setClientCapabilities(capsWithForm)
-      _           <- requestSeen.get
-                       .flatMap(r => requester.completeResponse(r.id, Right(envelope.asJson)))
-                       .start
+                     published.update(_ :+ msg) *> (msg match
+                       case r: Message.Request => requestSeen.complete(r).void
+                       case _                  => IO.unit)
+                   }
+      _ <- requester.setClientCapabilities(capsWithForm)
+      _ <- requestSeen.get
+             .flatMap(r => requester.completeResponse(r.id, Right(envelope.asJson)))
+             .start
     yield (published, ElicitationClient.fromRequester(requester))
 
   test("requestForm with accept returns Accept(decoded)") {
@@ -67,9 +69,9 @@ class ElicitationClientSuite extends CatsEffectSuite:
       published <- Ref.of[IO, Vector[Message]](Vector.empty)
       requester <- ServerRequester.create[IO](msg => published.update(_ :+ msg))
       // no setClientCapabilities call -> capabilities are None
-      client     = ElicitationClient.fromRequester(requester)
-      result    <- client.requestForm[Form](message = "fill me", timeout = None)
-      pubs      <- published.get
+      client  = ElicitationClient.fromRequester(requester)
+      result <- client.requestForm[Form](message = "fill me", timeout = None)
+      pubs   <- published.get
     yield
       assertEquals(result, Left(ElicitationError.CapabilityMissing))
       assertEquals(pubs, Vector.empty)

@@ -6,6 +6,7 @@ import net.andimiller.mcp.golden.McpGoldenSuite
 import net.andimiller.mcp.http4s.McpHttp
 
 class RpgCharacterCreatorGoldenSuite extends McpGoldenSuite:
+
   override def goldenFileName = "rpg-character-creator-mcp.json"
 
   def server: IO[Server[IO]] =

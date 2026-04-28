@@ -3,8 +3,13 @@ package net.andimiller.mcp.http4s
 import cats.effect.IO
 import cats.effect.kernel.Ref
 import munit.CatsEffectSuite
-import net.andimiller.mcp.core.server.{ClientChannel, RequestHandler, ServerRequester, CancellationRegistry, DefaultServer}
-import net.andimiller.mcp.core.protocol.{Implementation, ServerCapabilities}
+import net.andimiller.mcp.core.server.ClientChannel
+import net.andimiller.mcp.core.server.RequestHandler
+import net.andimiller.mcp.core.server.ServerRequester
+import net.andimiller.mcp.core.server.CancellationRegistry
+import net.andimiller.mcp.core.server.DefaultServer
+import net.andimiller.mcp.core.protocol.Implementation
+import net.andimiller.mcp.core.protocol.ServerCapabilities
 
 class SessionStoreSuite extends CatsEffectSuite:
 
