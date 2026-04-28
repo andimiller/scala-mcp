@@ -4,6 +4,7 @@ import cats.effect.IO
 import munit.CatsEffectSuite
 import org.http4s.HttpApp
 import org.http4s.client.Client
+import scala.annotation.nowarn
 
 class SpecLoaderSuite extends CatsEffectSuite:
 
@@ -44,5 +45,5 @@ class SpecLoaderSuite extends CatsEffectSuite:
         case Left(_)  => ()
         case Right(_) => fail("expected error for malformed content")
       }
-    finally java.nio.file.Files.deleteIfExists(tmp)
+    finally java.nio.file.Files.deleteIfExists(tmp): @nowarn
   }
