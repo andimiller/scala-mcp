@@ -7,6 +7,7 @@ import sttp.apispec.circe.given
 import scala.collection.immutable.ListMap
 import scala.compiletime.*
 import scala.deriving.Mirror
+import scala.annotation.nowarn
 
 case class description(value: String) extends scala.annotation.StaticAnnotation
 
@@ -55,6 +56,7 @@ object JsonSchema:
       case p: Mirror.ProductOf[A] => deriveProduct[A](p)
       case s: Mirror.SumOf[A]     => deriveSum[A](s)
 
+  @nowarn("msg=New anonymous class definition will be duplicated at each inline site")
   private inline def deriveProduct[A](p: Mirror.ProductOf[A]): JsonSchema[A] =
     new JsonSchema[A]:
       def schema: Schema =
@@ -80,6 +82,7 @@ object JsonSchema:
           additionalProperties = Some(AnySchema.Nothing)
         )
 
+  @nowarn("msg=New anonymous class definition will be duplicated at each inline site")
   private inline def deriveSum[A](s: Mirror.SumOf[A]): JsonSchema[A] =
     new JsonSchema[A]:
       def schema: Schema =

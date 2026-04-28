@@ -7,13 +7,6 @@ lazy val commonSettings = Seq(
   scalaVersion := scala3Version,
   organization := "net.andimiller.mcp",
   version := "0.8.0",
-  scalacOptions ++= Seq(
-    "-deprecation",
-    "-feature",
-    "-unchecked",
-    "-language:higherKinds",
-    "-Wconf:msg=New anonymous class definition will be duplicated:s"  // Silence inline derivation warning
-  )
 )
 
 // scoverage instrumentation produces JVM-only bytecode, so coverage must be disabled on every
