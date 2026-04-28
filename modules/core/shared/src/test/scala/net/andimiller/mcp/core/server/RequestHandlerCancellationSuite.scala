@@ -13,8 +13,6 @@ import net.andimiller.mcp.core.protocol.jsonrpc.{Message, RequestId}
 
 import scala.concurrent.duration.*
 
-/** End-to-end test that `notifications/cancelled` causes [[RequestHandler.handle]] to return
- *  `None` for the cancelled request, so no JSON-RPC response is sent. */
 class RequestHandlerCancellationSuite extends CatsEffectSuite:
 
   private def gatedTool(gate: Deferred[IO, Unit]): Tool.Resolved[IO] =

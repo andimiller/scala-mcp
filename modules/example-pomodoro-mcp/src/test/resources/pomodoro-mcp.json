@@ -127,6 +127,35 @@
       }
     },
     {
+      "description" : "Sleep for the given number of seconds. Demonstrates MCP cancellation: send notifications/cancelled and the tool's onCancel hook logs how long it actually slept.",
+      "inputSchema" : {
+        "additionalProperties" : false,
+        "properties" : {
+          "duration_seconds" : {
+            "description" : "How long to block for, in seconds",
+            "type" : "integer"
+          }
+        },
+        "required" : [
+          "duration_seconds"
+        ],
+        "type" : "object"
+      },
+      "name" : "sleep_blocking",
+      "outputSchema" : {
+        "additionalProperties" : false,
+        "properties" : {
+          "message" : {
+            "type" : "string"
+          }
+        },
+        "required" : [
+          "message"
+        ],
+        "type" : "object"
+      }
+    },
+    {
       "description" : "Start a new pomodoro timer",
       "inputSchema" : {
         "additionalProperties" : false,

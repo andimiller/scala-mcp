@@ -16,6 +16,10 @@ lazy val commonSettings = Seq(
   )
 )
 
+// scoverage instrumentation produces JVM-only bytecode, so coverage must be disabled on every
+// non-JVM platform — otherwise dependent Scala.js builds (notably the explorer) fail to link.
+lazy val noCoverage: Seq[Setting[?]] = Seq(coverageEnabled := false)
+
 lazy val publishSettings = Seq(
   useGpg               := true,
   pomIncludeRepository := { _ => false },
@@ -62,20 +66,22 @@ lazy val core = crossProject(JVMPlatform, JSPlatform, NativePlatform)
   .jvmSettings(
     // JVM-specific settings
   )
-  .jsSettings(
-    // Scala.js-specific settings
-  )
-  .nativeSettings(
-    // Scala Native-specific settings
-  )
+  .jsSettings(noCoverage*)
+  .nativeSettings(noCoverage*)
 
 lazy val stdio = crossProject(JVMPlatform, JSPlatform, NativePlatform)
   .in(file("modules/stdio"))
   .settings(commonSettings)
   .settings(publishSettings)
   .settings(
-    name := "mcp-stdio"
+    name := "mcp-stdio",
+    libraryDependencies ++= Seq(
+      "org.scalameta" %%% "munit" % "1.0.0" % Test,
+      "org.typelevel" %%% "munit-cats-effect" % "2.2.0" % Test
+    )
   )
+  .jsSettings(noCoverage*)
+  .nativeSettings(noCoverage*)
   .dependsOn(core)
 
 lazy val http4s = crossProject(JVMPlatform, JSPlatform)
@@ -87,7 +93,9 @@ lazy val http4s = crossProject(JVMPlatform, JSPlatform)
     libraryDependencies ++= Seq(
       "org.http4s" %%% "http4s-dsl" % "0.23.33",
       "org.http4s" %%% "http4s-ember-server" % "0.23.33",
-      "org.http4s" %%% "http4s-circe" % "0.23.33"
+      "org.http4s" %%% "http4s-circe" % "0.23.33",
+      "org.scalameta" %%% "munit" % "1.0.0" % Test,
+      "org.typelevel" %%% "munit-cats-effect" % "2.2.0" % Test
     ),
     Compile / resourceGenerators += Def.task {
       val _ = (LocalRootProject / buildExplorer).value
@@ -100,6 +108,7 @@ lazy val http4s = crossProject(JVMPlatform, JSPlatform)
       Path.allSubpaths(targetDir).map(_._1).toSeq
     }.taskValue
   )
+  .jsSettings(noCoverage*)
   .dependsOn(core)
 
 
@@ -118,6 +127,8 @@ lazy val exampleDice = crossProject(JVMPlatform, JSPlatform, NativePlatform)
   .jsSettings(
     scalaJSLinkerConfig ~= { _.withModuleKind(ModuleKind.CommonJSModule) }
   )
+  .jsSettings(noCoverage*)
+  .nativeSettings(noCoverage*)
   .dependsOn(core, stdio, goldenMunit % Test)
 
 lazy val examplePomodoro = project
@@ -189,6 +200,9 @@ lazy val explorer = project
     scalaVersion := "3.6.4",
     name := "mcp-explorer",
     publish / skip := true,
+    // scoverage instrumentation produces JVM-only bytecode that fails to link under Scala.js.
+    // The explorer is a Scala.js UI; we don't measure its coverage anyway.
+    coverageEnabled := false,
     scalaJSLinkerConfig ~= { _.withModuleKind(ModuleKind.ESModule) },
     scalaJSUseMainModuleInitializer := true,
     Compile / mainClass := Some("net.andimiller.mcp.explorer.Main"),
@@ -233,6 +247,8 @@ lazy val goldenMunit = crossProject(JVMPlatform, JSPlatform, NativePlatform)
   .jsSettings(
     scalaJSLinkerConfig ~= { _.withModuleKind(ModuleKind.CommonJSModule) }
   )
+  .jsSettings(noCoverage*)
+  .nativeSettings(noCoverage*)
   .dependsOn(core)
 
 lazy val openapi = crossProject(JVMPlatform, JSPlatform, NativePlatform)
@@ -255,6 +271,8 @@ lazy val openapi = crossProject(JVMPlatform, JSPlatform, NativePlatform)
       "com.softwaremill.sttp.tapir"   %% "tapir-openapi-docs"  % "1.11.40" % Test
     )
   )
+  .jsSettings(noCoverage*)
+  .nativeSettings(noCoverage*)
   .dependsOn(core)
 
 lazy val redis = project

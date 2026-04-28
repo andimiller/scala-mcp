@@ -125,6 +125,10 @@ class PomodoroTimer(
             s"Completed: ${r.label} (${r.duration.toMinutes}min) at ${java.time.Instant.ofEpochMilli(r.completedAt)}"
           }
 
+  /** Send a log notification to the connected MCP client. */
+  def log(level: String, message: String): IO[Unit] =
+    sink.log(level, "pomodoro", Json.fromString(message))
+
   /** Get formatted session history. */
   def historyText: IO[String] =
     history.get.map { records =>

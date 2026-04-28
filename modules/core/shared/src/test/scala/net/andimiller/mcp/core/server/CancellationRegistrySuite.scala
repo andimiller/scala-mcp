@@ -49,15 +49,12 @@ class CancellationRegistrySuite extends CatsEffectSuite:
   test("registry is cleaned up after success and after cancellation") {
     for
       reg     <- CancellationRegistry.create[IO]
-      // success path
       _       <- reg.track(id1)(IO.pure(1))
-      // cancellation path
       gate    <- Deferred[IO, Unit]
       fib     <- reg.track(id2)(gate.get).start
       _       <- IO.sleep(50.millis)
       _       <- reg.cancel(id2)
       _       <- fib.joinWithNever
-      // probe internal state by attempting to cancel after — must remain a no-op (doesn't throw)
       _       <- reg.cancel(id1)
       _       <- reg.cancel(id2)
     yield ()
@@ -68,7 +65,6 @@ class CancellationRegistrySuite extends CatsEffectSuite:
     for
       reg    <- CancellationRegistry.create[IO]
       caught <- reg.track(id1)(IO.raiseError[Int](boom)).attempt
-      // a follow-up cancel for the same id must be a no-op (entry was cleaned up)
       _      <- reg.cancel(id1)
     yield caught match
       case Left(t)  => assertEquals(t.getMessage, "boom")

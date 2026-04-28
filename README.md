@@ -479,6 +479,10 @@ sbt test
 
 # Link Scala.js examples
 sbt exampleDns/fastLinkJS
+
+# Run tests with coverage (sbt-scoverage)
+sbt 'coverage; coreJVM/clean; coreJVM/test; coreJVM/coverageReport'
+# HTML report: modules/core/jvm/target/scala-3.3.4/scoverage-report/index.html
 ```
 
 ---

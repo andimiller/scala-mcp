@@ -9,6 +9,8 @@ import net.andimiller.mcp.core.schema.{JsonSchema, description}
 import net.andimiller.mcp.core.server.*
 import net.andimiller.mcp.http4s.{McpHttp, StreamingMcpHttpBuilder}
 
+import scala.concurrent.duration.*
+
 // ── request / response types ────────────────────────────────────────
 
 case class StartTimerRequest(
@@ -16,6 +18,11 @@ case class StartTimerRequest(
   duration_minutes: Int,
   @description("Label for this pomodoro session")
   label: String
+) derives JsonSchema, Decoder
+
+case class SleepBlockingRequest(
+  @description("How long to block for, in seconds")
+  duration_seconds: Int
 ) derives JsonSchema, Decoder
 
 case class EmptyRequest() derives JsonSchema, Decoder
@@ -67,6 +74,25 @@ object PomodoroMcpServer extends IOApp.Simple:
           .in[EmptyRequest]
           .out[StatusResponse]
           .run((timer, _) => timer.status.map(StatusResponse(_))),
+      )
+      .withContextualTool(
+        contextualTool[PomodoroTimer].name("sleep_blocking")
+          .description("Sleep for the given number of seconds. Demonstrates MCP cancellation: send notifications/cancelled and the tool's onCancel hook logs how long it actually slept.")
+          .in[SleepBlockingRequest]
+          .out[MessageResponse]
+          .run { (timer, req) =>
+            val duration = req.duration_seconds.seconds
+            IO.monotonic.flatMap { started =>
+              IO.sleep(duration)
+                .onCancel(
+                  IO.monotonic.flatMap { ended =>
+                    val msg = s"sleep_blocking cancelled after ${(ended - started).toMillis}ms (asked for ${duration.toMillis}ms)"
+                    IO.println(msg) *> timer.log("info", msg)
+                  }
+                )
+                .as(MessageResponse(s"slept for ${duration.toSeconds}s"))
+            }
+          },
       )
       // ── resources (need the timer) ─────────────────────────────────
       .withContextualResource(
