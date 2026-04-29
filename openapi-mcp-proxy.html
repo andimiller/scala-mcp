@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+  
+  <head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="generator" content="Typelevel Laika + Helium Theme" />
+  <title>OpenAPI MCP Proxy</title>
+  
+  <meta name="author" content="scala-mcp contributors"/>
+  
+  
+  <meta name="description" content="docs"/>
+  
+  
+  
+  <link rel="icon" sizes="32x32" type="image/png" href="images/favicon-32.png"/>
+  
+  <link rel="icon" sizes="16x16" type="image/png" href="images/favicon-16.png"/>
+  
+  <link rel="icon" sizes="180x180" type="image/png" href="images/favicon-180.png"/>
+  
+  
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Lato:400,700">
+  
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Fira+Mono:500">
+  
+  <link rel="stylesheet" type="text/css" href="helium/site/icofont.min.css" />
+    <link rel="stylesheet" type="text/css" href="helium/site/laika-helium.css" />
+  <script src="helium/site/laika-helium.js"></script>
+  
+  
+  <script> /* for avoiding page load transitions */ </script>
+</head>
+
+  <body>
+
+    <header id="top-bar" class="light-default dark-default">
+
+  <div class="row">
+    <a id="nav-icon">
+      <i class="icofont-laika navigationMenu" title="Navigation">&#xefa2;</i>
+    </a>
+    
+    
+  </div>
+
+  <a class="image-link" href="index.html"><img src="images/scala-mcp-logo.svg" alt="scala-mcp" height="36"></a>
+
+  <div class="row links">
+    
+    <a class="icon-link svg-link" href="https://andimiller.github.io/scala-mcp/api/"><span class="api" title="API"><svg class="svg-icon" width="100%" height="100%" viewBox="0 0 100 100" version="1.1" xmlns="http://www.w3.org/2000/svg" xml:space="preserve" style="fill-rule:evenodd;clip-rule:evenodd;stroke-linejoin:round;stroke-miterlimit:2;">
+  <g class="svg-shape">
+    <path d="M75,47.5c13.246,0 24,10.754 24,24c0,13.246 -10.754,24 -24,24c-13.246,0 -24,-10.754 -24,-24c0,-13.246 10.754,-24 24,-24Zm-50,-0c13.246,-0 24,10.754 24,24c0,13.246 -10.754,24 -24,24c-13.246,-0 -24,-10.754 -24,-24c0,-13.246 10.754,-24 24,-24Zm2.705,16.735l7.239,0l0.622,-4.904l-21.833,0l-0,4.904l7.589,0l0,22.067l6.383,0l-0,-22.067Zm58.076,7.265c-0,-8.757 -3.698,-14.166 -10.781,-14.166c-7.083,-0 -10.781,5.604 -10.781,14.166c0,8.757 3.698,14.166 10.781,14.166c7.083,0 10.781,-5.604 10.781,-14.166Zm-6.539,0c0,6.538 -1.128,9.496 -4.242,9.496c-2.997,0 -4.242,-2.88 -4.242,-9.496c-0,-6.616 1.206,-9.496 4.242,-9.496c3.036,-0 4.242,2.88 4.242,9.496Zm-29.242,-67c13.246,0 24,10.754 24,24c0,13.246 -10.754,24 -24,24c-13.246,0 -24,-10.754 -24,-24c0,-13.246 10.754,-24 24,-24Zm0.512,9.834c-7.122,-0 -12.609,5.098 -12.609,14.127c-0,9.263 5.215,14.205 12.532,14.205c4.164,0 7.083,-1.634 9.068,-3.658l-2.88,-3.697c-1.518,1.206 -3.153,2.413 -5.838,2.413c-3.697,-0 -6.266,-2.763 -6.266,-9.263c-0,-6.616 2.724,-9.379 6.149,-9.379c2.102,-0 3.892,0.778 5.371,1.984l3.113,-3.775c-2.257,-1.868 -4.748,-2.957 -8.64,-2.957Z"/>
+  </g>
+</svg></span></a>
+    
+    <a class="icon-link svg-link" href="https://github.com/andimiller/scala-mcp"><span class="github" title="Source Code"><svg class="svg-icon" width="100%" height="100%" viewBox="0 0 100 100" version="1.1" xmlns="http://www.w3.org/2000/svg" xml:space="preserve" style="fill-rule:evenodd;clip-rule:evenodd;stroke-linejoin:round;stroke-miterlimit:2;">
+  <g class="svg-shape">
+    <path d="M49.995,1c-27.609,-0 -49.995,22.386 -49.995,50.002c-0,22.09 14.325,40.83 34.194,47.444c2.501,0.458 3.413,-1.086 3.413,-2.412c0,-1.185 -0.043,-4.331 -0.067,-8.503c-13.908,3.021 -16.843,-6.704 -16.843,-6.704c-2.274,-5.773 -5.552,-7.311 -5.552,-7.311c-4.54,-3.103 0.344,-3.042 0.344,-3.042c5.018,0.356 7.658,5.154 7.658,5.154c4.46,7.64 11.704,5.433 14.552,4.156c0.454,-3.232 1.744,-5.436 3.174,-6.685c-11.102,-1.262 -22.775,-5.553 -22.775,-24.713c-0,-5.457 1.949,-9.92 5.147,-13.416c-0.516,-1.265 -2.231,-6.348 0.488,-13.233c0,0 4.199,-1.344 13.751,5.126c3.988,-1.108 8.266,-1.663 12.518,-1.682c4.245,0.019 8.523,0.574 12.517,1.682c9.546,-6.47 13.736,-5.126 13.736,-5.126c2.728,6.885 1.013,11.968 0.497,13.233c3.204,3.496 5.141,7.959 5.141,13.416c0,19.209 -11.691,23.436 -22.83,24.673c1.795,1.544 3.394,4.595 3.394,9.26c0,6.682 -0.061,12.076 -0.061,13.715c0,1.338 0.899,2.894 3.438,2.406c19.853,-6.627 34.166,-25.354 34.166,-47.438c-0,-27.616 -22.389,-50.002 -50.005,-50.002"/>
+  </g>
+</svg></span></a>
+    
+  </div>  
+
+</header>
+    
+    <nav id="sidebar">
+
+  <div class="row">
+    
+    <a class="icon-link svg-link" href="https://andimiller.github.io/scala-mcp/api/"><span class="api" title="API"><svg class="svg-icon" width="100%" height="100%" viewBox="0 0 100 100" version="1.1" xmlns="http://www.w3.org/2000/svg" xml:space="preserve" style="fill-rule:evenodd;clip-rule:evenodd;stroke-linejoin:round;stroke-miterlimit:2;">
+  <g class="svg-shape">
+    <path d="M75,47.5c13.246,0 24,10.754 24,24c0,13.246 -10.754,24 -24,24c-13.246,0 -24,-10.754 -24,-24c0,-13.246 10.754,-24 24,-24Zm-50,-0c13.246,-0 24,10.754 24,24c0,13.246 -10.754,24 -24,24c-13.246,-0 -24,-10.754 -24,-24c0,-13.246 10.754,-24 24,-24Zm2.705,16.735l7.239,0l0.622,-4.904l-21.833,0l-0,4.904l7.589,0l0,22.067l6.383,0l-0,-22.067Zm58.076,7.265c-0,-8.757 -3.698,-14.166 -10.781,-14.166c-7.083,-0 -10.781,5.604 -10.781,14.166c0,8.757 3.698,14.166 10.781,14.166c7.083,0 10.781,-5.604 10.781,-14.166Zm-6.539,0c0,6.538 -1.128,9.496 -4.242,9.496c-2.997,0 -4.242,-2.88 -4.242,-9.496c-0,-6.616 1.206,-9.496 4.242,-9.496c3.036,-0 4.242,2.88 4.242,9.496Zm-29.242,-67c13.246,0 24,10.754 24,24c0,13.246 -10.754,24 -24,24c-13.246,0 -24,-10.754 -24,-24c0,-13.246 10.754,-24 24,-24Zm0.512,9.834c-7.122,-0 -12.609,5.098 -12.609,14.127c-0,9.263 5.215,14.205 12.532,14.205c4.164,0 7.083,-1.634 9.068,-3.658l-2.88,-3.697c-1.518,1.206 -3.153,2.413 -5.838,2.413c-3.697,-0 -6.266,-2.763 -6.266,-9.263c-0,-6.616 2.724,-9.379 6.149,-9.379c2.102,-0 3.892,0.778 5.371,1.984l3.113,-3.775c-2.257,-1.868 -4.748,-2.957 -8.64,-2.957Z"/>
+  </g>
+</svg></span></a>
+    
+    <a class="icon-link svg-link" href="https://github.com/andimiller/scala-mcp"><span class="github" title="Source Code"><svg class="svg-icon" width="100%" height="100%" viewBox="0 0 100 100" version="1.1" xmlns="http://www.w3.org/2000/svg" xml:space="preserve" style="fill-rule:evenodd;clip-rule:evenodd;stroke-linejoin:round;stroke-miterlimit:2;">
+  <g class="svg-shape">
+    <path d="M49.995,1c-27.609,-0 -49.995,22.386 -49.995,50.002c-0,22.09 14.325,40.83 34.194,47.444c2.501,0.458 3.413,-1.086 3.413,-2.412c0,-1.185 -0.043,-4.331 -0.067,-8.503c-13.908,3.021 -16.843,-6.704 -16.843,-6.704c-2.274,-5.773 -5.552,-7.311 -5.552,-7.311c-4.54,-3.103 0.344,-3.042 0.344,-3.042c5.018,0.356 7.658,5.154 7.658,5.154c4.46,7.64 11.704,5.433 14.552,4.156c0.454,-3.232 1.744,-5.436 3.174,-6.685c-11.102,-1.262 -22.775,-5.553 -22.775,-24.713c-0,-5.457 1.949,-9.92 5.147,-13.416c-0.516,-1.265 -2.231,-6.348 0.488,-13.233c0,0 4.199,-1.344 13.751,5.126c3.988,-1.108 8.266,-1.663 12.518,-1.682c4.245,0.019 8.523,0.574 12.517,1.682c9.546,-6.47 13.736,-5.126 13.736,-5.126c2.728,6.885 1.013,11.968 0.497,13.233c3.204,3.496 5.141,7.959 5.141,13.416c0,19.209 -11.691,23.436 -22.83,24.673c1.795,1.544 3.394,4.595 3.394,9.26c0,6.682 -0.061,12.076 -0.061,13.715c0,1.338 0.899,2.894 3.438,2.406c19.853,-6.627 34.166,-25.354 34.166,-47.438c-0,-27.616 -22.389,-50.002 -50.005,-50.002"/>
+  </g>
+</svg></span></a>
+    
+  </div>
+
+  <ul class="nav-list">
+    <li class="level1 nav-leaf"><a href="api-overview.html">API overview</a></li>
+    <li class="level1 nav-leaf"><a href="building.html">Building</a></li>
+    <li class="level1 nav-leaf"><a href="examples.html">Examples</a></li>
+    <li class="level1 nav-leaf"><a href="golden-testing.html">Golden testing</a></li>
+    <li class="level1 nav-leaf"><a href="index.html">scala-mcp</a></li>
+    <li class="level1 nav-leaf"><a href="json-schema-derivation.html">JSON Schema derivation</a></li>
+    <li class="level1 nav-leaf"><a href="mcp-explorer.html">MCP Explorer</a></li>
+    <li class="level1 nav-leaf"><a href="mcp-feature-support.html">MCP feature support</a></li>
+    <li class="level1 active nav-leaf"><a href="#">OpenAPI MCP Proxy</a></li>
+    <li class="level1 nav-leaf"><a href="quick-start.html">Quick start</a></li>
+  </ul>
+
+</nav>
+
+    <div id="container">
+
+      
+<nav id="page-nav">
+  <p class="header"><a href="#">OpenAPI MCP Proxy</a></p>
+
+  <ul class="nav-list">
+    <li class="level1 nav-leaf"><a href="#features">Features</a></li>
+    <li class="level1 nav-leaf"><a href="#installation">Installation</a></li>
+    <li class="level1 nav-leaf"><a href="#commands">Commands</a></li>
+    <li class="level1 nav-node"><a href="#quick-start">Quick start</a></li>
+    <li class="level2 nav-leaf"><a href="#_1-list-available-operations">1. List available operations</a></li>
+    <li class="level2 nav-leaf"><a href="#_2-register-with-your-ai-agent">2. Register with your AI agent</a></li>
+    <li class="level1 nav-leaf"><a href="#how-it-works">How it works</a></li>
+    <li class="level1 nav-leaf"><a href="#example-eve-online-esi-api">Example: EVE Online ESI API</a></li>
+    <li class="level1 nav-leaf"><a href="#configuration-management">Configuration management</a></li>
+    <li class="level1 nav-leaf"><a href="#tips">Tips</a></li>
+  </ul>
+
+  <p class="footer"></p>
+</nav>
+
+
+      <main class="content">
+
+        <h1 id="openapi-mcp-proxy" class="title">OpenAPI MCP Proxy</h1>
+        <p>The OpenAPI MCP Proxy tool converts any OpenAPI-compliant REST API into an
+        MCP server that AI agents can interact with.</p>
+        
+        <h2 id="features" class="section"><a class="anchor-link left" href="#features"><i class="icofont-laika link">&#xef71;</i></a>Features</h2>
+        <ul>
+          <li><strong>Automatic tool generation</strong> — converts OpenAPI operations into MCP tools with proper JSON schemas</li>
+          <li><strong>Multi-agent support</strong> — works with Claude Desktop, Cursor, and OpenCode via automatic config generation</li>
+          <li><strong>Interactive management</strong> — interactive shell for browsing and selecting API operations</li>
+          <li><strong>Flexible input</strong> — load specs from URLs (<code>https://api.example.com/openapi.json</code>) or local files</li>
+          <li><strong>Full HTTP support</strong> — handles GET, POST, PUT, DELETE, PATCH with path params, query params, headers, and request bodies</li>
+        </ul>
+        
+        <h2 id="installation" class="section"><a class="anchor-link left" href="#installation"><i class="icofont-laika link">&#xef71;</i></a>Installation</h2>
+        <pre class="keep-together pdf epub"><code class="nohighlight"><span class="comment"># Build the executable JAR
+</span><span>sbt openapiMcpProxy/assembly
+
+</span><span class="comment"># The JAR is created as ./openapi-mcp-proxy.jar
+# Make it executable and add to your PATH
+</span><span>chmod +x openapi-mcp-proxy.jar
+mv openapi-mcp-proxy.jar /usr/local/bin/openapi-mcp-proxy</span></code></pre>
+        
+        <h2 id="commands" class="section"><a class="anchor-link left" href="#commands"><i class="icofont-laika link">&#xef71;</i></a>Commands</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Command</th>
+              <th>Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>list &lt;spec&gt;</code></td>
+              <td>List all available operationIds with their HTTP method and path</td>
+            </tr>
+            <tr>
+              <td><code>proxy &lt;spec&gt; &lt;operationIds...&gt;</code></td>
+              <td>Run the MCP stdio proxy for selected operations</td>
+            </tr>
+            <tr>
+              <td><code>mcp add [--agent] &lt;spec&gt; [operationIds...]</code></td>
+              <td>Register operations in agent config</td>
+            </tr>
+            <tr>
+              <td><code>mcp del [--agent] &lt;name&gt;</code></td>
+              <td>Remove a server entry from config</td>
+            </tr>
+            <tr>
+              <td><code>mcp manage [--agent]</code></td>
+              <td>Interactive shell for managing config entries</td>
+            </tr>
+          </tbody>
+        </table>
+        <p><strong>Supported agents:</strong></p>
+        <ul>
+          <li><code>claude</code> — Claude Code (<code>.mcp.json</code>)</li>
+          <li><code>claude-desktop</code> — Claude Desktop app (macOS only)</li>
+          <li><code>cursor</code> — Cursor IDE (<code>.cursor/mcp.json</code>)</li>
+          <li><code>opencode</code> — OpenCode (<code>opencode.json</code>)</li>
+        </ul>
+        
+        <h2 id="quick-start" class="section"><a class="anchor-link left" href="#quick-start"><i class="icofont-laika link">&#xef71;</i></a>Quick start</h2>
+        
+        <h3 id="_1-list-available-operations" class="section"><a class="anchor-link left" href="#_1-list-available-operations"><i class="icofont-laika link">&#xef71;</i></a>1. List available operations</h3>
+        <p>See what endpoints are available in an OpenAPI spec:</p>
+        <pre class="keep-together pdf epub"><code class="nohighlight"><span>openapi-mcp-proxy list https://api.example.com/openapi.json
+</span><span class="comment"># or
+</span><span>openapi-mcp-proxy list ./my-api-spec.yaml</span></code></pre>
+        <p>Output:</p>
+        <pre><code>  GET    /users       listUsers
+  POST   /users       createUser
+  GET    /users/{id}  getUserById
+  DELETE /users/{id}  deleteUser</code></pre>
+        
+        <h3 id="_2-register-with-your-ai-agent" class="section"><a class="anchor-link left" href="#_2-register-with-your-ai-agent"><i class="icofont-laika link">&#xef71;</i></a>2. Register with your AI agent</h3>
+        <p><strong>Option A: use the built-in config manager (recommended)</strong></p>
+        <pre class="keep-together pdf epub"><code class="nohighlight"><span class="comment"># Add specific operations for Claude Desktop
+</span><span>openapi-mcp-proxy mcp add --agent claude-desktop https://api.example.com/openapi.json listUsers getUserById
+
+</span><span class="comment"># Add all operations (with confirmation if &gt;10 endpoints)
+</span><span>openapi-mcp-proxy mcp add --agent claude-desktop https://api.example.com/openapi.json </span><span class="string-literal">&#39;*&#39;</span><span>
+
+</span><span class="comment"># Interactive mode — browse and select operations
+</span><span>openapi-mcp-proxy mcp add --agent cursor https://api.example.com/openapi.json
+
+</span><span class="comment"># Manage existing entries
+</span><span>openapi-mcp-proxy mcp manage --agent opencode</span></code></pre>
+        <p><strong>Option B: manual configuration</strong></p>
+        <p><strong>Claude Desktop</strong> (<code>~/Library/Application Support/Claude/claude_desktop_config.json</code>):</p>
+        <pre class="keep-together pdf epub"><code class="nohighlight"><span>{
+  </span><span class="attribute-name">&quot;mcpServers&quot;</span><span>: {
+    </span><span class="attribute-name">&quot;openapi-my-api&quot;</span><span>: {
+      </span><span class="attribute-name">&quot;command&quot;</span><span>: </span><span class="string-literal">&quot;openapi-mcp-proxy&quot;</span><span>,
+      </span><span class="attribute-name">&quot;args&quot;</span><span>: [</span><span class="string-literal">&quot;proxy&quot;</span><span>, </span><span class="string-literal">&quot;https://api.example.com/openapi.json&quot;</span><span>, </span><span class="string-literal">&quot;listUsers&quot;</span><span>, </span><span class="string-literal">&quot;getUserById&quot;</span><span>]
+    }
+  }
+}</span></code></pre>
+        <p><strong>OpenCode</strong> (<code>opencode.json</code>):</p>
+        <pre class="keep-together pdf epub"><code class="nohighlight"><span>{
+  </span><span class="attribute-name">&quot;$schema&quot;</span><span>: </span><span class="string-literal">&quot;https://opencode.ai/config.json&quot;</span><span>,
+  </span><span class="attribute-name">&quot;mcp&quot;</span><span>: {
+    </span><span class="attribute-name">&quot;openapi-my-api&quot;</span><span>: {
+      </span><span class="attribute-name">&quot;type&quot;</span><span>: </span><span class="string-literal">&quot;local&quot;</span><span>,
+      </span><span class="attribute-name">&quot;command&quot;</span><span>: [</span><span class="string-literal">&quot;openapi-mcp-proxy&quot;</span><span>, </span><span class="string-literal">&quot;proxy&quot;</span><span>, </span><span class="string-literal">&quot;./my-api.yaml&quot;</span><span>, </span><span class="string-literal">&quot;searchItems&quot;</span><span>, </span><span class="string-literal">&quot;createOrder&quot;</span><span>]
+    }
+  }
+}</span></code></pre>
+        <p><strong>Cursor</strong> (<code>.cursor/mcp.json</code>):</p>
+        <pre class="keep-together pdf epub"><code class="nohighlight"><span>{
+  </span><span class="attribute-name">&quot;mcpServers&quot;</span><span>: {
+    </span><span class="attribute-name">&quot;my-api&quot;</span><span>: {
+      </span><span class="attribute-name">&quot;command&quot;</span><span>: </span><span class="string-literal">&quot;openapi-mcp-proxy&quot;</span><span>,
+      </span><span class="attribute-name">&quot;args&quot;</span><span>: [</span><span class="string-literal">&quot;proxy&quot;</span><span>, </span><span class="string-literal">&quot;https://api.example.com/openapi.json&quot;</span><span>, </span><span class="string-literal">&quot;listUsers&quot;</span><span>]
+    }
+  }
+}</span></code></pre>
+        
+        <h2 id="how-it-works" class="section"><a class="anchor-link left" href="#how-it-works"><i class="icofont-laika link">&#xef71;</i></a>How it works</h2>
+        <ol class="arabic">
+          <li><strong>Spec loading</strong> — loads OpenAPI 3.x specs from URL or file (JSON or YAML)</li>
+          <li><strong>Schema conversion</strong> — converts OpenAPI schemas to MCP-compatible JSON schemas</li>
+          <li>
+            <strong>Tool generation</strong> — each selected operation becomes an MCP tool with:
+            <ul>
+              <li>Input schema from path/query/header parameters and request body</li>
+              <li>Output schema from 200/201/default response</li>
+              <li>Description from operation summary</li>
+            </ul>
+          </li>
+          <li><strong>Request execution</strong> — when called, constructs and executes HTTP requests using http4s</li>
+        </ol>
+        
+        <h2 id="example-eve-online-esi-api" class="section"><a class="anchor-link left" href="#example-eve-online-esi-api"><i class="icofont-laika link">&#xef71;</i></a>Example: EVE Online ESI API</h2>
+        <p>The repository includes an example configuration for the EVE Online ESI API.
+        See <code>.mcp.json</code>:</p>
+        <pre class="keep-together pdf epub"><code class="nohighlight"><span>{
+  </span><span class="attribute-name">&quot;mcpServers&quot;</span><span>: {
+    </span><span class="attribute-name">&quot;eve-online&quot;</span><span>: {
+      </span><span class="attribute-name">&quot;command&quot;</span><span>: </span><span class="string-literal">&quot;openapi-mcp-proxy&quot;</span><span>,
+      </span><span class="attribute-name">&quot;args&quot;</span><span>: [</span><span class="string-literal">&quot;proxy&quot;</span><span>, </span><span class="string-literal">&quot;https://esi.evetech.net/latest/swagger.json&quot;</span><span>,
+        </span><span class="string-literal">&quot;get_characters_character_id&quot;</span><span>,
+        </span><span class="string-literal">&quot;get_corporations_corporation_id&quot;</span><span>,
+        </span><span class="string-literal">&quot;post_universe_ids&quot;</span><span>]
+    }
+  }
+}</span></code></pre>
+        
+        <h2 id="configuration-management" class="section"><a class="anchor-link left" href="#configuration-management"><i class="icofont-laika link">&#xef71;</i></a>Configuration management</h2>
+        <p>The <code>mcp</code> subcommands handle different config file formats automatically:</p>
+        <table>
+          <thead>
+            <tr>
+              <th>Agent</th>
+              <th>Config file</th>
+              <th>Format</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Claude</td>
+              <td><code>.mcp.json</code></td>
+              <td><code>{ &quot;mcpServers&quot;: {...} }</code></td>
+            </tr>
+            <tr>
+              <td>Claude Desktop</td>
+              <td><code>~/Library/Application Support/Claude/claude_desktop_config.json</code></td>
+              <td><code>{ &quot;mcpServers&quot;: {...} }</code></td>
+            </tr>
+            <tr>
+              <td>Cursor</td>
+              <td><code>.cursor/mcp.json</code></td>
+              <td><code>{ &quot;mcpServers&quot;: {...} }</code></td>
+            </tr>
+            <tr>
+              <td>OpenCode</td>
+              <td><code>opencode.json</code></td>
+              <td><code>{ &quot;$schema&quot;: &quot;...&quot;, &quot;mcp&quot;: {...} }</code></td>
+            </tr>
+          </tbody>
+        </table>
+        <p>Server names are auto-derived from the spec title (e.g., &quot;EVE Swagger
+        Interface&quot; → <code>openapi-eve-swagger-interface</code>).</p>
+        
+        <h2 id="tips" class="section"><a class="anchor-link left" href="#tips"><i class="icofont-laika link">&#xef71;</i></a>Tips</h2>
+        <ul>
+          <li><strong>Start small</strong> — add only the operations you need to avoid bloating the context window</li>
+          <li><strong>Use wildcards carefully</strong> — adding <code>*</code> includes all operations; you&#39;ll be warned if &gt;10 endpoints</li>
+          <li><strong>Mix and match</strong> — can run multiple openapi-mcp-proxy instances for different APIs</li>
+          <li><strong>Security</strong> — the proxy executes HTTP requests as-is; ensure your API has proper auth if needed</li>
+        </ul>
+
+        
+<hr class="footer-rule"/>
+<footer>
+  Site generated by <a href="https://typelevel.org/Laika/">Laika</a> with the Helium theme.
+</footer>
+
+
+      </main>
+
+    </div>
+
+  </body>
+
+</html>

@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+  
+  <head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="generator" content="Typelevel Laika + Helium Theme" />
+  <title>Examples</title>
+  
+  <meta name="author" content="scala-mcp contributors"/>
+  
+  
+  <meta name="description" content="docs"/>
+  
+  
+  
+  <link rel="icon" sizes="32x32" type="image/png" href="images/favicon-32.png"/>
+  
+  <link rel="icon" sizes="16x16" type="image/png" href="images/favicon-16.png"/>
+  
+  <link rel="icon" sizes="180x180" type="image/png" href="images/favicon-180.png"/>
+  
+  
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Lato:400,700">
+  
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Fira+Mono:500">
+  
+  <link rel="stylesheet" type="text/css" href="helium/site/icofont.min.css" />
+    <link rel="stylesheet" type="text/css" href="helium/site/laika-helium.css" />
+  <script src="helium/site/laika-helium.js"></script>
+  
+  
+  <script> /* for avoiding page load transitions */ </script>
+</head>
+
+  <body>
+
+    <header id="top-bar" class="light-default dark-default">
+
+  <div class="row">
+    <a id="nav-icon">
+      <i class="icofont-laika navigationMenu" title="Navigation">&#xefa2;</i>
+    </a>
+    
+    
+  </div>
+
+  <a class="image-link" href="index.html"><img src="images/scala-mcp-logo.svg" alt="scala-mcp" height="36"></a>
+
+  <div class="row links">
+    
+    <a class="icon-link svg-link" href="https://andimiller.github.io/scala-mcp/api/"><span class="api" title="API"><svg class="svg-icon" width="100%" height="100%" viewBox="0 0 100 100" version="1.1" xmlns="http://www.w3.org/2000/svg" xml:space="preserve" style="fill-rule:evenodd;clip-rule:evenodd;stroke-linejoin:round;stroke-miterlimit:2;">
+  <g class="svg-shape">
+    <path d="M75,47.5c13.246,0 24,10.754 24,24c0,13.246 -10.754,24 -24,24c-13.246,0 -24,-10.754 -24,-24c0,-13.246 10.754,-24 24,-24Zm-50,-0c13.246,-0 24,10.754 24,24c0,13.246 -10.754,24 -24,24c-13.246,-0 -24,-10.754 -24,-24c0,-13.246 10.754,-24 24,-24Zm2.705,16.735l7.239,0l0.622,-4.904l-21.833,0l-0,4.904l7.589,0l0,22.067l6.383,0l-0,-22.067Zm58.076,7.265c-0,-8.757 -3.698,-14.166 -10.781,-14.166c-7.083,-0 -10.781,5.604 -10.781,14.166c0,8.757 3.698,14.166 10.781,14.166c7.083,0 10.781,-5.604 10.781,-14.166Zm-6.539,0c0,6.538 -1.128,9.496 -4.242,9.496c-2.997,0 -4.242,-2.88 -4.242,-9.496c-0,-6.616 1.206,-9.496 4.242,-9.496c3.036,-0 4.242,2.88 4.242,9.496Zm-29.242,-67c13.246,0 24,10.754 24,24c0,13.246 -10.754,24 -24,24c-13.246,0 -24,-10.754 -24,-24c0,-13.246 10.754,-24 24,-24Zm0.512,9.834c-7.122,-0 -12.609,5.098 -12.609,14.127c-0,9.263 5.215,14.205 12.532,14.205c4.164,0 7.083,-1.634 9.068,-3.658l-2.88,-3.697c-1.518,1.206 -3.153,2.413 -5.838,2.413c-3.697,-0 -6.266,-2.763 -6.266,-9.263c-0,-6.616 2.724,-9.379 6.149,-9.379c2.102,-0 3.892,0.778 5.371,1.984l3.113,-3.775c-2.257,-1.868 -4.748,-2.957 -8.64,-2.957Z"/>
+  </g>
+</svg></span></a>
+    
+    <a class="icon-link svg-link" href="https://github.com/andimiller/scala-mcp"><span class="github" title="Source Code"><svg class="svg-icon" width="100%" height="100%" viewBox="0 0 100 100" version="1.1" xmlns="http://www.w3.org/2000/svg" xml:space="preserve" style="fill-rule:evenodd;clip-rule:evenodd;stroke-linejoin:round;stroke-miterlimit:2;">
+  <g class="svg-shape">
+    <path d="M49.995,1c-27.609,-0 -49.995,22.386 -49.995,50.002c-0,22.09 14.325,40.83 34.194,47.444c2.501,0.458 3.413,-1.086 3.413,-2.412c0,-1.185 -0.043,-4.331 -0.067,-8.503c-13.908,3.021 -16.843,-6.704 -16.843,-6.704c-2.274,-5.773 -5.552,-7.311 -5.552,-7.311c-4.54,-3.103 0.344,-3.042 0.344,-3.042c5.018,0.356 7.658,5.154 7.658,5.154c4.46,7.64 11.704,5.433 14.552,4.156c0.454,-3.232 1.744,-5.436 3.174,-6.685c-11.102,-1.262 -22.775,-5.553 -22.775,-24.713c-0,-5.457 1.949,-9.92 5.147,-13.416c-0.516,-1.265 -2.231,-6.348 0.488,-13.233c0,0 4.199,-1.344 13.751,5.126c3.988,-1.108 8.266,-1.663 12.518,-1.682c4.245,0.019 8.523,0.574 12.517,1.682c9.546,-6.47 13.736,-5.126 13.736,-5.126c2.728,6.885 1.013,11.968 0.497,13.233c3.204,3.496 5.141,7.959 5.141,13.416c0,19.209 -11.691,23.436 -22.83,24.673c1.795,1.544 3.394,4.595 3.394,9.26c0,6.682 -0.061,12.076 -0.061,13.715c0,1.338 0.899,2.894 3.438,2.406c19.853,-6.627 34.166,-25.354 34.166,-47.438c-0,-27.616 -22.389,-50.002 -50.005,-50.002"/>
+  </g>
+</svg></span></a>
+    
+  </div>  
+
+</header>
+    
+    <nav id="sidebar">
+
+  <div class="row">
+    
+    <a class="icon-link svg-link" href="https://andimiller.github.io/scala-mcp/api/"><span class="api" title="API"><svg class="svg-icon" width="100%" height="100%" viewBox="0 0 100 100" version="1.1" xmlns="http://www.w3.org/2000/svg" xml:space="preserve" style="fill-rule:evenodd;clip-rule:evenodd;stroke-linejoin:round;stroke-miterlimit:2;">
+  <g class="svg-shape">
+    <path d="M75,47.5c13.246,0 24,10.754 24,24c0,13.246 -10.754,24 -24,24c-13.246,0 -24,-10.754 -24,-24c0,-13.246 10.754,-24 24,-24Zm-50,-0c13.246,-0 24,10.754 24,24c0,13.246 -10.754,24 -24,24c-13.246,-0 -24,-10.754 -24,-24c0,-13.246 10.754,-24 24,-24Zm2.705,16.735l7.239,0l0.622,-4.904l-21.833,0l-0,4.904l7.589,0l0,22.067l6.383,0l-0,-22.067Zm58.076,7.265c-0,-8.757 -3.698,-14.166 -10.781,-14.166c-7.083,-0 -10.781,5.604 -10.781,14.166c0,8.757 3.698,14.166 10.781,14.166c7.083,0 10.781,-5.604 10.781,-14.166Zm-6.539,0c0,6.538 -1.128,9.496 -4.242,9.496c-2.997,0 -4.242,-2.88 -4.242,-9.496c-0,-6.616 1.206,-9.496 4.242,-9.496c3.036,-0 4.242,2.88 4.242,9.496Zm-29.242,-67c13.246,0 24,10.754 24,24c0,13.246 -10.754,24 -24,24c-13.246,0 -24,-10.754 -24,-24c0,-13.246 10.754,-24 24,-24Zm0.512,9.834c-7.122,-0 -12.609,5.098 -12.609,14.127c-0,9.263 5.215,14.205 12.532,14.205c4.164,0 7.083,-1.634 9.068,-3.658l-2.88,-3.697c-1.518,1.206 -3.153,2.413 -5.838,2.413c-3.697,-0 -6.266,-2.763 -6.266,-9.263c-0,-6.616 2.724,-9.379 6.149,-9.379c2.102,-0 3.892,0.778 5.371,1.984l3.113,-3.775c-2.257,-1.868 -4.748,-2.957 -8.64,-2.957Z"/>
+  </g>
+</svg></span></a>
+    
+    <a class="icon-link svg-link" href="https://github.com/andimiller/scala-mcp"><span class="github" title="Source Code"><svg class="svg-icon" width="100%" height="100%" viewBox="0 0 100 100" version="1.1" xmlns="http://www.w3.org/2000/svg" xml:space="preserve" style="fill-rule:evenodd;clip-rule:evenodd;stroke-linejoin:round;stroke-miterlimit:2;">
+  <g class="svg-shape">
+    <path d="M49.995,1c-27.609,-0 -49.995,22.386 -49.995,50.002c-0,22.09 14.325,40.83 34.194,47.444c2.501,0.458 3.413,-1.086 3.413,-2.412c0,-1.185 -0.043,-4.331 -0.067,-8.503c-13.908,3.021 -16.843,-6.704 -16.843,-6.704c-2.274,-5.773 -5.552,-7.311 -5.552,-7.311c-4.54,-3.103 0.344,-3.042 0.344,-3.042c5.018,0.356 7.658,5.154 7.658,5.154c4.46,7.64 11.704,5.433 14.552,4.156c0.454,-3.232 1.744,-5.436 3.174,-6.685c-11.102,-1.262 -22.775,-5.553 -22.775,-24.713c-0,-5.457 1.949,-9.92 5.147,-13.416c-0.516,-1.265 -2.231,-6.348 0.488,-13.233c0,0 4.199,-1.344 13.751,5.126c3.988,-1.108 8.266,-1.663 12.518,-1.682c4.245,0.019 8.523,0.574 12.517,1.682c9.546,-6.47 13.736,-5.126 13.736,-5.126c2.728,6.885 1.013,11.968 0.497,13.233c3.204,3.496 5.141,7.959 5.141,13.416c0,19.209 -11.691,23.436 -22.83,24.673c1.795,1.544 3.394,4.595 3.394,9.26c0,6.682 -0.061,12.076 -0.061,13.715c0,1.338 0.899,2.894 3.438,2.406c19.853,-6.627 34.166,-25.354 34.166,-47.438c-0,-27.616 -22.389,-50.002 -50.005,-50.002"/>
+  </g>
+</svg></span></a>
+    
+  </div>
+
+  <ul class="nav-list">
+    <li class="level1 nav-leaf"><a href="api-overview.html">API overview</a></li>
+    <li class="level1 nav-leaf"><a href="building.html">Building</a></li>
+    <li class="level1 active nav-leaf"><a href="#">Examples</a></li>
+    <li class="level1 nav-leaf"><a href="golden-testing.html">Golden testing</a></li>
+    <li class="level1 nav-leaf"><a href="index.html">scala-mcp</a></li>
+    <li class="level1 nav-leaf"><a href="json-schema-derivation.html">JSON Schema derivation</a></li>
+    <li class="level1 nav-leaf"><a href="mcp-explorer.html">MCP Explorer</a></li>
+    <li class="level1 nav-leaf"><a href="mcp-feature-support.html">MCP feature support</a></li>
+    <li class="level1 nav-leaf"><a href="openapi-mcp-proxy.html">OpenAPI MCP Proxy</a></li>
+    <li class="level1 nav-leaf"><a href="quick-start.html">Quick start</a></li>
+  </ul>
+
+</nav>
+
+    <div id="container">
+
+      
+<nav id="page-nav">
+  <p class="header"><a href="#">Examples</a></p>
+
+  <ul class="nav-list">
+    <li class="level1 nav-leaf"><a href="#dice-mcp-server-modules-example-dice-mcp">Dice MCP server (<code>modules/example-dice-mcp</code>)</a></li>
+    <li class="level1 nav-leaf"><a href="#pomodoro-mcp-server-modules-example-pomodoro-mcp">Pomodoro MCP server (<code>modules/example-pomodoro-mcp</code>)</a></li>
+    <li class="level1 nav-leaf"><a href="#dns-mcp-server-modules-example-dns-mcp">DNS MCP server (<code>modules/example-dns-mcp</code>)</a></li>
+    <li class="level1 nav-leaf"><a href="#chat-mcp-server-modules-example-chat-mcp">Chat MCP server (<code>modules/example-chat-mcp</code>)</a></li>
+    <li class="level1 nav-leaf"><a href="#shared-notebook-mcp-server-modules-example-shared-notebook-mcp">Shared Notebook MCP server (<code>modules/example-shared-notebook-mcp</code>)</a></li>
+    <li class="level1 nav-leaf"><a href="#rpg-character-creator-modules-example-rpg-character-creator">RPG Character Creator (<code>modules/example-rpg-character-creator</code>)</a></li>
+    <li class="level1 nav-leaf"><a href="#openapi-mcp-proxy">OpenAPI MCP Proxy</a></li>
+  </ul>
+
+  <p class="footer"></p>
+</nav>
+
+
+      <main class="content">
+
+        <h1 id="examples" class="title">Examples</h1>
+        <p>The project ships six example MCP servers, each demonstrating a different
+        transport, platform, or server feature.</p>
+        <table>
+          <thead>
+            <tr>
+              <th>Example</th>
+              <th>Transport</th>
+              <th>Platform</th>
+              <th>Port</th>
+              <th>Highlights</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Dice</strong></td>
+              <td>Stdio</td>
+              <td>JVM / JS / Native</td>
+              <td>—</td>
+              <td>Tools, resources, prompts; form elicitation</td>
+            </tr>
+            <tr>
+              <td><strong>Pomodoro</strong></td>
+              <td>HTTP + SSE</td>
+              <td>JVM</td>
+              <td>25000</td>
+              <td>Per-session state, resource subscriptions, cancellation</td>
+            </tr>
+            <tr>
+              <td><strong>DNS</strong></td>
+              <td>HTTP + SSE</td>
+              <td>Scala.js (Node.js)</td>
+              <td>8053</td>
+              <td>Wrapping Node callback APIs into <code>IO</code></td>
+            </tr>
+            <tr>
+              <td><strong>Chat</strong></td>
+              <td>HTTP + SSE</td>
+              <td>JVM</td>
+              <td>27000</td>
+              <td>Redis-backed session state and notifications</td>
+            </tr>
+            <tr>
+              <td><strong>Shared Notebook</strong></td>
+              <td>HTTP + SSE</td>
+              <td>JVM</td>
+              <td>26000</td>
+              <td>HTTP Basic auth; per-user contextual tools</td>
+            </tr>
+            <tr>
+              <td><strong>RPG Character Creator</strong></td>
+              <td>HTTP + SSE</td>
+              <td>JVM</td>
+              <td>1974</td>
+              <td>Multi-step elicitation wizard</td>
+            </tr>
+          </tbody>
+        </table>
+        
+        <h2 id="dice-mcp-server-modules-example-dice-mcp" class="section"><a class="anchor-link left" href="#dice-mcp-server-modules-example-dice-mcp"><i class="icofont-laika link">&#xef71;</i></a>Dice MCP server (<code>modules/example-dice-mcp</code>)</h2>
+        <p>A cross-platform stdio MCP server demonstrating tools, resources, prompts,
+        and form elicitation.</p>
+        <ul>
+          <li><strong>Tools:</strong> <code>roll_dice</code> — roll dice using standard notation (e.g., <code>2d20 + 5</code>); <code>roll_interactive</code> — build a dice expression by repeatedly asking the client for <code>(face, count)</code> choices via elicitation</li>
+          <li><strong>Resources:</strong> <code>dice://rules/standard</code> (static reference), <code>dice://history</code> (recent rolls)</li>
+          <li><strong>Prompt:</strong> <code>explain_notation</code> — explains dice notation to the user</li>
+        </ul>
+        <p>Uses <code>IOApp.Simple</code>, <code>ServerBuilder</code>, and <code>StdioTransport.run</code> with a
+        <code>SessionContext</code>-aware factory so each session gets its own <code>Random</code>, history
+        ref, and <code>ElicitationClient</code>.</p>
+        <p><strong>Build and run (JVM):</strong></p>
+        <pre class="keep-together pdf epub"><code class="nohighlight"><span>sbt exampleDiceJVM/run</span></code></pre>
+        <p><strong>Build a Scala Native binary:</strong></p>
+        <pre class="keep-together pdf epub"><code class="nohighlight"><span class="comment"># Requires clang/llvm (e.g. via nix-shell)
+</span><span>sbt exampleDiceNative/nativeLink
+./modules/example-dice-mcp/native/target/scala-</span><span class="number-literal">3.3.4</span><span>/example-dice-mcp-out</span></code></pre>
+        <blockquote><strong>Note:</strong> the native binary must be re-linked any time the server changes —
+        <code>sbt exampleDiceJVM/run</code> is the fastest feedback loop during development.</blockquote>
+        <p><strong>Configure in Claude Code</strong> (<code>.mcp.json</code>):</p>
+        <pre class="keep-together pdf epub"><code class="nohighlight"><span>{
+  </span><span class="attribute-name">&quot;mcpServers&quot;</span><span>: {
+    </span><span class="attribute-name">&quot;dice&quot;</span><span>: {
+      </span><span class="attribute-name">&quot;command&quot;</span><span>: </span><span class="string-literal">&quot;sbt&quot;</span><span>,
+      </span><span class="attribute-name">&quot;args&quot;</span><span>: [</span><span class="string-literal">&quot;exampleDiceJVM/run&quot;</span><span>]
+    }
+  }
+}</span></code></pre>
+        <p>Or with a pre-built Native binary:</p>
+        <pre class="keep-together pdf epub"><code class="nohighlight"><span>{
+  </span><span class="attribute-name">&quot;mcpServers&quot;</span><span>: {
+    </span><span class="attribute-name">&quot;dice&quot;</span><span>: {
+      </span><span class="attribute-name">&quot;command&quot;</span><span>: </span><span class="string-literal">&quot;./modules/example-dice-mcp/native/target/scala-3.3.4/example-dice-mcp-out&quot;</span><span>
+    }
+  }
+}</span></code></pre>
+        
+        <h2 id="pomodoro-mcp-server-modules-example-pomodoro-mcp" class="section"><a class="anchor-link left" href="#pomodoro-mcp-server-modules-example-pomodoro-mcp"><i class="icofont-laika link">&#xef71;</i></a>Pomodoro MCP server (<code>modules/example-pomodoro-mcp</code>)</h2>
+        <p>A JVM HTTP server demonstrating dynamic resources with subscription
+        notifications, server-initiated logging, argument-based prompts, and
+        <strong>MCP cancellation</strong>. Uses <code>McpHttp.streaming</code> with per-session state —
+        each client session gets its own <code>PomodoroTimer</code> wired to the notification sink.</p>
+        <ul>
+          <li><strong>Tools:</strong> <code>start_timer</code>, <code>pause_timer</code>, <code>resume_timer</code>, <code>stop_timer</code>, <code>get_status</code>, <code>sleep_blocking</code> (cancellation demo — its <code>onCancel</code> hook reports how long it actually slept)</li>
+          <li><strong>Resources:</strong> <code>pomodoro://status</code> (subscribable), <code>pomodoro://history</code>, <code>pomodoro://timers/{name}</code> (template via <code>path.static(...) *&gt; path.named(...)</code>)</li>
+          <li><strong>Prompts:</strong> <code>plan_session</code> (with <code>task</code> / <code>session_count</code> arguments), <code>review_day</code></li>
+          <li><strong>Explorer:</strong> Bundled at <code>/explorer</code> with redirect from <code>/</code></li>
+        </ul>
+        <p><strong>Build and run (in-memory state):</strong></p>
+        <pre class="keep-together pdf epub"><code class="nohighlight"><span>sbt examplePomodoro/run
+</span><span class="comment"># Server starts on http://0.0.0.0:25000
+# Explorer UI at http://localhost:25000 (redirects to /explorer/index.html)</span></code></pre>
+        <p><strong>Build and run (Redis-backed state, port 25001):</strong></p>
+        <pre class="keep-together pdf epub"><code class="nohighlight"><span class="comment"># Requires a Redis server on redis://localhost:6379
+</span><span>sbt </span><span class="string-literal">&#39;examplePomodoro/runMain net.andimiller.mcp.examples.pomodoro.PomodoroMcpServerRedis&#39;</span></code></pre>
+        <p><strong>Configure in Claude Code</strong> (<code>.mcp.json</code>):</p>
+        <pre class="keep-together pdf epub"><code class="nohighlight"><span>{
+  </span><span class="attribute-name">&quot;mcpServers&quot;</span><span>: {
+    </span><span class="attribute-name">&quot;pomodoro&quot;</span><span>: {
+      </span><span class="attribute-name">&quot;type&quot;</span><span>: </span><span class="string-literal">&quot;streamable-http&quot;</span><span>,
+      </span><span class="attribute-name">&quot;url&quot;</span><span>: </span><span class="string-literal">&quot;http://localhost:25000/mcp&quot;</span><span>
+    }
+  }
+}</span></code></pre>
+        
+        <h2 id="dns-mcp-server-modules-example-dns-mcp" class="section"><a class="anchor-link left" href="#dns-mcp-server-modules-example-dns-mcp"><i class="icofont-laika link">&#xef71;</i></a>DNS MCP server (<code>modules/example-dns-mcp</code>)</h2>
+        <p>A Scala.js server running on Node.js, demonstrating how to wrap Node.js
+        callback-based APIs (<code>dns</code> module) into cats-effect <code>IO</code> via <code>IO.async_</code>. Uses
+        the HTTP transport, which allows concurrent requests — a good fit for the
+        async nature of Node.js.</p>
+        <ul>
+          <li><strong>Tools:</strong> <code>resolve_dns</code> (A, AAAA, MX, TXT, CNAME, NS records), <code>reverse_dns</code> (IP to hostnames)</li>
+          <li><strong>Resource:</strong> <code>dns://reference/record-types</code> (static markdown reference)</li>
+          <li><strong>Prompt:</strong> <code>diagnose_dns</code> — comprehensive DNS diagnosis for a domain</li>
+        </ul>
+        <p><strong>Build and run:</strong></p>
+        <pre class="keep-together pdf epub"><code class="nohighlight"><span class="comment"># Link the Scala.js output
+</span><span>sbt exampleDns/fastLinkJS
+
+</span><span class="comment"># Run on Node.js
+</span><span>node modules/example-dns-mcp/target/scala-</span><span class="number-literal">3.3.4</span><span>/example-dns-mcp-fastopt/main.js
+</span><span class="comment"># Server starts on http://0.0.0.0:8053</span></code></pre>
+        <p><strong>Configure in Claude Code</strong> (<code>.mcp.json</code>):</p>
+        <pre class="keep-together pdf epub"><code class="nohighlight"><span>{
+  </span><span class="attribute-name">&quot;mcpServers&quot;</span><span>: {
+    </span><span class="attribute-name">&quot;dns&quot;</span><span>: {
+      </span><span class="attribute-name">&quot;type&quot;</span><span>: </span><span class="string-literal">&quot;streamable-http&quot;</span><span>,
+      </span><span class="attribute-name">&quot;url&quot;</span><span>: </span><span class="string-literal">&quot;http://localhost:8053/mcp&quot;</span><span>
+    }
+  }
+}</span></code></pre>
+        
+        <h2 id="chat-mcp-server-modules-example-chat-mcp" class="section"><a class="anchor-link left" href="#chat-mcp-server-modules-example-chat-mcp"><i class="icofont-laika link">&#xef71;</i></a>Chat MCP server (<code>modules/example-chat-mcp</code>)</h2>
+        <p>A JVM HTTP server demonstrating <strong>Redis-backed session state</strong>. Each connected
+        session has its own username and current room, and the chat history itself is
+        shared across sessions through Redis. Resource subscription updates are pushed
+        when new messages arrive.</p>
+        <ul>
+          <li><strong>Tools:</strong> <code>set_username</code>, <code>create_room</code>, <code>join_room</code>, <code>send_message</code>, <code>read_messages</code></li>
+          <li><strong>Resources:</strong> <code>chat://rooms</code> (list of rooms), <code>chat://rooms/{room}/messages</code> (resource template, subscribable)</li>
+          <li><strong>Prompt:</strong> <code>summarize_chat</code> — summarises recent messages in the current room</li>
+          <li>Built with <code>McpRedis.configure(...)</code> wrapping <code>McpHttp.streaming</code> so the per-session refs live in Redis instead of in-memory</li>
+        </ul>
+        <p><strong>Build and run:</strong></p>
+        <pre class="keep-together pdf epub"><code class="nohighlight"><span class="comment"># Requires a Redis server on redis://localhost:6379
+</span><span>sbt exampleChat/run
+</span><span class="comment"># Server starts on http://0.0.0.0:27000</span></code></pre>
+        
+        <h2 id="shared-notebook-mcp-server-modules-example-shared-notebook-mcp" class="section"><a class="anchor-link left" href="#shared-notebook-mcp-server-modules-example-shared-notebook-mcp"><i class="icofont-laika link">&#xef71;</i></a>Shared Notebook MCP server (<code>modules/example-shared-notebook-mcp</code>)</h2>
+        <p>A JVM HTTP server demonstrating <strong>HTTP authentication with per-user contextual
+        tools</strong>. Authenticated users (alice/bob/charlie via Basic Auth) can write,
+        read, and share notes; the server uses <code>.authenticated[UserContext](...)</code> to
+        extract the current user and pass it as the context to every tool, resource
+        template, and prompt.</p>
+        <ul>
+          <li><strong>Tools:</strong> <code>write_note</code>, <code>read_note</code>, <code>share_note</code>, <code>unshare_note</code>, <code>list_my_notes</code>, <code>list_shared_notes</code></li>
+          <li><strong>Resource templates:</strong> <code>notebook://{username}</code> and <code>notebook://{username}/{note_id}</code> — built with the multi-segment <code>path</code> DSL</li>
+          <li><strong>Prompts:</strong> <code>summarize_notes</code>, <code>collaborate_with</code> (with arguments)</li>
+        </ul>
+        <p><strong>Build and run:</strong></p>
+        <pre class="keep-together pdf epub"><code class="nohighlight"><span>sbt exampleNotebook/run
+</span><span class="comment"># Server starts on http://0.0.0.0:26000
+# Use HTTP Basic auth with alice/password123, bob/password456, or charlie/password789</span></code></pre>
+        
+        <h2 id="rpg-character-creator-modules-example-rpg-character-creator" class="section"><a class="anchor-link left" href="#rpg-character-creator-modules-example-rpg-character-creator"><i class="icofont-laika link">&#xef71;</i></a>RPG Character Creator (<code>modules/example-rpg-character-creator</code>)</h2>
+        <p>A JVM HTTP server demonstrating <strong>multi-step elicitation over HTTP</strong>. The
+        <code>create_character</code> tool walks the client through race → class → starting weapon
+        → name using <code>requestForm</code> calls, where the weapon enum is generated
+        dynamically from the chosen class.</p>
+        <ul>
+          <li><strong>Tools:</strong> <code>create_character</code> (interactive wizard), <code>list_characters</code></li>
+          <li><strong>Per-session state:</strong> each session keeps its own list of created characters</li>
+          <li>A good example of folding <code>ElicitResult.{Accept, Decline, Cancel}</code> and <code>ElicitationError</code> into a clean <code>EitherT</code> flow</li>
+        </ul>
+        <p><strong>Build and run:</strong></p>
+        <pre class="keep-together pdf epub"><code class="nohighlight"><span>sbt exampleRpgCharacterCreator/run
+</span><span class="comment"># Server starts on http://0.0.0.0:1974</span></code></pre>
+        
+        <h2 id="openapi-mcp-proxy" class="section"><a class="anchor-link left" href="#openapi-mcp-proxy"><i class="icofont-laika link">&#xef71;</i></a>OpenAPI MCP Proxy</h2>
+        <p>The OpenAPI MCP Proxy turns any OpenAPI-compliant REST API into an MCP server.
+        See <a href="openapi-mcp-proxy.html">its dedicated page</a> for full documentation.</p>
+
+        
+<hr class="footer-rule"/>
+<footer>
+  Site generated by <a href="https://typelevel.org/Laika/">Laika</a> with the Helium theme.
+</footer>
+
+
+      </main>
+
+    </div>
+
+  </body>
+
+</html>
