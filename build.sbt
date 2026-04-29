@@ -375,6 +375,11 @@ lazy val docs = project
           |</svg>""".stripMargin
 
       tlSiteHelium.value.site
+        .metadata(
+          title = Some("scala-mcp"),
+          language = Some("en")
+        )
+        .site
         .internalCSS(Root / "css" / "scala-mcp.css")
         .site
         .topNavigationBar(
