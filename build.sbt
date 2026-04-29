@@ -1,5 +1,15 @@
 import org.portablescala.sbtplatformdeps.PlatformDepsPlugin.autoImport._
 import sbtcrossproject.CrossPlugin.autoImport._
+import laika.ast.InlineSVGIcon
+import laika.ast.Path.Root
+import laika.helium.config.Favicon
+import laika.helium.config.IconLink
+import laika.theme.config.Font
+import laika.theme.config.FontDefinition
+import laika.theme.config.FontStyle
+import laika.theme.config.FontWeight
+import laika.theme.config.Color.hex
+import org.typelevel.scalacoptions.ScalacOptions
 
 ThisBuild / scalaVersion := "3.3.4"
 
@@ -326,6 +336,102 @@ lazy val openapiMcpProxy = project
     }
   )
   .dependsOn(core.jvm, stdio.jvm, openapi.jvm)
+
+lazy val docs = project
+  .in(file("site"))
+  .enablePlugins(TypelevelSitePlugin)
+  .settings(commonSettings)
+  .settings(
+    publish / skip := true,
+    mdocIn         := baseDirectory.value / "docs",
+    tlSiteApiUrl   := Some(url("https://andimiller.github.io/scala-mcp/api/")),
+    tlSiteHelium   := {
+      val inter = Font.withWebCSS(
+        "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      )
+      val jbMono = Font.withWebCSS(
+        "https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap"
+      )
+
+      // Inline the logo as an SVG icon so Helium can render it alongside the
+      // "scala-mcp" text in the top nav (IconLink supports icon + label;
+      // ImageLink is image-only). currentColor on the stroke lets the ring
+      // adapt to light vs dark theme.
+      // class="svg-icon" + width/height="100%" matches Helium's built-in icons,
+      // which CSS sizes to 1.7em × 1.7em. Without this the browser falls back
+      // to the viewBox dimensions (180×180) and the logo overflows the nav.
+      val logoSvg =
+        """<svg class="svg-icon" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 180" aria-hidden="true">
+          |  <defs>
+          |    <linearGradient id="scala-mcp-grad" x1="0" y1="0" x2="1" y2="1">
+          |      <stop offset="0%" stop-color="#AA3DFA"/>
+          |      <stop offset="100%" stop-color="#3A87D4"/>
+          |    </linearGradient>
+          |  </defs>
+          |  <circle cx="90" cy="90" r="76" fill="none" stroke="currentColor" stroke-width="6"/>
+          |  <circle cx="90" cy="56" r="11" fill="url(#scala-mcp-grad)"/>
+          |  <circle cx="60.55" cy="107" r="11" fill="url(#scala-mcp-grad)"/>
+          |  <circle cx="119.45" cy="107" r="11" fill="url(#scala-mcp-grad)"/>
+          |</svg>""".stripMargin
+
+      tlSiteHelium.value.site
+        .internalCSS(Root / "css" / "scala-mcp.css")
+        .site
+        .topNavigationBar(
+          homeLink = IconLink.internal(
+            Root / "index.md",
+            InlineSVGIcon(logoSvg, Some("scala-mcp")),
+            text = Some("scala-mcp")
+          )
+        )
+        .site
+        .favIcons(
+          Favicon.internal(Root / "images" / "favicon-32.png", sizes = "32x32"),
+          Favicon.internal(Root / "images" / "favicon-16.png", sizes = "16x16"),
+          Favicon.internal(Root / "images" / "favicon-180.png", sizes = "180x180")
+        )
+        .site
+        .clearFontResources
+        .site
+        .addFontResources(
+          FontDefinition(inter, "Inter", FontWeight.Normal, FontStyle.Normal),
+          FontDefinition(jbMono, "JetBrains Mono", FontWeight.Normal, FontStyle.Normal)
+        )
+        // fontFamilies args are positional: body, headlines, code.
+        .site
+        .fontFamilies("Inter", "Inter", "JetBrains Mono")
+        // themeColors args are positional: primary, primaryMedium, primaryLight,
+        // secondary, text, background, bgGradient. Named args fail under sbt's
+        // Scala 2.12 due to overload ambiguity with the inherited ColorOps method.
+        .site
+        .themeColors(
+          hex("266BB0"),                 // primary
+          hex("71A8E0"),                 // primaryMedium
+          hex("F7FAFD"),                 // primaryLight
+          hex("8706E5"),                 // secondary
+          hex("1A1A1A"),                 // text
+          hex("FFFFFF"),                 // background
+          (hex("AA3DFA"), hex("3A87D4")) // bgGradient (logo gradient)
+        )
+        .site
+        .darkMode
+        .themeColors(
+          hex("71A8E0"),                 // primary
+          hex("266BB0"),                 // primaryMedium
+          hex("133658"),                 // primaryLight
+          hex("CB88FC"),                 // secondary
+          hex("FFFFFF"),                 // text
+          hex("0A1C2E"),                 // background
+          (hex("CB88FC"), hex("71A8E0")) // bgGradient
+        )
+    },
+    laikaConfig := laikaConfig.value.withConfigValue("version", version.value),
+    // Docs snippets often build values for illustration without using them.
+    tpolecatExcludeOptions += ScalacOptions.warnNonUnitStatement
+  )
+  .dependsOn(
+    core.jvm, stdio.jvm, http4s.jvm, openapi.jvm, goldenMunit.jvm, tapir, redis
+  )
 
 lazy val root = project
   .in(file("."))
