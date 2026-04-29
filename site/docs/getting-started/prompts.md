@@ -15,7 +15,7 @@ import net.andimiller.mcp.core.protocol.PromptMessage
 No arguments, fixed messages — use `.messages`:
 
 ```scala mdoc:silent
-val staticPrompt =
+val staticPrompt: Prompt[IO, Unit] =
   prompt
     .name("explain_protocol")
     .description("Explain the MCP protocol")
@@ -32,7 +32,7 @@ Generated from client-supplied arguments — declare each argument with
 `.generate`:
 
 ```scala mdoc:silent
-val dynamicPrompt =
+val dynamicPrompt: Prompt[IO, Unit] =
   prompt
     .name("code_review")
     .description("Code review prompt")
@@ -52,7 +52,7 @@ client-supplied arguments map):
 trait MyHistoryCtx:
   def history: IO[String]
 
-val ctxPrompt =
+val ctxPrompt: Prompt[IO, MyHistoryCtx] =
   contextualPrompt[MyHistoryCtx]
     .name("review_day")
     .generate((ctx, _) => ctx.history.map(h => List(PromptMessage.user(h))))

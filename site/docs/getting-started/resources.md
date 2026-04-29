@@ -29,7 +29,7 @@ Use `.staticContent` when the body is a fixed string at server-construction
 time:
 
 ```scala mdoc:silent
-val staticRes =
+val staticRes: McpResource[IO, Unit] =
   resource
     .uri("file:///config.json")
     .name("Config File")
@@ -43,7 +43,7 @@ val staticRes =
 Use `.read` when the body is computed on each read:
 
 ```scala mdoc:silent
-val dynamicRes =
+val dynamicRes: McpResource[IO, Unit] =
   resource
     .uri("app://status")
     .name("Server Status")
@@ -59,7 +59,7 @@ Resolved per-session with a context value:
 trait MyStatusCtx:
   def getStatus: IO[String]
 
-val ctxRes =
+val ctxRes: McpResource[IO, MyStatusCtx] =
   contextualResource[MyStatusCtx]
     .uri("app://status")
     .name("Server Status")
@@ -76,7 +76,7 @@ with a `.path` DSL that builds typed parameter extraction. Segments combine
 with `*>` / `<*` and named segments are extracted:
 
 ```scala mdoc:silent
-val itemTemplate =
+val itemTemplate: ResourceTemplate[IO, Unit] =
   resourceTemplate
     .path(path.static("app://items/") *> path.named("id"))
     .name("Item by ID")
@@ -92,7 +92,7 @@ val itemTemplate =
 Multi-parameter templates combine named segments with `.tupled`:
 
 ```scala mdoc:silent
-val noteTemplate =
+val noteTemplate: ResourceTemplate[IO, Unit] =
   resourceTemplate
     .path(
       path.static("app://users/") *>

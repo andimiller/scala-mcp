@@ -18,17 +18,17 @@ import net.andimiller.mcp.core.protocol.PromptMessage
 case class Req(value: String)  derives JsonSchema, Decoder, Encoder.AsObject
 case class Resp(value: String) derives JsonSchema, Decoder, Encoder.AsObject
 
-val myTool =
+val myTool: Tool.Resolved[IO] =
   tool.name("greet").in[Req].out[Resp]
     .run(req => IO.pure(Resp(s"Hello, ${req.value}!")))
 
-val staticRes =
+val staticRes: McpResource[IO, Unit] =
   resource
     .uri("file:///config.json")
     .name("Config File")
     .staticContent[IO]("""{"key": "value"}""")
 
-val staticPrompt =
+val staticPrompt: Prompt[IO, Unit] =
   prompt
     .name("explain")
     .messages[IO](List(PromptMessage.user("Explain MCP.")))

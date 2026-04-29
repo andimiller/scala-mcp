@@ -20,9 +20,11 @@ trait MyCtx:
 
 ## Fluent builder
 
+`.run` on a non-contextual builder erases the input/output types into JSON
+schemas and returns a `Tool.Resolved[F]` — the form a `Server` dispatches:
+
 ```scala mdoc:silent
-// Returns Tool[F, Unit, A, R]; .resolve gives Tool.Resolved[F]
-val myTool =
+val myTool: Tool.Resolved[IO] =
   tool.name("my_tool")
     .description("Tool description")
     .in[MyRequest]
@@ -36,7 +38,7 @@ val myTool =
 directly when the call can fail or wants to short-circuit:
 
 ```scala mdoc:silent
-val mayFail =
+val mayFail: Tool.Resolved[IO] =
   tool.name("risky")
     .in[MyRequest]
     .out[MyResponse]
@@ -46,10 +48,12 @@ val mayFail =
 ## Contextual tools
 
 A contextual tool receives a per-session context value when called. Use this
-for state, auth-derived identity, or per-session resources:
+for state, auth-derived identity, or per-session resources. The return type
+keeps the context, input, and output types so the server can wire it up
+later:
 
 ```scala mdoc:silent
-val ctxTool =
+val ctxTool: Tool[IO, MyCtx, MyRequest, MyResponse] =
   contextualTool[MyCtx]
     .name("my_tool")
     .description("Tool description")
