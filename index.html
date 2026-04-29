@@ -46,7 +46,18 @@
     
   </div>
 
-  <a class="image-link" href="#"><img src="images/scala-mcp-logo.svg" alt="scala-mcp" height="36"></a>
+  <a class="icon-link svg-link" href="#"><span title="scala-mcp"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 180" aria-hidden="true">
+  <defs>
+    <linearGradient id="scala-mcp-grad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#AA3DFA"/>
+      <stop offset="100%" stop-color="#3A87D4"/>
+    </linearGradient>
+  </defs>
+  <circle cx="90" cy="90" r="76" fill="none" stroke="currentColor" stroke-width="6"/>
+  <circle cx="90" cy="56" r="11" fill="url(#scala-mcp-grad)"/>
+  <circle cx="60.55" cy="107" r="11" fill="url(#scala-mcp-grad)"/>
+  <circle cx="119.45" cy="107" r="11" fill="url(#scala-mcp-grad)"/>
+</svg></span>scala-mcp</a>
 
   <div class="row links">
     
@@ -95,14 +106,29 @@
     <li class="level2 nav-leaf"><a href="getting-started/prompts.html">Prompts</a></li>
     <li class="level2 nav-leaf"><a href="getting-started/json-schema-derivation.html">JSON Schema derivation</a></li>
     <li class="level2 nav-leaf"><a href="getting-started/server-construction.html">Server construction</a></li>
-    <li class="level2 nav-leaf"><a href="getting-started/building.html">Building</a></li>
     <li class="level1 nav-header">Modules</li>
-    <li class="level2 nav-leaf"><a href="modules/mcp-explorer.html">MCP Explorer</a></li>
+    <li class="level2 nav-leaf"><a href="modules/">Modules</a></li>
+    <li class="level2 nav-leaf"><a href="modules/core.html">core</a></li>
+    <li class="level2 nav-leaf"><a href="modules/stdio.html">stdio</a></li>
+    <li class="level2 nav-leaf"><a href="modules/http4s.html">http4s</a></li>
+    <li class="level2 nav-leaf"><a href="modules/openapi.html">openapi</a></li>
+    <li class="level2 nav-leaf"><a href="modules/redis.html">redis</a></li>
+    <li class="level2 nav-leaf"><a href="modules/tapir.html">tapir</a></li>
+    <li class="level2 nav-leaf"><a href="modules/golden-munit.html">golden-munit</a></li>
+    <li class="level2 nav-leaf"><a href="modules/explorer.html">explorer</a></li>
+    <li class="level1 nav-header">Tools</li>
+    <li class="level2 nav-leaf"><a href="tools/">Tools</a></li>
+    <li class="level2 nav-leaf"><a href="tools/openapi-mcp-proxy.html">OpenAPI MCP Proxy</a></li>
     <li class="level1 nav-header">Testing</li>
     <li class="level2 nav-leaf"><a href="testing/golden-testing.html">Golden testing</a></li>
     <li class="level1 nav-header">Examples</li>
     <li class="level2 nav-leaf"><a href="examples/">Examples</a></li>
-    <li class="level2 nav-leaf"><a href="examples/openapi-mcp-proxy.html">OpenAPI MCP Proxy</a></li>
+    <li class="level2 nav-leaf"><a href="examples/dice.html">Dice MCP server</a></li>
+    <li class="level2 nav-leaf"><a href="examples/pomodoro.html">Pomodoro MCP server</a></li>
+    <li class="level2 nav-leaf"><a href="examples/dns.html">DNS MCP server</a></li>
+    <li class="level2 nav-leaf"><a href="examples/chat.html">Chat MCP server</a></li>
+    <li class="level2 nav-leaf"><a href="examples/shared-notebook.html">Shared Notebook MCP server</a></li>
+    <li class="level2 nav-leaf"><a href="examples/rpg-character-creator.html">RPG Character Creator</a></li>
   </ul>
 
 </nav>
@@ -142,14 +168,15 @@
         
         <h2 id="where-to-next" class="section"><a class="anchor-link left" href="#where-to-next"><i class="icofont-laika link">&#xef71;</i></a>Where to next</h2>
         <ul>
-          <li><strong>Introduction → <a href="introduction/feature-support.html">MCP feature support</a></strong> — what&#39;s implemented vs. what isn&#39;t</li>
-          <li><strong>Getting Started → <a href="getting-started/quick-start.html">Quick start</a></strong> — add the dependency and write your first tool</li>
-          <li><strong>Getting Started → <a href="getting-started/tools.html">Tools</a></strong>, <a href="getting-started/resources.html">Resources</a>, <a href="getting-started/prompts.html">Prompts</a> — the core building blocks</li>
-          <li><strong>Getting Started → <a href="getting-started/json-schema-derivation.html">JSON schema derivation</a></strong> — <code>derives JsonSchema</code> and annotations</li>
-          <li><strong>Getting Started → <a href="getting-started/server-construction.html">Server construction</a></strong> — Stdio + HTTP transports</li>
-          <li><strong>Modules → <a href="modules/mcp-explorer.html">MCP Explorer</a></strong> — built-in browser UI for any HTTP server</li>
-          <li><strong>Testing → <a href="testing/golden-testing.html">Golden testing</a></strong> — snapshot-test your server&#39;s spec</li>
-          <li><strong>Examples → <a href="examples/">Six runnable example servers</a></strong> and the <a href="examples/openapi-mcp-proxy.html">OpenAPI MCP Proxy</a></li>
+          <li><strong><a href="introduction/feature-support.html">Introduction → MCP feature support</a></strong> — what&#39;s implemented vs. what isn&#39;t</li>
+          <li><strong><a href="getting-started/quick-start.html">Getting Started → Quick start</a></strong> — add the dependency and write your first tool</li>
+          <li><strong>Getting Started → <a href="getting-started/tools.html">Tools</a>, <a href="getting-started/resources.html">Resources</a>, <a href="getting-started/prompts.html">Prompts</a></strong> — the core building blocks</li>
+          <li><strong><a href="getting-started/json-schema-derivation.html">Getting Started → JSON schema derivation</a></strong> — <code>derives JsonSchema</code> and annotations</li>
+          <li><strong><a href="getting-started/server-construction.html">Getting Started → Server construction</a></strong> — Stdio + HTTP transports</li>
+          <li><strong><a href="modules/">Modules</a></strong> — one page per module (core, stdio, http4s, openapi, redis, tapir, golden-munit, explorer)</li>
+          <li><strong><a href="tools/openapi-mcp-proxy.html">Tools → OpenAPI MCP Proxy</a></strong> — turn any OpenAPI API into an MCP server</li>
+          <li><strong><a href="testing/golden-testing.html">Testing → Golden testing</a></strong> — snapshot-test your server&#39;s spec</li>
+          <li><strong><a href="examples/">Examples</a></strong> — six runnable example servers covering every transport</li>
         </ul>
 
         

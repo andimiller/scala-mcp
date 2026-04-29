@@ -6,7 +6,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="generator" content="Typelevel Laika + Helium Theme" />
-  <title>Building</title>
+  <title>Tools</title>
   
   <meta name="author" content="scala-mcp contributors"/>
   
@@ -46,7 +46,18 @@
     
   </div>
 
-  <a class="image-link" href="../"><img src="../images/scala-mcp-logo.svg" alt="scala-mcp" height="36"></a>
+  <a class="icon-link svg-link" href="../"><span title="scala-mcp"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 180" aria-hidden="true">
+  <defs>
+    <linearGradient id="scala-mcp-grad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#AA3DFA"/>
+      <stop offset="100%" stop-color="#3A87D4"/>
+    </linearGradient>
+  </defs>
+  <circle cx="90" cy="90" r="76" fill="none" stroke="currentColor" stroke-width="6"/>
+  <circle cx="90" cy="56" r="11" fill="url(#scala-mcp-grad)"/>
+  <circle cx="60.55" cy="107" r="11" fill="url(#scala-mcp-grad)"/>
+  <circle cx="119.45" cy="107" r="11" fill="url(#scala-mcp-grad)"/>
+</svg></span>scala-mcp</a>
 
   <div class="row links">
     
@@ -89,20 +100,35 @@
     <li class="level1 nav-header">Introduction</li>
     <li class="level2 nav-leaf"><a href="../introduction/feature-support.html">MCP feature support</a></li>
     <li class="level1 nav-header">Getting Started</li>
-    <li class="level2 nav-leaf"><a href="quick-start.html">Quick start</a></li>
-    <li class="level2 nav-leaf"><a href="tools.html">Tools</a></li>
-    <li class="level2 nav-leaf"><a href="resources.html">Resources &amp; resource templates</a></li>
-    <li class="level2 nav-leaf"><a href="prompts.html">Prompts</a></li>
-    <li class="level2 nav-leaf"><a href="json-schema-derivation.html">JSON Schema derivation</a></li>
-    <li class="level2 nav-leaf"><a href="server-construction.html">Server construction</a></li>
-    <li class="level2 active nav-leaf"><a href="#">Building</a></li>
+    <li class="level2 nav-leaf"><a href="../getting-started/quick-start.html">Quick start</a></li>
+    <li class="level2 nav-leaf"><a href="../getting-started/tools.html">Tools</a></li>
+    <li class="level2 nav-leaf"><a href="../getting-started/resources.html">Resources &amp; resource templates</a></li>
+    <li class="level2 nav-leaf"><a href="../getting-started/prompts.html">Prompts</a></li>
+    <li class="level2 nav-leaf"><a href="../getting-started/json-schema-derivation.html">JSON Schema derivation</a></li>
+    <li class="level2 nav-leaf"><a href="../getting-started/server-construction.html">Server construction</a></li>
     <li class="level1 nav-header">Modules</li>
-    <li class="level2 nav-leaf"><a href="../modules/mcp-explorer.html">MCP Explorer</a></li>
+    <li class="level2 nav-leaf"><a href="../modules/">Modules</a></li>
+    <li class="level2 nav-leaf"><a href="../modules/core.html">core</a></li>
+    <li class="level2 nav-leaf"><a href="../modules/stdio.html">stdio</a></li>
+    <li class="level2 nav-leaf"><a href="../modules/http4s.html">http4s</a></li>
+    <li class="level2 nav-leaf"><a href="../modules/openapi.html">openapi</a></li>
+    <li class="level2 nav-leaf"><a href="../modules/redis.html">redis</a></li>
+    <li class="level2 nav-leaf"><a href="../modules/tapir.html">tapir</a></li>
+    <li class="level2 nav-leaf"><a href="../modules/golden-munit.html">golden-munit</a></li>
+    <li class="level2 nav-leaf"><a href="../modules/explorer.html">explorer</a></li>
+    <li class="level1 nav-header">Tools</li>
+    <li class="level2 active nav-leaf"><a href="#">Tools</a></li>
+    <li class="level2 nav-leaf"><a href="openapi-mcp-proxy.html">OpenAPI MCP Proxy</a></li>
     <li class="level1 nav-header">Testing</li>
     <li class="level2 nav-leaf"><a href="../testing/golden-testing.html">Golden testing</a></li>
     <li class="level1 nav-header">Examples</li>
     <li class="level2 nav-leaf"><a href="../examples/">Examples</a></li>
-    <li class="level2 nav-leaf"><a href="../examples/openapi-mcp-proxy.html">OpenAPI MCP Proxy</a></li>
+    <li class="level2 nav-leaf"><a href="../examples/dice.html">Dice MCP server</a></li>
+    <li class="level2 nav-leaf"><a href="../examples/pomodoro.html">Pomodoro MCP server</a></li>
+    <li class="level2 nav-leaf"><a href="../examples/dns.html">DNS MCP server</a></li>
+    <li class="level2 nav-leaf"><a href="../examples/chat.html">Chat MCP server</a></li>
+    <li class="level2 nav-leaf"><a href="../examples/shared-notebook.html">Shared Notebook MCP server</a></li>
+    <li class="level2 nav-leaf"><a href="../examples/rpg-character-creator.html">RPG Character Creator</a></li>
   </ul>
 
 </nav>
@@ -111,7 +137,7 @@
 
       
 <nav id="page-nav">
-  <p class="header"><a href="#">Building</a></p>
+  <p class="header"><a href="#">Tools</a></p>
 
   <ul class="nav-list">
   </ul>
@@ -122,19 +148,24 @@
 
       <main class="content">
 
-        <h1 id="building" class="title">Building</h1>
-        <pre class="keep-together pdf epub"><code class="nohighlight"><span class="comment"># Compile all modules
-</span><span>sbt compile
-
-</span><span class="comment"># Run tests
-</span><span>sbt test
-
-</span><span class="comment"># Link Scala.js examples
-</span><span>sbt exampleDns/fastLinkJS
-
-</span><span class="comment"># Run tests with coverage (sbt-scoverage)
-</span><span>sbt </span><span class="string-literal">&#39;coverage; coreJVM/clean; coreJVM/test; coreJVM/coverageReport&#39;</span><span>
-</span><span class="comment"># HTML report: modules/core/jvm/target/scala-3.3.4/scoverage-report/index.html</span></code></pre>
+        <h1 id="tools" class="title">Tools</h1>
+        <p>Standalone tools and CLIs built on top of the scala-mcp library. Drop-in
+        binaries you can run without writing any Scala — point them at an existing
+        API or service and they expose it as MCP.</p>
+        <table>
+          <thead>
+            <tr>
+              <th>Tool</th>
+              <th>Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><a href="openapi-mcp-proxy.html">OpenAPI MCP Proxy</a></td>
+              <td>Turn any OpenAPI 3.x REST API into an MCP server, with automatic agent-config generation for Claude Desktop, Claude Code, Cursor, and OpenCode.</td>
+            </tr>
+          </tbody>
+        </table>
 
         
 <hr class="footer-rule"/>
