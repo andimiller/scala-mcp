@@ -187,7 +187,7 @@
 </span><span class="keyword">case</span><span> </span><span class="keyword">class</span><span> </span><span class="type-name">GreetRequest</span><span>(</span><span class="identifier">name</span><span>: </span><span class="type-name">String</span><span>) </span><span class="keyword">derives</span><span> </span><span class="type-name">JsonSchema</span><span>, </span><span class="type-name">Decoder</span><span>
 </span><span class="keyword">case</span><span> </span><span class="keyword">class</span><span> </span><span class="type-name">GreetResponse</span><span>(</span><span class="identifier">message</span><span>: </span><span class="type-name">String</span><span>) </span><span class="keyword">derives</span><span> </span><span class="type-name">JsonSchema</span><span>, </span><span class="type-name">Encoder</span><span>.</span><span class="type-name">AsObject</span><span>
 
-</span><span class="keyword">val</span><span> </span><span class="identifier">greetTool</span><span> =
+</span><span class="keyword">val</span><span> </span><span class="identifier">greetTool</span><span>: </span><span class="type-name">Tool</span><span>.</span><span class="type-name">Resolved</span><span>[</span><span class="type-name">IO</span><span>] =
   </span><span class="identifier">tool</span><span>.</span><span class="identifier">name</span><span>(</span><span class="string-literal">&quot;greet&quot;</span><span>)
     .</span><span class="identifier">description</span><span>(</span><span class="string-literal">&quot;Greet someone by name&quot;</span><span>)
     .</span><span class="identifier">in</span><span>[</span><span class="type-name">GreetRequest</span><span>]

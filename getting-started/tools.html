@@ -169,8 +169,9 @@
   </span><span class="keyword">def</span><span> </span><span class="declaration-name">doSomething</span><span>(</span><span class="identifier">req</span><span>: </span><span class="type-name">MyRequest</span><span>): </span><span class="type-name">IO</span><span>[</span><span class="type-name">MyResponse</span><span>]</span></code></pre>
         
         <h2 id="fluent-builder" class="section"><a class="anchor-link left" href="#fluent-builder"><i class="icofont-laika link">&#xef71;</i></a>Fluent builder</h2>
-        <pre class="keep-together pdf epub"><code class="nohighlight"><span class="comment">// Returns Tool[F, Unit, A, R]; .resolve gives Tool.Resolved[F]
-</span><span class="keyword">val</span><span> </span><span class="identifier">myTool</span><span> =
+        <p><code>.run</code> on a non-contextual builder erases the input/output types into JSON
+        schemas and returns a <code>Tool.Resolved[F]</code> — the form a <code>Server</code> dispatches:</p>
+        <pre class="keep-together pdf epub"><code class="nohighlight"><span class="keyword">val</span><span> </span><span class="identifier">myTool</span><span>: </span><span class="type-name">Tool</span><span>.</span><span class="type-name">Resolved</span><span>[</span><span class="type-name">IO</span><span>] =
   </span><span class="identifier">tool</span><span>.</span><span class="identifier">name</span><span>(</span><span class="string-literal">&quot;my_tool&quot;</span><span>)
     .</span><span class="identifier">description</span><span>(</span><span class="string-literal">&quot;Tool description&quot;</span><span>)
     .</span><span class="identifier">in</span><span>[</span><span class="type-name">MyRequest</span><span>]
@@ -180,7 +181,7 @@
         <h2 id="returning-toolresult-directly" class="section"><a class="anchor-link left" href="#returning-toolresult-directly"><i class="icofont-laika link">&#xef71;</i></a>Returning <code>ToolResult</code> directly</h2>
         <p><code>.runResult</code> lets you return <code>ToolResult[Out]</code> (<code>Success</code> / <code>Text</code> / <code>Error</code>)
         directly when the call can fail or wants to short-circuit:</p>
-        <pre class="keep-together pdf epub"><code class="nohighlight"><span class="keyword">val</span><span> </span><span class="identifier">mayFail</span><span> =
+        <pre class="keep-together pdf epub"><code class="nohighlight"><span class="keyword">val</span><span> </span><span class="identifier">mayFail</span><span>: </span><span class="type-name">Tool</span><span>.</span><span class="type-name">Resolved</span><span>[</span><span class="type-name">IO</span><span>] =
   </span><span class="identifier">tool</span><span>.</span><span class="identifier">name</span><span>(</span><span class="string-literal">&quot;risky&quot;</span><span>)
     .</span><span class="identifier">in</span><span>[</span><span class="type-name">MyRequest</span><span>]
     .</span><span class="identifier">out</span><span>[</span><span class="type-name">MyResponse</span><span>]
@@ -188,8 +189,10 @@
         
         <h2 id="contextual-tools" class="section"><a class="anchor-link left" href="#contextual-tools"><i class="icofont-laika link">&#xef71;</i></a>Contextual tools</h2>
         <p>A contextual tool receives a per-session context value when called. Use this
-        for state, auth-derived identity, or per-session resources:</p>
-        <pre class="keep-together pdf epub"><code class="nohighlight"><span class="keyword">val</span><span> </span><span class="identifier">ctxTool</span><span> =
+        for state, auth-derived identity, or per-session resources. The return type
+        keeps the context, input, and output types so the server can wire it up
+        later:</p>
+        <pre class="keep-together pdf epub"><code class="nohighlight"><span class="keyword">val</span><span> </span><span class="identifier">ctxTool</span><span>: </span><span class="type-name">Tool</span><span>[</span><span class="type-name">IO</span><span>, </span><span class="type-name">MyCtx</span><span>, </span><span class="type-name">MyRequest</span><span>, </span><span class="type-name">MyResponse</span><span>] =
   </span><span class="identifier">contextualTool</span><span>[</span><span class="type-name">MyCtx</span><span>]
     .</span><span class="identifier">name</span><span>(</span><span class="string-literal">&quot;my_tool&quot;</span><span>)
     .</span><span class="identifier">description</span><span>(</span><span class="string-literal">&quot;Tool description&quot;</span><span>)

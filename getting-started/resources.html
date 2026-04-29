@@ -178,7 +178,7 @@
         <h3 id="static-content" class="section"><a class="anchor-link left" href="#static-content"><i class="icofont-laika link">&#xef71;</i></a>Static content</h3>
         <p>Use <code>.staticContent</code> when the body is a fixed string at server-construction
         time:</p>
-        <pre class="keep-together pdf epub"><code class="nohighlight"><span class="keyword">val</span><span> </span><span class="identifier">staticRes</span><span> =
+        <pre class="keep-together pdf epub"><code class="nohighlight"><span class="keyword">val</span><span> </span><span class="identifier">staticRes</span><span>: </span><span class="type-name">McpResource</span><span>[</span><span class="type-name">IO</span><span>, </span><span class="type-name">Unit</span><span>] =
   </span><span class="identifier">resource</span><span>
     .</span><span class="identifier">uri</span><span>(</span><span class="string-literal">&quot;file:///config.json&quot;</span><span>)
     .</span><span class="identifier">name</span><span>(</span><span class="string-literal">&quot;Config File&quot;</span><span>)
@@ -188,7 +188,7 @@
         
         <h3 id="dynamic-content" class="section"><a class="anchor-link left" href="#dynamic-content"><i class="icofont-laika link">&#xef71;</i></a>Dynamic content</h3>
         <p>Use <code>.read</code> when the body is computed on each read:</p>
-        <pre class="keep-together pdf epub"><code class="nohighlight"><span class="keyword">val</span><span> </span><span class="identifier">dynamicRes</span><span> =
+        <pre class="keep-together pdf epub"><code class="nohighlight"><span class="keyword">val</span><span> </span><span class="identifier">dynamicRes</span><span>: </span><span class="type-name">McpResource</span><span>[</span><span class="type-name">IO</span><span>, </span><span class="type-name">Unit</span><span>] =
   </span><span class="identifier">resource</span><span>
     .</span><span class="identifier">uri</span><span>(</span><span class="string-literal">&quot;app://status&quot;</span><span>)
     .</span><span class="identifier">name</span><span>(</span><span class="string-literal">&quot;Server Status&quot;</span><span>)
@@ -200,7 +200,7 @@
         <pre class="keep-together pdf epub"><code class="nohighlight"><span class="keyword">trait</span><span> </span><span class="type-name">MyStatusCtx</span><span>:
   </span><span class="keyword">def</span><span> </span><span class="declaration-name">getStatus</span><span>: </span><span class="type-name">IO</span><span>[</span><span class="type-name">String</span><span>]
 
-</span><span class="keyword">val</span><span> </span><span class="identifier">ctxRes</span><span> =
+</span><span class="keyword">val</span><span> </span><span class="identifier">ctxRes</span><span>: </span><span class="type-name">McpResource</span><span>[</span><span class="type-name">IO</span><span>, </span><span class="type-name">MyStatusCtx</span><span>] =
   </span><span class="identifier">contextualResource</span><span>[</span><span class="type-name">MyStatusCtx</span><span>]
     .</span><span class="identifier">uri</span><span>(</span><span class="string-literal">&quot;app://status&quot;</span><span>)
     .</span><span class="identifier">name</span><span>(</span><span class="string-literal">&quot;Server Status&quot;</span><span>)
@@ -212,7 +212,7 @@
         <p>Resource templates use the same fluent entry point (<code>resourceTemplate</code>) but
         with a <code>.path</code> DSL that builds typed parameter extraction. Segments combine
         with <code>*&gt;</code> / <code>&lt;*</code> and named segments are extracted:</p>
-        <pre class="keep-together pdf epub"><code class="nohighlight"><span class="keyword">val</span><span> </span><span class="identifier">itemTemplate</span><span> =
+        <pre class="keep-together pdf epub"><code class="nohighlight"><span class="keyword">val</span><span> </span><span class="identifier">itemTemplate</span><span>: </span><span class="type-name">ResourceTemplate</span><span>[</span><span class="type-name">IO</span><span>, </span><span class="type-name">Unit</span><span>] =
   </span><span class="identifier">resourceTemplate</span><span>
     .</span><span class="identifier">path</span><span>(</span><span class="identifier">path</span><span>.</span><span class="identifier">static</span><span>(</span><span class="string-literal">&quot;app://items/&quot;</span><span>) *&gt; </span><span class="identifier">path</span><span>.</span><span class="identifier">named</span><span>(</span><span class="string-literal">&quot;id&quot;</span><span>))
     .</span><span class="identifier">name</span><span>(</span><span class="string-literal">&quot;Item by ID&quot;</span><span>)
@@ -224,7 +224,7 @@
       )
     }</span></code></pre>
         <p>Multi-parameter templates combine named segments with <code>.tupled</code>:</p>
-        <pre class="keep-together pdf epub"><code class="nohighlight"><span class="keyword">val</span><span> </span><span class="identifier">noteTemplate</span><span> =
+        <pre class="keep-together pdf epub"><code class="nohighlight"><span class="keyword">val</span><span> </span><span class="identifier">noteTemplate</span><span>: </span><span class="type-name">ResourceTemplate</span><span>[</span><span class="type-name">IO</span><span>, </span><span class="type-name">Unit</span><span>] =
   </span><span class="identifier">resourceTemplate</span><span>
     .</span><span class="identifier">path</span><span>(
       </span><span class="identifier">path</span><span>.</span><span class="identifier">static</span><span>(</span><span class="string-literal">&quot;app://users/&quot;</span><span>) *&gt;

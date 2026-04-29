@@ -162,7 +162,7 @@
         
         <h2 id="static-prompt" class="section"><a class="anchor-link left" href="#static-prompt"><i class="icofont-laika link">&#xef71;</i></a>Static prompt</h2>
         <p>No arguments, fixed messages — use <code>.messages</code>:</p>
-        <pre class="keep-together pdf epub"><code class="nohighlight"><span class="keyword">val</span><span> </span><span class="identifier">staticPrompt</span><span> =
+        <pre class="keep-together pdf epub"><code class="nohighlight"><span class="keyword">val</span><span> </span><span class="identifier">staticPrompt</span><span>: </span><span class="type-name">Prompt</span><span>[</span><span class="type-name">IO</span><span>, </span><span class="type-name">Unit</span><span>] =
   </span><span class="identifier">prompt</span><span>
     .</span><span class="identifier">name</span><span>(</span><span class="string-literal">&quot;explain_protocol&quot;</span><span>)
     .</span><span class="identifier">description</span><span>(</span><span class="string-literal">&quot;Explain the MCP protocol&quot;</span><span>)
@@ -175,7 +175,7 @@
         <p>Generated from client-supplied arguments — declare each argument with
         <code>.argument(name, description, required)</code>, then return the messages from
         <code>.generate</code>:</p>
-        <pre class="keep-together pdf epub"><code class="nohighlight"><span class="keyword">val</span><span> </span><span class="identifier">dynamicPrompt</span><span> =
+        <pre class="keep-together pdf epub"><code class="nohighlight"><span class="keyword">val</span><span> </span><span class="identifier">dynamicPrompt</span><span>: </span><span class="type-name">Prompt</span><span>[</span><span class="type-name">IO</span><span>, </span><span class="type-name">Unit</span><span>] =
   </span><span class="identifier">prompt</span><span>
     .</span><span class="identifier">name</span><span>(</span><span class="string-literal">&quot;code_review&quot;</span><span>)
     .</span><span class="identifier">description</span><span>(</span><span class="string-literal">&quot;Code review prompt&quot;</span><span>)
@@ -191,7 +191,7 @@
         <pre class="keep-together pdf epub"><code class="nohighlight"><span class="keyword">trait</span><span> </span><span class="type-name">MyHistoryCtx</span><span>:
   </span><span class="keyword">def</span><span> </span><span class="declaration-name">history</span><span>: </span><span class="type-name">IO</span><span>[</span><span class="type-name">String</span><span>]
 
-</span><span class="keyword">val</span><span> </span><span class="identifier">ctxPrompt</span><span> =
+</span><span class="keyword">val</span><span> </span><span class="identifier">ctxPrompt</span><span>: </span><span class="type-name">Prompt</span><span>[</span><span class="type-name">IO</span><span>, </span><span class="type-name">MyHistoryCtx</span><span>] =
   </span><span class="identifier">contextualPrompt</span><span>[</span><span class="type-name">MyHistoryCtx</span><span>]
     .</span><span class="identifier">name</span><span>(</span><span class="string-literal">&quot;review_day&quot;</span><span>)
     .</span><span class="identifier">generate</span><span>((</span><span class="identifier">ctx</span><span>, </span><span class="identifier">_</span><span>) =&gt; </span><span class="identifier">ctx</span><span>.</span><span class="identifier">history</span><span>.</span><span class="identifier">map</span><span>(</span><span class="identifier">h</span><span> =&gt; </span><span class="type-name">List</span><span>(</span><span class="type-name">PromptMessage</span><span>.</span><span class="identifier">user</span><span>(</span><span class="identifier">h</span><span>))))</span></code></pre>
