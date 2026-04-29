@@ -6,7 +6,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="generator" content="Typelevel Laika + Helium Theme" />
-  <title>Quick start</title>
+  <title>Golden testing</title>
   
   <meta name="author" content="scala-mcp contributors"/>
   
@@ -15,20 +15,20 @@
   
   
   
-  <link rel="icon" sizes="32x32" type="image/png" href="images/favicon-32.png"/>
+  <link rel="icon" sizes="32x32" type="image/png" href="../images/favicon-32.png"/>
   
-  <link rel="icon" sizes="16x16" type="image/png" href="images/favicon-16.png"/>
+  <link rel="icon" sizes="16x16" type="image/png" href="../images/favicon-16.png"/>
   
-  <link rel="icon" sizes="180x180" type="image/png" href="images/favicon-180.png"/>
+  <link rel="icon" sizes="180x180" type="image/png" href="../images/favicon-180.png"/>
   
   
   <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Lato:400,700">
   
   <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Fira+Mono:500">
   
-  <link rel="stylesheet" type="text/css" href="helium/site/icofont.min.css" />
-    <link rel="stylesheet" type="text/css" href="helium/site/laika-helium.css" />
-  <script src="helium/site/laika-helium.js"></script>
+  <link rel="stylesheet" type="text/css" href="../helium/site/icofont.min.css" />
+    <link rel="stylesheet" type="text/css" href="../helium/site/laika-helium.css" />
+  <script src="../helium/site/laika-helium.js"></script>
   
   
   <script> /* for avoiding page load transitions */ </script>
@@ -46,7 +46,7 @@
     
   </div>
 
-  <a class="image-link" href="index.html"><img src="images/scala-mcp-logo.svg" alt="scala-mcp" height="36"></a>
+  <a class="image-link" href="../"><img src="../images/scala-mcp-logo.svg" alt="scala-mcp" height="36"></a>
 
   <div class="row links">
     
@@ -85,16 +85,24 @@
   </div>
 
   <ul class="nav-list">
-    <li class="level1 nav-leaf"><a href="api-overview.html">API overview</a></li>
-    <li class="level1 nav-leaf"><a href="building.html">Building</a></li>
-    <li class="level1 nav-leaf"><a href="examples.html">Examples</a></li>
-    <li class="level1 nav-leaf"><a href="golden-testing.html">Golden testing</a></li>
-    <li class="level1 nav-leaf"><a href="index.html">scala-mcp</a></li>
-    <li class="level1 nav-leaf"><a href="json-schema-derivation.html">JSON Schema derivation</a></li>
-    <li class="level1 nav-leaf"><a href="mcp-explorer.html">MCP Explorer</a></li>
-    <li class="level1 nav-leaf"><a href="mcp-feature-support.html">MCP feature support</a></li>
-    <li class="level1 nav-leaf"><a href="openapi-mcp-proxy.html">OpenAPI MCP Proxy</a></li>
-    <li class="level1 active nav-leaf"><a href="#">Quick start</a></li>
+    <li class="level1 nav-leaf"><a href="../">scala-mcp</a></li>
+    <li class="level1 nav-header">Introduction</li>
+    <li class="level2 nav-leaf"><a href="../introduction/feature-support.html">MCP feature support</a></li>
+    <li class="level1 nav-header">Getting Started</li>
+    <li class="level2 nav-leaf"><a href="../getting-started/quick-start.html">Quick start</a></li>
+    <li class="level2 nav-leaf"><a href="../getting-started/tools.html">Tools</a></li>
+    <li class="level2 nav-leaf"><a href="../getting-started/resources.html">Resources &amp; resource templates</a></li>
+    <li class="level2 nav-leaf"><a href="../getting-started/prompts.html">Prompts</a></li>
+    <li class="level2 nav-leaf"><a href="../getting-started/json-schema-derivation.html">JSON Schema derivation</a></li>
+    <li class="level2 nav-leaf"><a href="../getting-started/server-construction.html">Server construction</a></li>
+    <li class="level2 nav-leaf"><a href="../getting-started/building.html">Building</a></li>
+    <li class="level1 nav-header">Modules</li>
+    <li class="level2 nav-leaf"><a href="../modules/mcp-explorer.html">MCP Explorer</a></li>
+    <li class="level1 nav-header">Testing</li>
+    <li class="level2 active nav-leaf"><a href="#">Golden testing</a></li>
+    <li class="level1 nav-header">Examples</li>
+    <li class="level2 nav-leaf"><a href="../examples/">Examples</a></li>
+    <li class="level2 nav-leaf"><a href="../examples/openapi-mcp-proxy.html">OpenAPI MCP Proxy</a></li>
   </ul>
 
 </nav>
@@ -103,11 +111,12 @@
 
       
 <nav id="page-nav">
-  <p class="header"><a href="#">Quick start</a></p>
+  <p class="header"><a href="#">Golden testing</a></p>
 
   <ul class="nav-list">
     <li class="level1 nav-leaf"><a href="#adding-the-dependency">Adding the dependency</a></li>
-    <li class="level1 nav-leaf"><a href="#creating-a-simple-tool">Creating a simple tool</a></li>
+    <li class="level1 nav-leaf"><a href="#writing-a-golden-test">Writing a golden test</a></li>
+    <li class="level1 nav-leaf"><a href="#how-it-works">How it works</a></li>
   </ul>
 
   <p class="footer"></p>
@@ -116,46 +125,44 @@
 
       <main class="content">
 
-        <h1 id="quick-start" class="title">Quick start</h1>
+        <h1 id="golden-testing" class="title">Golden testing</h1>
+        <p>The <code>mcp-golden-munit</code> module provides snapshot testing for MCP server specs.
+        It captures your server&#39;s tools, resources, resource templates, prompts, and
+        capabilities as a JSON golden file, then fails the test if the spec changes
+        unexpectedly.</p>
         
         <h2 id="adding-the-dependency" class="section"><a class="anchor-link left" href="#adding-the-dependency"><i class="icofont-laika link">&#xef71;</i></a>Adding the dependency</h2>
-        <pre><code class="nohighlight"><span class="comment">// For stdio-based servers
-</span><span class="identifier">libraryDependencies</span><span> ++= </span><span class="type-name">Seq</span><span>(
-  </span><span class="string-literal">&quot;net.andimiller.mcp&quot;</span><span> %%% </span><span class="string-literal">&quot;mcp-core&quot;</span><span>  % </span><span class="string-literal">&quot;0.9.0&quot;</span><span>,
-  </span><span class="string-literal">&quot;net.andimiller.mcp&quot;</span><span> %%% </span><span class="string-literal">&quot;mcp-stdio&quot;</span><span> % </span><span class="string-literal">&quot;0.9.0&quot;</span><span>
-)
-
-</span><span class="comment">// For HTTP-based servers
-</span><span class="identifier">libraryDependencies</span><span> ++= </span><span class="type-name">Seq</span><span>(
-  </span><span class="string-literal">&quot;net.andimiller.mcp&quot;</span><span> %%% </span><span class="string-literal">&quot;mcp-core&quot;</span><span>   % </span><span class="string-literal">&quot;0.9.0&quot;</span><span>,
-  </span><span class="string-literal">&quot;net.andimiller.mcp&quot;</span><span> %%% </span><span class="string-literal">&quot;mcp-http4s&quot;</span><span> % </span><span class="string-literal">&quot;0.9.0&quot;</span><span>
-)
-
-</span><span class="comment">// Optional: Redis-backed session/state for stateful HTTP servers
-</span><span class="identifier">libraryDependencies</span><span> += </span><span class="string-literal">&quot;net.andimiller.mcp&quot;</span><span> %% </span><span class="string-literal">&quot;mcp-redis&quot;</span><span> % </span><span class="string-literal">&quot;0.9.0&quot;</span></code></pre>
+        <pre class="keep-together pdf epub"><code class="nohighlight"><span class="identifier">libraryDependencies</span><span> += </span><span class="string-literal">&quot;net.andimiller.mcp&quot;</span><span> %%% </span><span class="string-literal">&quot;mcp-golden-munit&quot;</span><span> % </span><span class="string-literal">&quot;0.9.0&quot;</span><span> % </span><span class="type-name">Test</span></code></pre>
+        <blockquote><strong>Scala.js note:</strong> Your project must configure
+        <code>scalaJSLinkerConfig ~= (_.withModuleKind(ModuleKind.CommonJSModule))</code> for
+        the test to work on JS.</blockquote>
         
-        <h2 id="creating-a-simple-tool" class="section"><a class="anchor-link left" href="#creating-a-simple-tool"><i class="icofont-laika link">&#xef71;</i></a>Creating a simple tool</h2>
-        <pre><code class="nohighlight"><span class="keyword">import</span><span> </span><span class="identifier">cats</span><span>.</span><span class="identifier">effect</span><span>.</span><span class="type-name">IO</span><span>
-</span><span class="keyword">import</span><span> </span><span class="identifier">io</span><span>.</span><span class="identifier">circe</span><span>.{</span><span class="type-name">Decoder</span><span>, </span><span class="type-name">Encoder</span><span>}
-</span><span class="keyword">import</span><span> </span><span class="identifier">net</span><span>.</span><span class="identifier">andimiller</span><span>.</span><span class="identifier">mcp</span><span>.</span><span class="identifier">core</span><span>.</span><span class="identifier">schema</span><span>.</span><span class="type-name">JsonSchema</span><span>
-</span><span class="keyword">import</span><span> </span><span class="identifier">net</span><span>.</span><span class="identifier">andimiller</span><span>.</span><span class="identifier">mcp</span><span>.</span><span class="identifier">core</span><span>.</span><span class="identifier">server</span><span>.*
+        <h2 id="writing-a-golden-test" class="section"><a class="anchor-link left" href="#writing-a-golden-test"><i class="icofont-laika link">&#xef71;</i></a>Writing a golden test</h2>
+        <p>Extend <code>McpGoldenSuite</code>, override <code>goldenFileName</code>, and implement
+        <code>def server: IO[Server[IO]]</code>:</p>
+        <pre class="keep-together pdf epub"><code class="nohighlight"><span class="keyword">import</span><span> </span><span class="identifier">cats</span><span>.</span><span class="identifier">effect</span><span>.</span><span class="type-name">IO</span><span>
+</span><span class="keyword">import</span><span> </span><span class="identifier">net</span><span>.</span><span class="identifier">andimiller</span><span>.</span><span class="identifier">mcp</span><span>.</span><span class="identifier">core</span><span>.</span><span class="identifier">server</span><span>.{</span><span class="type-name">Server</span><span>, </span><span class="type-name">ServerBuilder</span><span>}
+</span><span class="keyword">import</span><span> </span><span class="identifier">net</span><span>.</span><span class="identifier">andimiller</span><span>.</span><span class="identifier">mcp</span><span>.</span><span class="identifier">golden</span><span>.</span><span class="type-name">McpGoldenSuite</span><span>
 
-</span><span class="comment">// Define your request/response types with automatic derivation
-</span><span class="keyword">case</span><span> </span><span class="keyword">class</span><span> </span><span class="type-name">GreetRequest</span><span>(</span><span class="identifier">name</span><span>: </span><span class="type-name">String</span><span>) </span><span class="keyword">derives</span><span> </span><span class="type-name">JsonSchema</span><span>, </span><span class="type-name">Decoder</span><span>
-</span><span class="keyword">case</span><span> </span><span class="keyword">class</span><span> </span><span class="type-name">GreetResponse</span><span>(</span><span class="identifier">message</span><span>: </span><span class="type-name">String</span><span>) </span><span class="keyword">derives</span><span> </span><span class="type-name">JsonSchema</span><span>, </span><span class="type-name">Encoder</span><span>.</span><span class="type-name">AsObject</span><span>
+</span><span class="keyword">class</span><span> </span><span class="type-name">MyServerGoldenSuite</span><span> </span><span class="keyword">extends</span><span> </span><span class="type-name">McpGoldenSuite</span><span>:
+  </span><span class="keyword">override</span><span> </span><span class="keyword">def</span><span> </span><span class="declaration-name">goldenFileName</span><span> = </span><span class="string-literal">&quot;my-server.json&quot;</span><span>
 
-</span><span class="keyword">val</span><span> </span><span class="identifier">greetTool</span><span> =
-  </span><span class="identifier">tool</span><span>.</span><span class="identifier">name</span><span>(</span><span class="string-literal">&quot;greet&quot;</span><span>)
-    .</span><span class="identifier">description</span><span>(</span><span class="string-literal">&quot;Greet someone by name&quot;</span><span>)
-    .</span><span class="identifier">in</span><span>[</span><span class="type-name">GreetRequest</span><span>]
-    .</span><span class="identifier">out</span><span>[</span><span class="type-name">GreetResponse</span><span>]
-    .</span><span class="identifier">run</span><span>(</span><span class="identifier">req</span><span> =&gt; </span><span class="type-name">IO</span><span>.</span><span class="identifier">pure</span><span>(</span><span class="type-name">GreetResponse</span><span>(</span><span class="string-literal">s&quot;Hello, </span><span class="substitution">${req.name}</span><span class="string-literal">!&quot;</span><span>)))</span></code></pre>
-        <p>The package object <code>net.andimiller.mcp.core.server</code> exposes <code>tool</code>, <code>resource</code>,
-        <code>resourceTemplate</code>, <code>prompt</code>, and their <code>contextual*</code> variants as fluent
-        builder entry points. They are equivalent to <code>Tool.builder[IO]</code>,
-        <code>McpResource.builder</code>, etc., but read more naturally inside servers.</p>
-        <p>See <a href="api-overview.html">API overview</a> for full builder reference and
-        <a href="examples.html">Examples</a> for runnable end-to-end servers.</p>
+  </span><span class="keyword">def</span><span> </span><span class="declaration-name">server</span><span>: </span><span class="type-name">IO</span><span>[</span><span class="type-name">Server</span><span>[</span><span class="type-name">IO</span><span>]] =
+    </span><span class="type-name">ServerBuilder</span><span>[</span><span class="type-name">IO</span><span>](</span><span class="string-literal">&quot;my-server&quot;</span><span>, </span><span class="string-literal">&quot;1.0.0&quot;</span><span>).</span><span class="identifier">build</span></code></pre>
+        
+        <h2 id="how-it-works" class="section"><a class="anchor-link left" href="#how-it-works"><i class="icofont-laika link">&#xef71;</i></a>How it works</h2>
+        <ol class="arabic">
+          <li><strong>First run</strong> — the golden file doesn&#39;t exist yet, so the test creates
+          <code>src/test/resources/{goldenFileName}</code> containing the server&#39;s full spec as
+          JSON.</li>
+          <li><strong>Subsequent runs</strong> — the test extracts the current spec and compares it
+          against the golden file. Any difference fails the test with a diff.</li>
+          <li><strong>Regenerating</strong> — delete the golden file and rerun the test to create a
+          fresh snapshot.</li>
+          <li><strong>CI</strong> — if the golden file is missing when the <code>CI</code> environment variable
+          is set, the test fails immediately. Always run locally first to generate
+          the file.</li>
+        </ol>
 
         
 <hr class="footer-rule"/>

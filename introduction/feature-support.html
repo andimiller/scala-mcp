@@ -6,7 +6,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="generator" content="Typelevel Laika + Helium Theme" />
-  <title>Golden testing</title>
+  <title>MCP feature support</title>
   
   <meta name="author" content="scala-mcp contributors"/>
   
@@ -15,20 +15,20 @@
   
   
   
-  <link rel="icon" sizes="32x32" type="image/png" href="images/favicon-32.png"/>
+  <link rel="icon" sizes="32x32" type="image/png" href="../images/favicon-32.png"/>
   
-  <link rel="icon" sizes="16x16" type="image/png" href="images/favicon-16.png"/>
+  <link rel="icon" sizes="16x16" type="image/png" href="../images/favicon-16.png"/>
   
-  <link rel="icon" sizes="180x180" type="image/png" href="images/favicon-180.png"/>
+  <link rel="icon" sizes="180x180" type="image/png" href="../images/favicon-180.png"/>
   
   
   <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Lato:400,700">
   
   <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Fira+Mono:500">
   
-  <link rel="stylesheet" type="text/css" href="helium/site/icofont.min.css" />
-    <link rel="stylesheet" type="text/css" href="helium/site/laika-helium.css" />
-  <script src="helium/site/laika-helium.js"></script>
+  <link rel="stylesheet" type="text/css" href="../helium/site/icofont.min.css" />
+    <link rel="stylesheet" type="text/css" href="../helium/site/laika-helium.css" />
+  <script src="../helium/site/laika-helium.js"></script>
   
   
   <script> /* for avoiding page load transitions */ </script>
@@ -46,7 +46,7 @@
     
   </div>
 
-  <a class="image-link" href="index.html"><img src="images/scala-mcp-logo.svg" alt="scala-mcp" height="36"></a>
+  <a class="image-link" href="../"><img src="../images/scala-mcp-logo.svg" alt="scala-mcp" height="36"></a>
 
   <div class="row links">
     
@@ -85,16 +85,24 @@
   </div>
 
   <ul class="nav-list">
-    <li class="level1 nav-leaf"><a href="api-overview.html">API overview</a></li>
-    <li class="level1 nav-leaf"><a href="building.html">Building</a></li>
-    <li class="level1 nav-leaf"><a href="examples.html">Examples</a></li>
-    <li class="level1 active nav-leaf"><a href="#">Golden testing</a></li>
-    <li class="level1 nav-leaf"><a href="index.html">scala-mcp</a></li>
-    <li class="level1 nav-leaf"><a href="json-schema-derivation.html">JSON Schema derivation</a></li>
-    <li class="level1 nav-leaf"><a href="mcp-explorer.html">MCP Explorer</a></li>
-    <li class="level1 nav-leaf"><a href="mcp-feature-support.html">MCP feature support</a></li>
-    <li class="level1 nav-leaf"><a href="openapi-mcp-proxy.html">OpenAPI MCP Proxy</a></li>
-    <li class="level1 nav-leaf"><a href="quick-start.html">Quick start</a></li>
+    <li class="level1 nav-leaf"><a href="../">scala-mcp</a></li>
+    <li class="level1 nav-header">Introduction</li>
+    <li class="level2 active nav-leaf"><a href="#">MCP feature support</a></li>
+    <li class="level1 nav-header">Getting Started</li>
+    <li class="level2 nav-leaf"><a href="../getting-started/quick-start.html">Quick start</a></li>
+    <li class="level2 nav-leaf"><a href="../getting-started/tools.html">Tools</a></li>
+    <li class="level2 nav-leaf"><a href="../getting-started/resources.html">Resources &amp; resource templates</a></li>
+    <li class="level2 nav-leaf"><a href="../getting-started/prompts.html">Prompts</a></li>
+    <li class="level2 nav-leaf"><a href="../getting-started/json-schema-derivation.html">JSON Schema derivation</a></li>
+    <li class="level2 nav-leaf"><a href="../getting-started/server-construction.html">Server construction</a></li>
+    <li class="level2 nav-leaf"><a href="../getting-started/building.html">Building</a></li>
+    <li class="level1 nav-header">Modules</li>
+    <li class="level2 nav-leaf"><a href="../modules/mcp-explorer.html">MCP Explorer</a></li>
+    <li class="level1 nav-header">Testing</li>
+    <li class="level2 nav-leaf"><a href="../testing/golden-testing.html">Golden testing</a></li>
+    <li class="level1 nav-header">Examples</li>
+    <li class="level2 nav-leaf"><a href="../examples/">Examples</a></li>
+    <li class="level2 nav-leaf"><a href="../examples/openapi-mcp-proxy.html">OpenAPI MCP Proxy</a></li>
   </ul>
 
 </nav>
@@ -103,12 +111,9 @@
 
       
 <nav id="page-nav">
-  <p class="header"><a href="#">Golden testing</a></p>
+  <p class="header"><a href="#">MCP feature support</a></p>
 
   <ul class="nav-list">
-    <li class="level1 nav-leaf"><a href="#adding-the-dependency">Adding the dependency</a></li>
-    <li class="level1 nav-leaf"><a href="#writing-a-golden-test">Writing a golden test</a></li>
-    <li class="level1 nav-leaf"><a href="#how-it-works">How it works</a></li>
   </ul>
 
   <p class="footer"></p>
@@ -117,44 +122,144 @@
 
       <main class="content">
 
-        <h1 id="golden-testing" class="title">Golden testing</h1>
-        <p>The <code>mcp-golden-munit</code> module provides snapshot testing for MCP server specs.
-        It captures your server&#39;s tools, resources, resource templates, prompts, and
-        capabilities as a JSON golden file, then fails the test if the spec changes
-        unexpectedly.</p>
-        
-        <h2 id="adding-the-dependency" class="section"><a class="anchor-link left" href="#adding-the-dependency"><i class="icofont-laika link">&#xef71;</i></a>Adding the dependency</h2>
-        <pre class="keep-together pdf epub"><code class="nohighlight"><span class="identifier">libraryDependencies</span><span> += </span><span class="string-literal">&quot;net.andimiller.mcp&quot;</span><span> %%% </span><span class="string-literal">&quot;mcp-golden-munit&quot;</span><span> % </span><span class="string-literal">&quot;0.9.0&quot;</span><span> % </span><span class="type-name">Test</span></code></pre>
-        <blockquote><strong>Scala.js note:</strong> Your project must configure
-        <code>scalaJSLinkerConfig ~= (_.withModuleKind(ModuleKind.CommonJSModule))</code> for
-        the test to work on JS.</blockquote>
-        
-        <h2 id="writing-a-golden-test" class="section"><a class="anchor-link left" href="#writing-a-golden-test"><i class="icofont-laika link">&#xef71;</i></a>Writing a golden test</h2>
-        <p>Extend <code>McpGoldenSuite</code>, override <code>goldenFileName</code>, and implement
-        <code>def server: IO[Server[IO]]</code>:</p>
-        <pre class="keep-together pdf epub"><code class="nohighlight"><span class="keyword">import</span><span> </span><span class="identifier">cats</span><span>.</span><span class="identifier">effect</span><span>.</span><span class="type-name">IO</span><span>
-</span><span class="keyword">import</span><span> </span><span class="identifier">net</span><span>.</span><span class="identifier">andimiller</span><span>.</span><span class="identifier">mcp</span><span>.</span><span class="identifier">core</span><span>.</span><span class="identifier">server</span><span>.{</span><span class="type-name">Server</span><span>, </span><span class="type-name">ServerBuilder</span><span>}
-</span><span class="keyword">import</span><span> </span><span class="identifier">net</span><span>.</span><span class="identifier">andimiller</span><span>.</span><span class="identifier">mcp</span><span>.</span><span class="identifier">golden</span><span>.</span><span class="type-name">McpGoldenSuite</span><span>
-
-</span><span class="keyword">class</span><span> </span><span class="type-name">MyServerGoldenSuite</span><span> </span><span class="keyword">extends</span><span> </span><span class="type-name">McpGoldenSuite</span><span>:
-  </span><span class="keyword">override</span><span> </span><span class="keyword">def</span><span> </span><span class="declaration-name">goldenFileName</span><span> = </span><span class="string-literal">&quot;my-server.json&quot;</span><span>
-
-  </span><span class="keyword">def</span><span> </span><span class="declaration-name">server</span><span>: </span><span class="type-name">IO</span><span>[</span><span class="type-name">Server</span><span>[</span><span class="type-name">IO</span><span>]] =
-    </span><span class="type-name">ServerBuilder</span><span>[</span><span class="type-name">IO</span><span>](</span><span class="string-literal">&quot;my-server&quot;</span><span>, </span><span class="string-literal">&quot;1.0.0&quot;</span><span>).</span><span class="identifier">build</span></code></pre>
-        
-        <h2 id="how-it-works" class="section"><a class="anchor-link left" href="#how-it-works"><i class="icofont-laika link">&#xef71;</i></a>How it works</h2>
-        <ol class="arabic">
-          <li><strong>First run</strong> — the golden file doesn&#39;t exist yet, so the test creates
-          <code>src/test/resources/{goldenFileName}</code> containing the server&#39;s full spec as
-          JSON.</li>
-          <li><strong>Subsequent runs</strong> — the test extracts the current spec and compares it
-          against the golden file. Any difference fails the test with a diff.</li>
-          <li><strong>Regenerating</strong> — delete the golden file and rerun the test to create a
-          fresh snapshot.</li>
-          <li><strong>CI</strong> — if the golden file is missing when the <code>CI</code> environment variable
-          is set, the test fails immediately. Always run locally first to generate
-          the file.</li>
-        </ol>
+        <h1 id="mcp-feature-support" class="title">MCP feature support</h1>
+        <p>Targeting MCP spec <strong>2025-11-25</strong>. The &quot;Client support&quot; column reflects the
+        state of major clients (Claude Code, Claude Desktop, Cursor, opencode) per
+        <a href="https://modelcontextprotocol.io/clients">modelcontextprotocol.io/clients</a> as
+        of April 2026:</p>
+        <ul>
+          <li><strong>Universal</strong> — all four</li>
+          <li><strong>Most</strong> — three of four</li>
+          <li><strong>Some</strong> — one or two</li>
+          <li><strong>Rare</strong> — niche/inconsistent</li>
+          <li><strong>None</strong> — no major client</li>
+        </ul>
+        <table>
+          <thead>
+            <tr>
+              <th>Feature</th>
+              <th>scala-mcp</th>
+              <th>Client support</th>
+              <th>Notes</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Tools (<code>list</code> / <code>call</code>)</td>
+              <td>✅</td>
+              <td>Universal</td>
+              <td>Includes <code>structuredContent</code></td>
+            </tr>
+            <tr>
+              <td>Resources, subs, templates</td>
+              <td>✅</td>
+              <td>Most</td>
+              <td>Cursor doesn&#39;t expose resources</td>
+            </tr>
+            <tr>
+              <td>Prompts</td>
+              <td>✅</td>
+              <td>Universal</td>
+              <td></td>
+            </tr>
+            <tr>
+              <td>Initialize / capabilities</td>
+              <td>✅</td>
+              <td>Universal</td>
+              <td>Required by spec</td>
+            </tr>
+            <tr>
+              <td>Ping</td>
+              <td>✅</td>
+              <td>Universal</td>
+              <td>Required by spec</td>
+            </tr>
+            <tr>
+              <td>Logging notifications</td>
+              <td>✅</td>
+              <td>Most</td>
+              <td>Accepted; rendering varies. <code>logging/setLevel</code> not yet</td>
+            </tr>
+            <tr>
+              <td>Elicitation</td>
+              <td>🟡</td>
+              <td>Some</td>
+              <td>Claude Code + Cursor. Form mode ✅, URL mode ❌</td>
+            </tr>
+            <tr>
+              <td>Pagination</td>
+              <td>🟡</td>
+              <td>Universal</td>
+              <td>Cursors typed; server always returns <code>nextCursor=None</code></td>
+            </tr>
+            <tr>
+              <td>Cancellation</td>
+              <td>✅</td>
+              <td>Most</td>
+              <td><code>notifications/cancelled</code> cancels the in-flight fiber via per-session registry</td>
+            </tr>
+            <tr>
+              <td>Sessions (Streamable HTTP)</td>
+              <td>✅</td>
+              <td>Most</td>
+              <td><code>Mcp-Session-Id</code> + auth-aware sessions</td>
+            </tr>
+            <tr>
+              <td><code>MCP-Protocol-Version</code> header</td>
+              <td>❌</td>
+              <td>Universal</td>
+              <td>Clients send it; we don&#39;t validate</td>
+            </tr>
+            <tr>
+              <td>Progress (<code>progressToken</code>)</td>
+              <td>❌</td>
+              <td>Rare</td>
+              <td>Few clients emit the token</td>
+            </tr>
+            <tr>
+              <td><code>_meta</code> on requests/responses</td>
+              <td>❌</td>
+              <td>Universal</td>
+              <td>Spec-mandated passthrough</td>
+            </tr>
+            <tr>
+              <td>Sampling</td>
+              <td>❌</td>
+              <td>None</td>
+              <td>Capability stub only</td>
+            </tr>
+            <tr>
+              <td>Roots</td>
+              <td>❌</td>
+              <td>Most</td>
+              <td>Type stubs only. opencode lacks it</td>
+            </tr>
+            <tr>
+              <td>Completion</td>
+              <td>❌</td>
+              <td>None</td>
+              <td>No client surfaces it</td>
+            </tr>
+            <tr>
+              <td>Tasks (experimental)</td>
+              <td>❌</td>
+              <td>None</td>
+              <td></td>
+            </tr>
+            <tr>
+              <td>Tool/prompt <code>list_changed</code></td>
+              <td>❌</td>
+              <td>Universal</td>
+              <td>Required for <code>listChanged</code> capability</td>
+            </tr>
+            <tr>
+              <td>2025-11-25 metadata fields</td>
+              <td>❌</td>
+              <td>Some</td>
+              <td><code>title</code> / <code>icons</code> increasingly rendered; rest unused</td>
+            </tr>
+          </tbody>
+        </table>
 
         
 <hr class="footer-rule"/>

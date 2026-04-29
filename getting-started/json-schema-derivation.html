@@ -6,7 +6,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="generator" content="Typelevel Laika + Helium Theme" />
-  <title>MCP Explorer</title>
+  <title>JSON Schema derivation</title>
   
   <meta name="author" content="scala-mcp contributors"/>
   
@@ -15,20 +15,20 @@
   
   
   
-  <link rel="icon" sizes="32x32" type="image/png" href="images/favicon-32.png"/>
+  <link rel="icon" sizes="32x32" type="image/png" href="../images/favicon-32.png"/>
   
-  <link rel="icon" sizes="16x16" type="image/png" href="images/favicon-16.png"/>
+  <link rel="icon" sizes="16x16" type="image/png" href="../images/favicon-16.png"/>
   
-  <link rel="icon" sizes="180x180" type="image/png" href="images/favicon-180.png"/>
+  <link rel="icon" sizes="180x180" type="image/png" href="../images/favicon-180.png"/>
   
   
   <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Lato:400,700">
   
   <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Fira+Mono:500">
   
-  <link rel="stylesheet" type="text/css" href="helium/site/icofont.min.css" />
-    <link rel="stylesheet" type="text/css" href="helium/site/laika-helium.css" />
-  <script src="helium/site/laika-helium.js"></script>
+  <link rel="stylesheet" type="text/css" href="../helium/site/icofont.min.css" />
+    <link rel="stylesheet" type="text/css" href="../helium/site/laika-helium.css" />
+  <script src="../helium/site/laika-helium.js"></script>
   
   
   <script> /* for avoiding page load transitions */ </script>
@@ -46,7 +46,7 @@
     
   </div>
 
-  <a class="image-link" href="index.html"><img src="images/scala-mcp-logo.svg" alt="scala-mcp" height="36"></a>
+  <a class="image-link" href="../"><img src="../images/scala-mcp-logo.svg" alt="scala-mcp" height="36"></a>
 
   <div class="row links">
     
@@ -85,16 +85,24 @@
   </div>
 
   <ul class="nav-list">
-    <li class="level1 nav-leaf"><a href="api-overview.html">API overview</a></li>
-    <li class="level1 nav-leaf"><a href="building.html">Building</a></li>
-    <li class="level1 nav-leaf"><a href="examples.html">Examples</a></li>
-    <li class="level1 nav-leaf"><a href="golden-testing.html">Golden testing</a></li>
-    <li class="level1 nav-leaf"><a href="index.html">scala-mcp</a></li>
-    <li class="level1 nav-leaf"><a href="json-schema-derivation.html">JSON Schema derivation</a></li>
-    <li class="level1 active nav-leaf"><a href="#">MCP Explorer</a></li>
-    <li class="level1 nav-leaf"><a href="mcp-feature-support.html">MCP feature support</a></li>
-    <li class="level1 nav-leaf"><a href="openapi-mcp-proxy.html">OpenAPI MCP Proxy</a></li>
-    <li class="level1 nav-leaf"><a href="quick-start.html">Quick start</a></li>
+    <li class="level1 nav-leaf"><a href="../">scala-mcp</a></li>
+    <li class="level1 nav-header">Introduction</li>
+    <li class="level2 nav-leaf"><a href="../introduction/feature-support.html">MCP feature support</a></li>
+    <li class="level1 nav-header">Getting Started</li>
+    <li class="level2 nav-leaf"><a href="quick-start.html">Quick start</a></li>
+    <li class="level2 nav-leaf"><a href="tools.html">Tools</a></li>
+    <li class="level2 nav-leaf"><a href="resources.html">Resources &amp; resource templates</a></li>
+    <li class="level2 nav-leaf"><a href="prompts.html">Prompts</a></li>
+    <li class="level2 active nav-leaf"><a href="#">JSON Schema derivation</a></li>
+    <li class="level2 nav-leaf"><a href="server-construction.html">Server construction</a></li>
+    <li class="level2 nav-leaf"><a href="building.html">Building</a></li>
+    <li class="level1 nav-header">Modules</li>
+    <li class="level2 nav-leaf"><a href="../modules/mcp-explorer.html">MCP Explorer</a></li>
+    <li class="level1 nav-header">Testing</li>
+    <li class="level2 nav-leaf"><a href="../testing/golden-testing.html">Golden testing</a></li>
+    <li class="level1 nav-header">Examples</li>
+    <li class="level2 nav-leaf"><a href="../examples/">Examples</a></li>
+    <li class="level2 nav-leaf"><a href="../examples/openapi-mcp-proxy.html">OpenAPI MCP Proxy</a></li>
   </ul>
 
 </nav>
@@ -103,11 +111,9 @@
 
       
 <nav id="page-nav">
-  <p class="header"><a href="#">MCP Explorer</a></p>
+  <p class="header"><a href="#">JSON Schema derivation</a></p>
 
   <ul class="nav-list">
-    <li class="level1 nav-leaf"><a href="#enabling-the-explorer">Enabling the Explorer</a></li>
-    <li class="level1 nav-leaf"><a href="#building-the-explorer">Building the Explorer</a></li>
   </ul>
 
   <p class="footer"></p>
@@ -116,34 +122,22 @@
 
       <main class="content">
 
-        <h1 id="mcp-explorer" class="title">MCP Explorer</h1>
-        <p>The <strong>Explorer</strong> is a browser-based UI for interacting with any HTTP MCP
-        server. It lets you browse tools, resources, resource templates, and prompts,
-        call them interactively, and inspect results — useful for development and
-        debugging.</p>
-        <p>The Explorer is a Scala.js + <a href="https://tyrian.indigoengine.io/">Tyrian</a> app
-        styled with <a href="https://bulma.io/">Bulma</a>, bundled into static assets by Parcel.
-        HTTP servers can serve it alongside their MCP endpoint.</p>
-        
-        <h2 id="enabling-the-explorer" class="section"><a class="anchor-link left" href="#enabling-the-explorer"><i class="icofont-laika link">&#xef71;</i></a>Enabling the Explorer</h2>
-        <p>Any HTTP server built with <code>McpHttp.basic</code> or <code>McpHttp.streaming</code> can serve
-        the Explorer:</p>
-        <pre class="keep-together pdf epub"><code class="nohighlight"><span class="keyword">import</span><span> </span><span class="identifier">cats</span><span>.</span><span class="identifier">effect</span><span>.</span><span class="type-name">IO</span><span>
-</span><span class="keyword">import</span><span> </span><span class="identifier">net</span><span>.</span><span class="identifier">andimiller</span><span>.</span><span class="identifier">mcp</span><span>.</span><span class="identifier">http4s</span><span>.</span><span class="type-name">McpHttp</span><span>
+        <h1 id="json-schema-derivation" class="title">JSON Schema derivation</h1>
+        <p>The library provides automatic JSON Schema derivation using Scala 3&#39;s
+        <code>derives</code> clause, powered by the
+        <a href="https://github.com/softwaremill/sttp-apispec">sttp-apispec</a> <code>Schema</code> type.
+        Annotations allow adding descriptions and examples:</p>
+        <pre class="keep-together pdf epub"><code class="nohighlight"><span class="keyword">import</span><span> </span><span class="identifier">io</span><span>.</span><span class="identifier">circe</span><span>.</span><span class="type-name">Decoder</span><span>
+</span><span class="keyword">import</span><span> </span><span class="identifier">net</span><span>.</span><span class="identifier">andimiller</span><span>.</span><span class="identifier">mcp</span><span>.</span><span class="identifier">core</span><span>.</span><span class="identifier">schema</span><span>.{</span><span class="type-name">JsonSchema</span><span>, </span><span class="identifier">description</span><span>, </span><span class="identifier">example</span><span>}
 
-</span><span class="keyword">val</span><span> </span><span class="identifier">builder</span><span> =
-  </span><span class="type-name">McpHttp</span><span>.</span><span class="identifier">streaming</span><span>[</span><span class="type-name">IO</span><span>]
-    .</span><span class="identifier">withExplorer</span><span>(</span><span class="identifier">redirectToRoot</span><span> = </span><span class="boolean-literal">true</span><span>) </span><span class="comment">// serves at /explorer, optionally redirects / there</span></code></pre>
-        <p>The Explorer is served at <code>/explorer/index.html</code> and defaults the connection
-        URL to the current origin + <code>/mcp</code>.</p>
-        
-        <h2 id="building-the-explorer" class="section"><a class="anchor-link left" href="#building-the-explorer"><i class="icofont-laika link">&#xef71;</i></a>Building the Explorer</h2>
-        <p>The Explorer assets are pre-built into the http4s module&#39;s resources. To
-        rebuild after changes:</p>
-        <pre class="keep-together pdf epub"><code class="nohighlight"><span>sbt buildExplorer</span></code></pre>
-        <p>This compiles the Scala.js app and runs Parcel to bundle the JS and CSS into
-        <code>modules/explorer/dist/</code>, which is then copied into the http4s classpath
-        resources.</p>
+</span><span class="keyword">case</span><span> </span><span class="keyword">class</span><span> </span><span class="type-name">SearchRequest</span><span>(
+  </span><span class="annotation">@description</span><span>(</span><span class="string-literal">&quot;The search query&quot;</span><span>)
+  </span><span class="identifier">query</span><span>: </span><span class="type-name">String</span><span>,
+  </span><span class="annotation">@description</span><span>(</span><span class="string-literal">&quot;Maximum number of results&quot;</span><span>)
+  </span><span class="annotation">@example</span><span>(</span><span class="number-literal">10</span><span>)
+  </span><span class="identifier">maxResults</span><span>: </span><span class="type-name">Int</span><span> = </span><span class="number-literal">10</span><span>,
+  </span><span class="identifier">filters</span><span>: </span><span class="type-name">Option</span><span>[</span><span class="type-name">List</span><span>[</span><span class="type-name">String</span><span>]] = </span><span class="type-name">None</span><span>
+) </span><span class="keyword">derives</span><span> </span><span class="type-name">JsonSchema</span><span>, </span><span class="type-name">Decoder</span></code></pre>
 
         
 <hr class="footer-rule"/>
