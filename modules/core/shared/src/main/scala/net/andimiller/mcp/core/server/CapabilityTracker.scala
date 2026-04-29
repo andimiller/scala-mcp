@@ -48,4 +48,5 @@ case class CapabilityTracker(
     )
 
 object CapabilityTracker:
+
   val empty: CapabilityTracker = CapabilityTracker()

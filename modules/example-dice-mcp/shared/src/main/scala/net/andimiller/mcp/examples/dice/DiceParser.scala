@@ -1,22 +1,27 @@
 package net.andimiller.mcp.examples.dice
 
-import cats.parse.{Parser as P, Parser0 as P0, Numbers}
-import cats.parse.Rfc5234.{wsp, digit}
+import cats.parse.Numbers
+import cats.parse.Rfc5234.wsp
+import cats.parse.Parser as P
+import cats.parse.Parser0 as P0
 
-/**
- * Dice notation parser for expressions like "1d6", "2d20 + 5", "3d4 - 2", "2d6 + 1d2 - 1".
- *
- * An expression is a chain of *terms* (a dice roll or an integer constant) joined by `+`
- * or `-`, evaluated left-to-right.
- */
+/** Dice notation parser for expressions like "1d6", "2d20 + 5", "3d4 - 2", "2d6 + 1d2 - 1".
+  *
+  * An expression is a chain of *terms* (a dice roll or an integer constant) joined by `+` or `-`, evaluated
+  * left-to-right.
+  */
 object DiceParser:
 
   case class DiceRoll(count: Int, sides: Int)
 
   sealed trait DiceExpr
-  case class Roll(dice: DiceRoll)                     extends DiceExpr
-  case class Constant(value: Int)                     extends DiceExpr
-  case class Add(left: DiceExpr, right: DiceExpr)     extends DiceExpr
+
+  case class Roll(dice: DiceRoll) extends DiceExpr
+
+  case class Constant(value: Int) extends DiceExpr
+
+  case class Add(left: DiceExpr, right: DiceExpr) extends DiceExpr
+
   case class Subtract(left: DiceExpr, right: DiceExpr) extends DiceExpr
 
   // Parse a positive integer
@@ -49,8 +54,6 @@ object DiceParser:
       }
     }
 
-  /**
-   * Parse a dice notation string into a DiceExpr
-   */
+  /** Parse a dice notation string into a DiceExpr */
   def parse(input: String): Either[P.Error, DiceExpr] =
     (spaces.with1 *> diceExpr <* spaces).parseAll(input)

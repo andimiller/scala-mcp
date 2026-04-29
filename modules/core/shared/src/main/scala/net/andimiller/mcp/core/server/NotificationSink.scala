@@ -1,20 +1,22 @@
 package net.andimiller.mcp.core.server
 
 import cats.Applicative
-import cats.effect.kernel.{Concurrent, Resource}
+import cats.effect.kernel.Concurrent
+import cats.effect.kernel.Resource
 import cats.syntax.all.*
+
+import net.andimiller.mcp.core.protocol.jsonrpc.Message
+
 import fs2.Stream
 import fs2.concurrent.Topic
 import io.circe.Json
 import io.circe.syntax.*
-import net.andimiller.mcp.core.protocol.jsonrpc.Message
 
-/**
- * Abstraction for sending server-initiated notifications to clients.
- *
- * Backed by an `fs2.concurrent.Topic` so that multiple subscribers (e.g. SSE streams)
- * can each receive a copy of every published notification.
- */
+/** Abstraction for sending server-initiated notifications to clients.
+  *
+  * Backed by an `fs2.concurrent.Topic` so that multiple subscribers (e.g. SSE streams) can each receive a copy of every
+  * published notification.
+  */
 trait NotificationSink[F[_]]:
 
   /** Send a generic notification */
@@ -38,9 +40,9 @@ object NotificationSink:
   def create[F[_]: Concurrent]: Resource[F, NotificationSink[F]] =
     Resource.eval(Topic[F, Message]).map(fromTopic[F])
 
-  /** Build a NotificationSink atop an externally-provided Topic. Used by ClientChannel
-   *  so the sink and the request channel share a single outbound Topic.
-   */
+  /** Build a NotificationSink atop an externally-provided Topic. Used by ClientChannel so the sink and the request
+    * channel share a single outbound Topic.
+    */
   def fromTopic[F[_]: Concurrent](topic: Topic[F, Message]): NotificationSink[F] =
     new NotificationSink[F]:
       def notify(method: String, params: Json): F[Unit] =
@@ -53,11 +55,14 @@ object NotificationSink:
         notify("notifications/resources/list_changed", Json.obj())
 
       def log(level: String, logger: String, data: Json): F[Unit] =
-        notify("notifications/message", Json.obj(
-          "level"  -> level.asJson,
-          "logger" -> logger.asJson,
-          "data"   -> data
-        ))
+        notify(
+          "notifications/message",
+          Json.obj(
+            "level"  -> level.asJson,
+            "logger" -> logger.asJson,
+            "data"   -> data
+          )
+        )
 
       def subscribe: Stream[F, Message] =
         topic.subscribe(256)
@@ -65,8 +70,8 @@ object NotificationSink:
   /** A no-op sink for transports (like stdio) that don't support server-initiated notifications. */
   def noop[F[_]: Applicative]: NotificationSink[F] =
     new NotificationSink[F]:
-      def notify(method: String, params: Json): F[Unit] = Applicative[F].unit
-      def resourceUpdated(uri: String): F[Unit] = Applicative[F].unit
-      def resourceListChanged: F[Unit] = Applicative[F].unit
+      def notify(method: String, params: Json): F[Unit]           = Applicative[F].unit
+      def resourceUpdated(uri: String): F[Unit]                   = Applicative[F].unit
+      def resourceListChanged: F[Unit]                            = Applicative[F].unit
       def log(level: String, logger: String, data: Json): F[Unit] = Applicative[F].unit
-      def subscribe: Stream[F, Message] = Stream.empty
+      def subscribe: Stream[F, Message]                           = Stream.empty

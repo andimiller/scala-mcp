@@ -17,6 +17,9 @@ def prompt: PromptBuilder.Empty[Unit] = Prompt.builder
 def contextualPrompt[Ctx]: PromptBuilder.Empty[Ctx] = Prompt.contextual[Ctx]
 
 object path:
-  def static(prefix: String): UriPath[Unit]   = UriPath.static(prefix)
-  def named(name: String): UriPath[String]     = UriPath.named(name)
-  def rest: UriPath[String]                    = UriPath.rest
+
+  def static(prefix: String): UriPath[Unit] = UriPath.static(prefix)
+
+  def named(name: String): UriPath[String] = UriPath.named(name)
+
+  def rest: UriPath[String] = UriPath.rest

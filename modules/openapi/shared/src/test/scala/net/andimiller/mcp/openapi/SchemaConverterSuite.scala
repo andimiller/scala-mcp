@@ -1,10 +1,12 @@
 package net.andimiller.mcp.openapi
 
-import munit.FunSuite
 import scala.collection.immutable.ListMap
-import sttp.apispec.{Schema, SchemaType, SchemaLike}
+
 import io.circe.Json
-import io.circe.syntax.*
+import munit.FunSuite
+import sttp.apispec.Schema
+import sttp.apispec.SchemaLike
+import sttp.apispec.SchemaType
 
 class SchemaConverterSuite extends FunSuite:
 
@@ -13,7 +15,7 @@ class SchemaConverterSuite extends FunSuite:
       `type` = Some(List(SchemaType.Object)),
       properties = ListMap("name" -> Schema(`type` = Some(List(SchemaType.String))))
     )
-    val refSchema = Schema($ref = Some("#/components/schemas/Pet"))
+    val refSchema  = Schema($ref = Some("#/components/schemas/Pet"))
     val components = ListMap[String, SchemaLike]("Pet" -> petSchema)
 
     val resolved = SchemaConverter.resolveSchemaLike(refSchema, components)
@@ -21,11 +23,11 @@ class SchemaConverterSuite extends FunSuite:
   }
 
   test("resolveSchemaLike resolves nested refs") {
-    val innerSchema = Schema(`type` = Some(List(SchemaType.String)))
+    val innerSchema  = Schema(`type` = Some(List(SchemaType.String)))
     val middleSchema = Schema($ref = Some("#/components/schemas/Inner"))
-    val outerSchema = Schema($ref = Some("#/components/schemas/Middle"))
-    val components = ListMap[String, SchemaLike](
-      "Inner" -> innerSchema,
+    val outerSchema  = Schema($ref = Some("#/components/schemas/Middle"))
+    val components   = ListMap[String, SchemaLike](
+      "Inner"  -> innerSchema,
       "Middle" -> middleSchema
     )
 
@@ -34,7 +36,7 @@ class SchemaConverterSuite extends FunSuite:
   }
 
   test("resolveSchemaLike handles missing ref gracefully") {
-    val refSchema = Schema($ref = Some("#/components/schemas/DoesNotExist"))
+    val refSchema  = Schema($ref = Some("#/components/schemas/DoesNotExist"))
     val components = ListMap.empty[String, SchemaLike]
 
     val resolved = SchemaConverter.resolveSchemaLike(refSchema, components)
@@ -42,14 +44,15 @@ class SchemaConverterSuite extends FunSuite:
   }
 
   test("wrapIfArray wraps array schemas") {
-    val arraySchema = Json.obj("type" -> Json.fromString("array"), "items" -> Json.obj("type" -> Json.fromString("string")))
+    val arraySchema =
+      Json.obj("type" -> Json.fromString("array"), "items" -> Json.obj("type" -> Json.fromString("string")))
     val wrapped = SchemaConverter.wrapIfArray(arraySchema)
-    val typ = wrapped.hcursor.downField("type").as[String].getOrElse("")
+    val typ     = wrapped.hcursor.downField("type").as[String].getOrElse("")
     assertEquals(typ, "object")
   }
 
   test("wrapIfArray leaves object schemas unchanged") {
     val objectSchema = Json.obj("type" -> Json.fromString("object"))
-    val result = SchemaConverter.wrapIfArray(objectSchema)
+    val result       = SchemaConverter.wrapIfArray(objectSchema)
     assertEquals(result, objectSchema)
   }

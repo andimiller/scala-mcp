@@ -2,6 +2,7 @@ package net.andimiller.mcp.core.server
 
 import cats.effect.kernel.Async
 import cats.syntax.functor.*
+
 import net.andimiller.mcp.core.protocol.*
 
 class McpResource[F[_], Ctx](
@@ -11,26 +12,31 @@ class McpResource[F[_], Ctx](
     val mimeType: Option[String],
     val reader: Ctx => F[ResourceContent]
 ):
+
   def provide(ctx: Ctx): McpResource.Resolved[F] =
     val self = this
     new McpResource.Resolved[F]:
-      val uri = self.uri
-      val name = self.name
-      val description = self.description
-      val mimeType = self.mimeType
+      val uri                        = self.uri
+      val name                       = self.name
+      val description                = self.description
+      val mimeType                   = self.mimeType
       def read(): F[ResourceContent] = self.reader(ctx)
 
 object McpResource:
 
   trait Resolved[F[_]]:
+
     def uri: String
+
     def name: String
+
     def description: Option[String]
+
     def mimeType: Option[String]
+
     def read(): F[ResourceContent]
 
-  extension [F[_]](resource: McpResource[F, Unit])
-    def resolve: Resolved[F] = resource.provide(())
+  extension [F[_]](resource: McpResource[F, Unit]) def resolve: Resolved[F] = resource.provide(())
 
   def builder: ResourceBuilder.Empty[Unit] =
     new ResourceBuilder.Empty[Unit]
@@ -38,15 +44,13 @@ object McpResource:
   def contextual[Ctx]: ResourceBuilder.Empty[Ctx] =
     new ResourceBuilder.Empty[Ctx]
 
-  /**
-   * Create a static resource with fixed content.
-   */
+  /** Create a static resource with fixed content. */
   def static[F[_]: Async](
-    resourceUri: String,
-    resourceName: String,
-    content: String,
-    resourceDescription: Option[String] = None,
-    resourceMimeType: Option[String] = None
+      resourceUri: String,
+      resourceName: String,
+      content: String,
+      resourceDescription: Option[String] = None,
+      resourceMimeType: Option[String] = None
   ): McpResource[F, Unit] =
     new McpResource[F, Unit](
       uri = resourceUri,
@@ -56,15 +60,13 @@ object McpResource:
       reader = _ => Async[F].pure(ResourceContent.text(resourceUri, content, resourceMimeType))
     )
 
-  /**
-   * Create a dynamic resource that computes content on each read.
-   */
+  /** Create a dynamic resource that computes content on each read. */
   def dynamic[F[_]: Async](
-    resourceUri: String,
-    resourceName: String,
-    reader: () => F[String],
-    resourceDescription: Option[String] = None,
-    resourceMimeType: Option[String] = None
+      resourceUri: String,
+      resourceName: String,
+      reader: () => F[String],
+      resourceDescription: Option[String] = None,
+      resourceMimeType: Option[String] = None
   ): McpResource[F, Unit] =
     new McpResource[F, Unit](
       uri = resourceUri,
@@ -74,15 +76,13 @@ object McpResource:
       reader = _ => reader().map(content => ResourceContent.text(resourceUri, content, resourceMimeType))
     )
 
-  /**
-   * Create a resource that returns ResourceContent directly.
-   */
+  /** Create a resource that returns ResourceContent directly. */
   def fromContent[F[_]: Async](
-    resourceUri: String,
-    resourceName: String,
-    reader: () => F[ResourceContent],
-    resourceDescription: Option[String] = None,
-    resourceMimeType: Option[String] = None
+      resourceUri: String,
+      resourceName: String,
+      reader: () => F[ResourceContent],
+      resourceDescription: Option[String] = None,
+      resourceMimeType: Option[String] = None
   ): McpResource[F, Unit] =
     new McpResource[F, Unit](
       uri = resourceUri,
@@ -95,6 +95,7 @@ object McpResource:
 object ResourceBuilder:
 
   final class Empty[Ctx]:
+
     def uri(u: String): Builder[Ctx] =
       new Builder[Ctx](u, u, None, None)
 
@@ -123,8 +124,9 @@ object ResourceBuilder:
       copy(resourceMimeType = Some(m))
 
   extension [Ctx](b: Builder[Ctx])
+
     def read[F[_]: Async](reader: Ctx => F[String]): McpResource[F, Ctx] =
-      val rUri = b.resourceUri
+      val rUri  = b.resourceUri
       val rMime = b.resourceMimeType
       new McpResource[F, Ctx](
         uri = b.resourceUri,
@@ -136,14 +138,12 @@ object ResourceBuilder:
 
     def readContent[F[_]: Async](reader: Ctx => F[ResourceContent]): McpResource[F, Ctx] =
       new McpResource[F, Ctx](
-        uri = b.resourceUri,
-        name = b.resourceName,
-        description = b.resourceDescription,
-        mimeType = b.resourceMimeType,
+        uri = b.resourceUri, name = b.resourceName, description = b.resourceDescription, mimeType = b.resourceMimeType,
         reader = reader
       )
 
   extension (b: Builder[Unit])
+
     def staticContent[F[_]: Async](content: String): McpResource[F, Unit] =
       McpResource.static[F](b.resourceUri, b.resourceName, content, b.resourceDescription, b.resourceMimeType)
 

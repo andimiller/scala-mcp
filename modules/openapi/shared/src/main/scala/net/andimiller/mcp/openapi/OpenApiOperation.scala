@@ -1,13 +1,21 @@
 package net.andimiller.mcp.openapi
 
-import io.circe.Json
-import io.circe.syntax.*
-import net.andimiller.mcp.core.protocol.ToolDefinition
-import sttp.apispec.openapi.{OpenAPI, Operation, Parameter, ParameterIn, PathItem, RequestBody, Response, ResponsesCodeKey, ResponsesDefaultKey}
-import sttp.apispec.openapi.circe.given
-import sttp.apispec.{ExampleValue, SchemaLike, SchemaType, Schema, AnySchema}
-
 import scala.collection.immutable.ListMap
+
+import cats.syntax.all.*
+
+import net.andimiller.mcp.core.protocol.ToolDefinition
+
+import io.circe.Json
+import sttp.apispec.ExampleValue
+import sttp.apispec.SchemaLike
+import sttp.apispec.openapi.OpenAPI
+import sttp.apispec.openapi.Operation
+import sttp.apispec.openapi.Parameter
+import sttp.apispec.openapi.ParameterIn
+import sttp.apispec.openapi.PathItem
+import sttp.apispec.openapi.ResponsesCodeKey
+import sttp.apispec.openapi.ResponsesDefaultKey
 
 case class ResolvedParam(name: String, required: Boolean)
 
@@ -46,7 +54,7 @@ object OpenApiOperation:
 
   def build(spec: OpenAPI, operationIds: List[String]): List[OpenApiOperation] =
     val components = spec.components.getOrElse(sttp.apispec.openapi.Components())
-    val schemas = components.schemas
+    val schemas    = components.schemas
 
     val allOperations: List[(String, String, Operation, String)] =
       spec.paths.pathItems.toList.flatMap { case (pathPattern, pathItem) =>
@@ -58,7 +66,7 @@ object OpenApiOperation:
       }
 
     val operationIdSet = operationIds.toSet
-    val found = allOperations.filter(t => operationIdSet.contains(t._4))
+    val found          = allOperations.filter(t => operationIdSet.contains(t._4))
 
     found.map { case (pathPattern, method, operation, operationId) =>
       buildOperation(operationId, pathPattern, method, operation, components, schemas)
@@ -74,9 +82,9 @@ object OpenApiOperation:
   ): OpenApiOperation =
     val params = operation.parameters.flatMap(SchemaConverter.resolveParameter(_, components.parameters))
 
-    val pathParams = params.filter(_.in == ParameterIn.Path)
-    val queryParams = params.filter(_.in == ParameterIn.Query)
-    val headerParams = params.filter(_.in == ParameterIn.Header)
+    val pathParams   = params.filter(_.in.value === ParameterIn.Path.value)
+    val queryParams  = params.filter(_.in.value === ParameterIn.Query.value)
+    val headerParams = params.filter(_.in.value === ParameterIn.Header.value)
 
     val paramProperties: ListMap[String, Json] = ListMap.from(
       (pathParams ++ queryParams ++ headerParams).map { p =>
@@ -91,7 +99,7 @@ object OpenApiOperation:
       pathParams.map(_.name) ++
         (queryParams ++ headerParams).filter(_.required.getOrElse(false)).map(_.name)
 
-    val resolvedBody = operation.requestBody.flatMap(SchemaConverter.resolveRequestBody(_, components.requestBodies))
+    val resolvedBody             = operation.requestBody.flatMap(SchemaConverter.resolveRequestBody(_, components.requestBodies))
     val bodySchema: Option[Json] = resolvedBody.flatMap { rb =>
       rb.content.get("application/json").flatMap(_.schema).map { sl =>
         val schemaJson = SchemaConverter.schemaToJson(sl, schemas)
@@ -109,9 +117,9 @@ object OpenApiOperation:
     val allRequired = if bodyRequired then requiredParams :+ "body" else requiredParams
 
     val input = Json.obj(
-      "type" -> Json.fromString("object"),
+      "type"       -> Json.fromString("object"),
       "properties" -> Json.fromFields(allProperties.toList),
-      "required" -> Json.arr(allRequired.map(Json.fromString)*)
+      "required"   -> Json.arr(allRequired.map(Json.fromString)*)
     )
 
     val output = buildOutputSchema(operation, components, schemas)
@@ -139,9 +147,10 @@ object OpenApiOperation:
       components: sttp.apispec.openapi.Components,
       schemas: ListMap[String, SchemaLike]
   ): Json =
-    val responses = operation.responses.responses
+    val responses   = operation.responses.responses
     val responseOpt =
-      responses.get(ResponsesCodeKey(200))
+      responses
+        .get(ResponsesCodeKey(200))
         .orElse(responses.get(ResponsesCodeKey(201)))
         .orElse(responses.get(ResponsesDefaultKey))
 

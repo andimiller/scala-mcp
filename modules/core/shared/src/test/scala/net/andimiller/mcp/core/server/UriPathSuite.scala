@@ -2,6 +2,7 @@ package net.andimiller.mcp.core.server
 
 import cats.Applicative
 import cats.syntax.all.*
+
 import munit.FunSuite
 
 class UriPathSuite extends FunSuite:

@@ -1,11 +1,12 @@
 package net.andimiller.mcp.core.protocol
 
-import io.circe.{Encoder, Json}
-import io.circe.syntax.*
-import munit.FunSuite
-import net.andimiller.mcp.core.protocol.ToolResult.given
 import net.andimiller.mcp.core.protocol.content.Content
 import net.andimiller.mcp.core.schema.JsonSchema
+
+import io.circe.Encoder
+import io.circe.Json
+import io.circe.syntax.*
+import munit.FunSuite
 
 class ToolResultSuite extends FunSuite:
 
@@ -34,8 +35,8 @@ class ToolResultSuite extends FunSuite:
   }
 
   test("Raw.toWire passes its fields through verbatim") {
-    val payload = Json.obj("k" -> "v".asJson)
-    val rawContent = List[Content](Content.Text("body"), Content.Image("imgdata", "image/png"))
+    val payload             = Json.obj("k" -> "v".asJson)
+    val rawContent          = List[Content](Content.Text("body"), Content.Image("imgdata", "image/png"))
     val raw: ToolResult.Raw = ToolResult.Raw(
       content = rawContent,
       structuredContent = Some(payload),

@@ -2,16 +2,18 @@ package net.andimiller.mcp.core.server
 
 import cats.effect.kernel.Async
 import cats.syntax.all.*
-import fs2.Stream
+
 import net.andimiller.mcp.core.protocol.*
 import net.andimiller.mcp.core.transport.MessageChannel
 
-/**
- * Core MCP server interface.
- *
- * A server provides tools, resources, and prompts to clients.
- */
+import fs2.Stream
+
+/** Core MCP server interface.
+  *
+  * A server provides tools, resources, and prompts to clients.
+  */
 trait Server[F[_]]:
+
   /** Server implementation information */
   def info: Implementation
 
@@ -48,30 +50,28 @@ trait Server[F[_]]:
   /** Handle ping request */
   def ping(): F[Unit]
 
-/**
- * Server session that processes messages over a transport channel.
- *
- * Delegates inbound message handling to [[RequestHandler]] and forwards any server-initiated
- * notifications/requests published to the [[ClientChannel]] back onto the transport. Inbound
- * and outbound streams are merged so the same fiber drives both directions.
- */
+/** Server session that processes messages over a transport channel.
+  *
+  * Delegates inbound message handling to [[RequestHandler]] and forwards any server-initiated notifications/requests
+  * published to the [[ClientChannel]] back onto the transport. Inbound and outbound streams are merged so the same
+  * fiber drives both directions.
+  */
 class ServerSession[F[_]: Async](
-  server: Server[F],
-  channel: MessageChannel[F],
-  clientChannel: ClientChannel[F],
-  config: ServerSessionConfig = ServerSessionConfig.default
+    server: Server[F],
+    channel: MessageChannel[F],
+    clientChannel: ClientChannel[F],
+    config: ServerSessionConfig = ServerSessionConfig.default
 ):
+
   private val handler = new RequestHandler[F](server, clientChannel.requester, clientChannel.cancellation)
 
-  /**
-   * Run the server session, processing incoming messages and forwarding server-initiated
-   * outbound traffic until the underlying transport closes.
-   *
-   * Inbound handling uses `parEvalMapUnordered` so a tool that awaits a server-initiated
-   * response (e.g. `elicitation/create`) does not block the inbound reader from accepting
-   * the very response it's waiting for — a deadlock that would otherwise be unavoidable
-   * with sequential `evalMap`.
-   */
+  /** Run the server session, processing incoming messages and forwarding server-initiated outbound traffic until the
+    * underlying transport closes.
+    *
+    * Inbound handling uses `parEvalMapUnordered` so a tool that awaits a server-initiated response (e.g.
+    * `elicitation/create`) does not block the inbound reader from accepting the very response it's waiting for — a
+    * deadlock that would otherwise be unavoidable with sequential `evalMap`.
+    */
   def run: F[Unit] =
     val inbound: Stream[F, Unit] =
       channel.incoming.parEvalMapUnordered(config.maxConcurrent) { message =>

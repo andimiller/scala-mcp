@@ -1,38 +1,97 @@
-# macOS
+### Intellij ###
+
+.idea
+out/
+
+### Java ###
+
+*.class
+*.log
+
+### macOS ###
+
 .DS_Store
 
-# sbt specific
+### SBT ###
+
 dist/*
 target/
 lib_managed/
 src_managed/
 project/boot/
 project/plugins/project/
-project/local-plugins.sbt
 .history
-.ensime
-.ensime_cache/
-.sbt-scripted/
-local.sbt
+.cache
+.lib/
 
-# Bloop
-.bsp
+### Scala ###
 
-# VS Code
-.vscode/
-
-# Metals
 .bloop/
+**/.bloop/
+project/.bloop/
+.bsp
+*.metals
 .metals/
-metals.sbt
+.mcp.json
+**/metals.sbt
+project/metals.sbt
 
-# IDEA
-.idea
-.idea_modules
-/.worksheet/
+### Scala.js ###
 
-# scala.js/parcel
 .parcel-cache/
-node_modules/
-project/
 dist/
+
+### Vim ###
+
+# Swap
+[._]*.s[a-v][a-z]
+[._]*.sw[a-p]
+[._]s[a-rt-v][a-z]
+[._]ss[a-gi-z]
+[._]sw[a-p]
+
+# Session
+Session.vim
+Sessionx.vim
+
+# Temporary
+.netrwhist
+
+# Auto-generated tag files
+tags
+
+# Persistent undo
+[._]*.un~
+
+# Coc configuration directory
+.vim
+
+### VisualStudioCode ###
+
+.vscode
+
+### Cursor ###
+
+.cursor
+
+### Claude ###
+
+.claude
+
+### Docusaurus ###
+
+.docusaurus
+node_modules
+website/build
+
+### sbt-scalafix-defaults ###
+# Scalafix configuration file is automatically downloaded by `sbt-scalafix-defaults`
+# https://github.com/alejandrohdezma/sbt-scalafix-defaults
+
+.scalafix.conf
+
+### sbt-scalafmt-defaults ###
+# Scalafmt configuration file is automatically downloaded by `sbt-scalafmt-defaults`
+# https://github.com/alejandrohdezma/sbt-scalafmt-defaults
+
+.scalafmt.conf

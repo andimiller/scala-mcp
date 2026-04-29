@@ -2,36 +2,37 @@ package net.andimiller.mcp.core.server
 
 import cats.effect.kernel.Async
 import cats.syntax.all.*
+
+import net.andimiller.mcp.core.protocol.*
+import net.andimiller.mcp.core.protocol.jsonrpc.JsonRpcError
+import net.andimiller.mcp.core.protocol.jsonrpc.Message
+import net.andimiller.mcp.core.protocol.jsonrpc.RequestId
+
 import io.circe.Json
 import io.circe.syntax.*
-import net.andimiller.mcp.core.codecs.CirceCodecs.given
-import net.andimiller.mcp.core.protocol.*
-import net.andimiller.mcp.core.protocol.jsonrpc.{JsonRpcError, Message, RequestId}
 
-/**
- * Pure request→response message handler extracted from ServerSession.
- *
- * Given a JSON-RPC [[Message]], produces an optional response:
- *  - Requests  → `Some(responseMessage)`
- *  - Notifications → `None`
- *  - Responses from client → routed to [[ServerRequester.completeResponse]], no outbound message
- *
- * This is transport-agnostic and can be shared between stdio and HTTP transports.
- */
+/** Pure request→response message handler extracted from ServerSession.
+  *
+  * Given a JSON-RPC [[Message]], produces an optional response:
+  *   - Requests → `Some(responseMessage)`
+  *   - Notifications → `None`
+  *   - Responses from client → routed to [[ServerRequester.completeResponse]], no outbound message
+  *
+  * This is transport-agnostic and can be shared between stdio and HTTP transports.
+  */
 class RequestHandler[F[_]: Async](
-  server: Server[F],
-  requester: ServerRequester[F],
-  cancellation: CancellationRegistry[F]
+    server: Server[F],
+    requester: ServerRequester[F],
+    cancellation: CancellationRegistry[F]
 ):
 
-  /** Methods that bypass the cancellation registry. `initialize` MUST NOT be cancelled per spec
-   *  (MCP 2025-11-25); `ping` is trivial and used for liveness, so cancelling it is pointless. */
+  /** Methods that bypass the cancellation registry. `initialize` MUST NOT be cancelled per spec (MCP 2025-11-25);
+    * `ping` is trivial and used for liveness, so cancelling it is pointless.
+    */
   private def isUncancellable(method: String): Boolean =
-    method == "initialize" || method == "ping"
+    method === "initialize" || method === "ping"
 
-  /**
-   * Handle a single incoming message and optionally produce a response.
-   */
+  /** Handle a single incoming message and optionally produce a response. */
   def handle(message: Message): F[Option[Message]] = message match
     case Message.Request(_, id, method, params) =>
       val dispatched =
@@ -53,9 +54,7 @@ class RequestHandler[F[_]: Async](
         case None    => Right(result.getOrElse(Json.obj()))
       requester.completeResponse(id, resolved).as(None)
 
-  /**
-   * Handle a JSON-RPC request and return a response message.
-   */
+  /** Handle a JSON-RPC request and return a response message. */
   private def handleRequest(id: RequestId, method: String, params: Option[Json]): F[Message] =
     val result = method match
       case "initialize" =>
@@ -87,7 +86,8 @@ class RequestHandler[F[_]: Async](
             Async[F].raiseError(new Exception("Missing or invalid resource read request"))
 
       case "resources/templates/list" =>
-        val request = params.flatMap(_.as[ListResourceTemplatesRequest].toOption).getOrElse(ListResourceTemplatesRequest())
+        val request =
+          params.flatMap(_.as[ListResourceTemplatesRequest].toOption).getOrElse(ListResourceTemplatesRequest())
         server.listResourceTemplates(request).map(_.asJson)
 
       case "resources/subscribe" =>
@@ -118,14 +118,11 @@ class RequestHandler[F[_]: Async](
       case unknown =>
         Async[F].raiseError(new Exception(s"Unknown method: $unknown"))
 
-    result.map(json => Message.response(id, json))
-      .handleErrorWith { error =>
-        Message.errorResponse(id, JsonRpcError.internalError(error.getMessage)).pure[F]
-      }
+    result.map(json => Message.response(id, json)).handleErrorWith { error =>
+      Message.errorResponse(id, JsonRpcError.internalError(error.getMessage)).pure[F]
+    }
 
-  /**
-   * Handle the initialize request.
-   */
+  /** Handle the initialize request. */
   private def handleInitialize(params: Option[Json]): F[Json] =
     params.flatMap(_.as[InitializeRequest].toOption) match
       case Some(request) =>
@@ -138,9 +135,7 @@ class RequestHandler[F[_]: Async](
       case None =>
         Async[F].raiseError(new Exception("Missing or invalid initialize request"))
 
-  /**
-   * Handle a notification (no response expected).
-   */
+  /** Handle a notification (no response expected). */
   private def handleNotification(method: String, params: Option[Json]): F[Unit] =
     method match
       case "notifications/initialized" =>

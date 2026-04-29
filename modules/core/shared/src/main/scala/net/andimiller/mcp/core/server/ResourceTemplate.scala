@@ -1,6 +1,7 @@
 package net.andimiller.mcp.core.server
 
 import cats.effect.kernel.Async
+
 import net.andimiller.mcp.core.protocol.*
 
 class ResourceTemplate[F[_], Ctx](
@@ -10,26 +11,31 @@ class ResourceTemplate[F[_], Ctx](
     val mimeType: Option[String],
     val reader: (Ctx, String) => Option[F[ResourceContent]]
 ):
+
   def provide(ctx: Ctx): ResourceTemplate.Resolved[F] =
     val self = this
     new ResourceTemplate.Resolved[F]:
-      val uriTemplate = self.uriTemplate
-      val name = self.name
-      val description = self.description
-      val mimeType = self.mimeType
+      val uriTemplate                                   = self.uriTemplate
+      val name                                          = self.name
+      val description                                   = self.description
+      val mimeType                                      = self.mimeType
       def read(uri: String): Option[F[ResourceContent]] = self.reader(ctx, uri)
 
 object ResourceTemplate:
 
   trait Resolved[F[_]]:
+
     def uriTemplate: String
+
     def name: String
+
     def description: Option[String]
+
     def mimeType: Option[String]
+
     def read(uri: String): Option[F[ResourceContent]]
 
-  extension [F[_]](rt: ResourceTemplate[F, Unit])
-    def resolve: Resolved[F] = rt.provide(())
+  extension [F[_]](rt: ResourceTemplate[F, Unit]) def resolve: Resolved[F] = rt.provide(())
 
   def builder: ResourceTemplateBuilder.Empty[Unit] =
     new ResourceTemplateBuilder.Empty[Unit]
@@ -40,8 +46,10 @@ object ResourceTemplate:
 object ResourceTemplateBuilder:
 
   final class Empty[Ctx]:
+
     def uriTemplate(t: String): Builder[Ctx] =
       new Builder[Ctx](t, t, None, None)
+
     def path[A](p: UriPath[A]): PathBuilder[Ctx, A] =
       new PathBuilder[Ctx, A](p, p.template, None, None)
 
@@ -93,16 +101,15 @@ object ResourceTemplateBuilder:
       copy(templateMimeType = Some(m))
 
   extension [Ctx](b: Builder[Ctx])
+
     def read[F[_]: Async](reader: (Ctx, String) => Option[F[ResourceContent]]): ResourceTemplate[F, Ctx] =
       new ResourceTemplate[F, Ctx](
-        uriTemplate = b.templateUri,
-        name = b.templateName,
-        description = b.templateDescription,
-        mimeType = b.templateMimeType,
-        reader = reader
+        uriTemplate = b.templateUri, name = b.templateName, description = b.templateDescription,
+        mimeType = b.templateMimeType, reader = reader
       )
 
   extension [Ctx, A](b: PathBuilder[Ctx, A])
+
     def read[F[_]: Async](handler: (Ctx, A) => F[ResourceContent]): ResourceTemplate[F, Ctx] =
       new ResourceTemplate[F, Ctx](
         uriTemplate = b.uriPath.template,
@@ -113,6 +120,7 @@ object ResourceTemplateBuilder:
       )
 
   extension (b: Builder[Unit])
+
     def read[F[_]: Async](reader: String => Option[F[ResourceContent]]): ResourceTemplate[F, Unit] =
       new ResourceTemplate[F, Unit](
         uriTemplate = b.templateUri,
@@ -123,6 +131,7 @@ object ResourceTemplateBuilder:
       )
 
   extension [A](b: PathBuilder[Unit, A])
+
     def read[F[_]: Async](handler: A => F[ResourceContent]): ResourceTemplate[F, Unit] =
       new ResourceTemplate[F, Unit](
         uriTemplate = b.uriPath.template,

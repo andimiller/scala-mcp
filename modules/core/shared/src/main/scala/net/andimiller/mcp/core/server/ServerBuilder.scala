@@ -2,6 +2,7 @@ package net.andimiller.mcp.core.server
 
 import cats.effect.kernel.Async
 import cats.syntax.functor.*
+
 import net.andimiller.mcp.core.protocol.*
 
 class ServerBuilder[F[_]: Async](
@@ -16,9 +17,12 @@ class ServerBuilder[F[_]: Async](
 
   def withTool(handler: Tool.Resolved[F]): ServerBuilder[F] =
     new ServerBuilder[F](
-      name, version,
+      name,
+      version,
       toolHandlers :+ handler,
-      resourceHandlers, resourceTemplateHandlers, promptHandlers,
+      resourceHandlers,
+      resourceTemplateHandlers,
+      promptHandlers,
       capabilities.withToolAdded
     )
 
@@ -30,10 +34,12 @@ class ServerBuilder[F[_]: Async](
 
   def withResource(handler: McpResource.Resolved[F]): ServerBuilder[F] =
     new ServerBuilder[F](
-      name, version,
+      name,
+      version,
       toolHandlers,
       resourceHandlers :+ handler,
-      resourceTemplateHandlers, promptHandlers,
+      resourceTemplateHandlers,
+      promptHandlers,
       capabilities.withResourceAdded
     )
 
@@ -42,10 +48,12 @@ class ServerBuilder[F[_]: Async](
 
   def withResourceTemplate(handler: ResourceTemplate.Resolved[F]): ServerBuilder[F] =
     new ServerBuilder[F](
-      name, version,
+      name,
+      version,
       toolHandlers,
       resourceHandlers,
-      resourceTemplateHandlers :+ handler, promptHandlers,
+      resourceTemplateHandlers :+ handler,
+      promptHandlers,
       capabilities.withResourceAdded
     )
 
@@ -60,8 +68,11 @@ class ServerBuilder[F[_]: Async](
 
   def withPrompt(handler: Prompt.Resolved[F]): ServerBuilder[F] =
     new ServerBuilder[F](
-      name, version,
-      toolHandlers, resourceHandlers, resourceTemplateHandlers,
+      name,
+      version,
+      toolHandlers,
+      resourceHandlers,
+      resourceTemplateHandlers,
       promptHandlers :+ handler,
       capabilities.withPromptAdded
     )
@@ -74,51 +85,43 @@ class ServerBuilder[F[_]: Async](
 
   def enableToolNotifications: ServerBuilder[F] =
     new ServerBuilder[F](
-      name, version,
-      toolHandlers, resourceHandlers, resourceTemplateHandlers, promptHandlers,
+      name, version, toolHandlers, resourceHandlers, resourceTemplateHandlers, promptHandlers,
       capabilities.withToolNotifications
     )
 
   def enableResourceSubscriptions: ServerBuilder[F] =
     new ServerBuilder[F](
-      name, version,
-      toolHandlers, resourceHandlers, resourceTemplateHandlers, promptHandlers,
+      name, version, toolHandlers, resourceHandlers, resourceTemplateHandlers, promptHandlers,
       capabilities.withResourceSubscriptions
     )
 
   def enableResourceNotifications: ServerBuilder[F] =
     new ServerBuilder[F](
-      name, version,
-      toolHandlers, resourceHandlers, resourceTemplateHandlers, promptHandlers,
+      name, version, toolHandlers, resourceHandlers, resourceTemplateHandlers, promptHandlers,
       capabilities.withResourceNotifications
     )
 
   def enablePromptNotifications: ServerBuilder[F] =
     new ServerBuilder[F](
-      name, version,
-      toolHandlers, resourceHandlers, resourceTemplateHandlers, promptHandlers,
+      name, version, toolHandlers, resourceHandlers, resourceTemplateHandlers, promptHandlers,
       capabilities.withPromptNotifications
     )
 
   def enableLogging: ServerBuilder[F] =
     new ServerBuilder[F](
-      name, version,
-      toolHandlers, resourceHandlers, resourceTemplateHandlers, promptHandlers,
-      capabilities.withLogging
+      name, version, toolHandlers, resourceHandlers, resourceTemplateHandlers, promptHandlers, capabilities.withLogging
     )
 
   def build: F[Server[F]] =
     val info = Implementation(name, version)
 
     DefaultServer[F](
-      info = info,
-      capabilities = capabilities.toServerCapabilities,
-      toolHandlers = toolHandlers,
-      resourceHandlers = resourceHandlers,
-      resourceTemplateHandlers = resourceTemplateHandlers,
+      info = info, capabilities = capabilities.toServerCapabilities, toolHandlers = toolHandlers,
+      resourceHandlers = resourceHandlers, resourceTemplateHandlers = resourceTemplateHandlers,
       promptHandlers = promptHandlers
     ).widen[Server[F]]
 
 object ServerBuilder:
+
   def apply[F[_]: Async](name: String, version: String): ServerBuilder[F] =
     new ServerBuilder[F](name, version)

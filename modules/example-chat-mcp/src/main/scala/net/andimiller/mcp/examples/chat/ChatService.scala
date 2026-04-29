@@ -2,27 +2,34 @@ package net.andimiller.mcp.examples.chat
 
 import cats.effect.IO
 import cats.syntax.all.*
+
 import dev.profunktor.redis4cats.RedisCommands
-import io.circe.{Decoder, Encoder}
+import io.circe.Decoder
+import io.circe.Encoder
 import io.circe.parser.decode
 import io.circe.syntax.*
 
 case class ChatMessage(
-  sender: String,
-  content: String,
-  timestamp: Long
-) derives Encoder.AsObject, Decoder
+    sender: String,
+    content: String,
+    timestamp: Long
+) derives Encoder.AsObject,
+      Decoder
 
 case class ChatRoom(
-  name: String,
-  createdBy: String
-) derives Encoder.AsObject, Decoder
+    name: String,
+    createdBy: String
+) derives Encoder.AsObject,
+      Decoder
 
 class ChatService(redis: RedisCommands[IO, String, String]):
 
-  private def roomsKey        = "chat:rooms"
-  private def roomKey(n: String)    = s"chat:room:$n"
+  private def roomsKey = "chat:rooms"
+
+  private def roomKey(n: String) = s"chat:room:$n"
+
   private def membersKey(n: String) = s"chat:room:$n:members"
+
   private def messagesKey(n: String) = s"chat:messages:$n"
 
   def createRoom(name: String, creator: String): IO[ChatRoom] =

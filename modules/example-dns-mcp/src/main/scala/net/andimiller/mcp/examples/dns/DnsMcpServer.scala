@@ -2,30 +2,38 @@ package net.andimiller.mcp.examples.dns
 
 import cats.effect.*
 import cats.syntax.all.*
-import com.comcast.ip4s.{Dns as _, *}
-import io.circe.{Decoder, Encoder}
-import net.andimiller.mcp.core.protocol.{PromptArgument, PromptMessage}
-import net.andimiller.mcp.core.schema.{JsonSchema, description}
+
+import net.andimiller.mcp.core.protocol.PromptArgument
+import net.andimiller.mcp.core.protocol.PromptMessage
+import net.andimiller.mcp.core.schema.JsonSchema
+import net.andimiller.mcp.core.schema.description
 import net.andimiller.mcp.core.server.*
 import net.andimiller.mcp.http4s.McpHttp
+
+import com.comcast.ip4s.{Dns as _, *}
+import io.circe.Decoder
+import io.circe.Encoder
 
 object DnsMcpServer extends IOApp.Simple:
 
   // ── request / response types ──────────────────────────────────────
 
   case class ResolveDnsRequest(
-    @description("The hostname to resolve (e.g. example.com)")
-    hostname: String,
-    @description("DNS record type: A, AAAA, MX, TXT, CNAME, NS (default: A)")
-    record_type: Option[String]
-  ) derives JsonSchema, Decoder
+      @description("The hostname to resolve (e.g. example.com)")
+      hostname: String,
+      @description("DNS record type: A, AAAA, MX, TXT, CNAME, NS (default: A)")
+      record_type: Option[String]
+  ) derives JsonSchema,
+        Decoder
 
   case class ReverseDnsRequest(
-    @description("The IP address to reverse-lookup (e.g. 8.8.8.8)")
-    ip: String
-  ) derives JsonSchema, Decoder
+      @description("The IP address to reverse-lookup (e.g. 8.8.8.8)")
+      ip: String
+  ) derives JsonSchema,
+        Decoder
 
   case class DnsResponse(records: List[String]) derives Encoder.AsObject, JsonSchema
+
   case class ErrorResponse(error: String) derives Encoder.AsObject, JsonSchema
 
   // ── server ────────────────────────────────────────────────────────
@@ -33,7 +41,8 @@ object DnsMcpServer extends IOApp.Simple:
   private val dns = Dns.fromNodeJs
 
   final def run: IO[Unit] =
-    McpHttp.streaming[IO]
+    McpHttp
+      .streaming[IO]
       .name("dns-mcp")
       .version("1.0.0")
       .port(port"8053")
@@ -64,50 +73,52 @@ object DnsMcpServer extends IOApp.Simple:
           .run(req => dns.reverse(req.ip).map(DnsResponse(_)))
       )
       .withResources(
-        McpResource.static[IO](
-          resourceUri = "dns://reference/record-types",
-          resourceName = "DNS Record Types Reference",
-          resourceDescription = Some("Quick reference for common DNS record types"),
-          resourceMimeType = Some("text/markdown"),
-          content =
-            """|# DNS Record Types
-               |
-               || Type  | Description                        | Example                    |
-               ||-------|------------------------------------|----------------------------|
-               || A     | IPv4 address                       | 93.184.216.34              |
-               || AAAA  | IPv6 address                       | 2606:2800:220:1:248:...    |
-               || MX    | Mail exchange (priority + host)     | 10 mail.example.com        |
-               || TXT   | Arbitrary text (SPF, DKIM, etc.)   | v=spf1 include:...         |
-               || CNAME | Canonical name (alias)             | www -> example.com         |
-               || NS    | Authoritative nameserver           | ns1.example.com            |
-               |""".stripMargin
-        ).resolve
+        McpResource
+          .static[IO](
+            resourceUri = "dns://reference/record-types", resourceName = "DNS Record Types Reference",
+            resourceDescription = Some("Quick reference for common DNS record types"),
+            resourceMimeType = Some("text/markdown"),
+            content = """|# DNS Record Types
+                         |
+                         || Type  | Description                        | Example                    |
+                         ||-------|------------------------------------|----------------------------|
+                         || A     | IPv4 address                       | 93.184.216.34              |
+                         || AAAA  | IPv6 address                       | 2606:2800:220:1:248:...    |
+                         || MX    | Mail exchange (priority + host)     | 10 mail.example.com        |
+                         || TXT   | Arbitrary text (SPF, DKIM, etc.)   | v=spf1 include:...         |
+                         || CNAME | Canonical name (alias)             | www -> example.com         |
+                         || NS    | Authoritative nameserver           | ns1.example.com            |
+                         |""".stripMargin
+          )
+          .resolve
       )
       .withPrompts(
-        Prompt.static[IO](
-          promptName = "diagnose_dns",
-          promptDescription = Some("Comprehensive DNS diagnosis for a domain"),
-          promptArguments = List(
-            PromptArgument("domain", Some("The domain name to diagnose"), required = true)
-          ),
-          messages = List(
-            PromptMessage.user(
-              """|Please perform a comprehensive DNS diagnosis for the given domain.
-                 |
-                 |Use the resolve_dns tool to look up each record type (A, AAAA, MX, TXT, CNAME, NS)
-                 |and then for each A record, use reverse_dns to check if reverse DNS is configured.
-                 |
-                 |Summarise findings including:
-                 |1. IP addresses (v4 and v6)
-                 |2. Mail configuration (MX records and SPF/DKIM in TXT)
-                 |3. Nameservers
-                 |4. Any CNAME aliases
-                 |5. Reverse DNS consistency
-                 |6. Potential issues or misconfigurations
-                 |""".stripMargin
+        Prompt
+          .static[IO](
+            promptName = "diagnose_dns",
+            promptDescription = Some("Comprehensive DNS diagnosis for a domain"),
+            promptArguments = List(
+              PromptArgument("domain", Some("The domain name to diagnose"), required = true)
+            ),
+            messages = List(
+              PromptMessage.user(
+                """|Please perform a comprehensive DNS diagnosis for the given domain.
+                   |
+                   |Use the resolve_dns tool to look up each record type (A, AAAA, MX, TXT, CNAME, NS)
+                   |and then for each A record, use reverse_dns to check if reverse DNS is configured.
+                   |
+                   |Summarise findings including:
+                   |1. IP addresses (v4 and v6)
+                   |2. Mail configuration (MX records and SPF/DKIM in TXT)
+                   |3. Nameservers
+                   |4. Any CNAME aliases
+                   |5. Reverse DNS consistency
+                   |6. Potential issues or misconfigurations
+                   |""".stripMargin
+              )
             )
           )
-        ).resolve
+          .resolve
       )
       .enableResourceSubscriptions
       .enableLogging

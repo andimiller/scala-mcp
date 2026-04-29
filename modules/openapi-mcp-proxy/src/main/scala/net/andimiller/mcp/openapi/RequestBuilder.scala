@@ -2,10 +2,17 @@ package net.andimiller.mcp.openapi
 
 import cats.effect.IO
 import cats.syntax.all.*
-import io.circe.Json
+
 import net.andimiller.mcp.core.protocol.ToolResult
 import net.andimiller.mcp.core.protocol.content.Content
-import org.http4s.{EntityDecoder, Header, Headers, Method, Request, Uri}
+
+import io.circe.Json
+import org.http4s.EntityDecoder
+import org.http4s.Header
+import org.http4s.Headers
+import org.http4s.Method
+import org.http4s.Request
+import org.http4s.Uri
 import org.http4s.circe.*
 import org.http4s.client.Client
 
@@ -40,12 +47,13 @@ object RequestBuilder:
 
     for
       baseUri <- IO.fromEither(
-        Uri.fromString(baseUrl.stripSuffix("/") + "/" + path.stripPrefix("/"))
-          .leftMap(e => new Exception(s"Invalid URI: ${e.message}"))
-      )
+                   Uri
+                     .fromString(baseUrl.stripSuffix("/") + "/" + path.stripPrefix("/"))
+                     .leftMap(e => new Exception(s"Invalid URI: ${e.message}"))
+                 )
       uri = queryPairs.foldLeft(baseUri) { (u, kv) =>
-        u.withQueryParam(kv._1, kv._2)
-      }
+              u.withQueryParam(kv._1, kv._2)
+            }
       request = {
         val base = Request[IO](method = method, uri = uri)
           .withHeaders(Headers(extraHeaders))
@@ -54,20 +62,20 @@ object RequestBuilder:
           case None       => base
       }
       result <- client.run(request).use { response =>
-        EntityDecoder.decodeText(response).map { body =>
-          if response.status.isSuccess then
-            io.circe.parser.parse(body) match
-              case Right(json) =>
-                val wrapped = wrapIfArray(json)
-                ToolResult.Raw(
-                  content = List(Content.Text(wrapped.noSpaces)),
-                  structuredContent = Some(wrapped),
-                  isError = false
-                )
-              case Left(_)     => ToolResult.Text(body)
-          else ToolResult.Error(s"HTTP ${response.status.code}: $body")
-        }
-      }
+                  EntityDecoder.decodeText(response).map { body =>
+                    if response.status.isSuccess then
+                      io.circe.parser.parse(body) match
+                        case Right(json) =>
+                          val wrapped = wrapIfArray(json)
+                          ToolResult.Raw(
+                            content = List(Content.Text(wrapped.noSpaces)),
+                            structuredContent = Some(wrapped),
+                            isError = false
+                          )
+                        case Left(_) => ToolResult.Text(body)
+                    else ToolResult.Error(s"HTTP ${response.status.code}: $body")
+                  }
+                }
     yield result
 
   private def jsonToString(json: Json): Option[String] =

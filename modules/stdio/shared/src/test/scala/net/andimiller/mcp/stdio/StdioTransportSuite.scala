@@ -1,36 +1,40 @@
 package net.andimiller.mcp.stdio
 
+import scala.concurrent.duration.*
+
 import cats.effect.IO
-import cats.effect.kernel.{Deferred, Ref}
+import cats.effect.kernel.Deferred
+import cats.effect.kernel.Ref
 import cats.effect.std.Queue
 import cats.syntax.all.*
+
+import net.andimiller.mcp.core.protocol.*
+import net.andimiller.mcp.core.protocol.content.Content
+import net.andimiller.mcp.core.protocol.jsonrpc.Message
+import net.andimiller.mcp.core.protocol.jsonrpc.RequestId
+import net.andimiller.mcp.core.server.*
+import net.andimiller.mcp.core.transport.MessageChannel
+
 import fs2.Stream
 import io.circe.Json
 import io.circe.syntax.*
 import munit.CatsEffectSuite
-import net.andimiller.mcp.core.codecs.CirceCodecs.given
-import net.andimiller.mcp.core.protocol.*
-import net.andimiller.mcp.core.protocol.content.Content
-import net.andimiller.mcp.core.protocol.jsonrpc.{Message, RequestId}
-import net.andimiller.mcp.core.server.*
-import net.andimiller.mcp.core.transport.MessageChannel
-
-import scala.concurrent.duration.*
 
 class StdioTransportSuite extends CatsEffectSuite:
 
   override def munitIOTimeout: FiniteDuration = 10.seconds
 
   private case class TestRig(
-    inbound: Queue[IO, Message],
-    outbound: Queue[IO, Message],
-    closed: Ref[IO, Boolean]
+      inbound: Queue[IO, Message],
+      outbound: Queue[IO, Message],
+      closed: Ref[IO, Boolean]
   ):
+
     val channel: MessageChannel[IO] =
       MessageChannel[IO](
         incomingStream = Stream.fromQueueUnterminated(inbound),
-        sendFn         = outbound.offer,
-        closeFn        = closed.set(true)
+        sendFn = outbound.offer,
+        closeFn = closed.set(true)
       )
 
     def take(n: Int): IO[List[Message]] =
@@ -45,38 +49,38 @@ class StdioTransportSuite extends CatsEffectSuite:
 
   private def echoTool: Tool.Resolved[IO] =
     new Tool.Resolved[IO]:
-      val name         = "echo"
-      val description  = ""
-      val inputSchema  = Json.obj()
-      val outputSchema = None
+      val name                                          = "echo"
+      val description                                   = ""
+      val inputSchema                                   = Json.obj()
+      val outputSchema                                  = None
       def handle(arguments: Json): IO[CallToolResponse] =
         IO.pure(CallToolResponse(List(Content.Text("ok")), None, false))
 
   private def gatedTool(gate: Deferred[IO, Unit]): Tool.Resolved[IO] =
     new Tool.Resolved[IO]:
-      val name         = "slow"
-      val description  = ""
-      val inputSchema  = Json.obj()
-      val outputSchema = None
+      val name                                          = "slow"
+      val description                                   = ""
+      val inputSchema                                   = Json.obj()
+      val outputSchema                                  = None
       def handle(arguments: Json): IO[CallToolResponse] =
         gate.get.as(CallToolResponse(List(Content.Text("done")), None, false))
 
   private def buildSession(
-    tools: List[Tool.Resolved[IO]] = Nil,
-    maxConcurrent: Int = 16
+      tools: List[Tool.Resolved[IO]] = Nil,
+      maxConcurrent: Int = 16
   )(use: (TestRig, ClientChannel[IO]) => IO[Unit]): IO[Unit] =
     rig.flatMap { r =>
       ClientChannel.create[IO].use { cc =>
         for
           server <- DefaultServer[IO](
-                      info             = Implementation("t", "0"),
-                      capabilities     = ServerCapabilities(),
-                      toolHandlers     = tools
+                      info = Implementation("t", "0"),
+                      capabilities = ServerCapabilities(),
+                      toolHandlers = tools
                     )
-          session  = new ServerSession[IO](server, r.channel, cc, ServerSessionConfig(maxConcurrent))
-          fib     <- session.run.start
-          _       <- use(r, cc)
-          _       <- fib.cancel
+          session = new ServerSession[IO](server, r.channel, cc, ServerSessionConfig(maxConcurrent))
+          fib    <- session.run.start
+          _      <- use(r, cc)
+          _      <- fib.cancel
         yield ()
       }
     }
@@ -89,17 +93,16 @@ class StdioTransportSuite extends CatsEffectSuite:
         out <- r.outbound.take.timeout(2.seconds)
       yield out match
         case Message.Response(_, _, Some(_), None) => ()
-        case other                                  => fail(s"expected Response, got $other")
+        case other                                 => fail(s"expected Response, got $other")
     }
   }
 
   test("tools/call returns a Response with the tool's content") {
     buildSession(tools = List(echoTool)) { (r, _) =>
       for
-        _   <- r.inbound.offer(
-                 Message.request(RequestId.fromLong(2L), "tools/call",
-                   Some(CallToolRequest("echo", Json.obj()).asJson))
-               )
+        _ <- r.inbound.offer(
+               Message.request(RequestId.fromLong(2L), "tools/call", Some(CallToolRequest("echo", Json.obj()).asJson))
+             )
         out <- r.outbound.take.timeout(2.seconds)
       yield out match
         case Message.Response(_, id, Some(_), None) =>
@@ -117,10 +120,9 @@ class StdioTransportSuite extends CatsEffectSuite:
           Some(CancelledNotificationParams(id, None).asJson)
         )
         for
-          _      <- r.inbound.offer(
-                      Message.request(id, "tools/call",
-                        Some(CallToolRequest("slow", Json.obj()).asJson))
-                    )
+          _ <- r.inbound.offer(
+                 Message.request(id, "tools/call", Some(CallToolRequest("slow", Json.obj()).asJson))
+               )
           _      <- IO.sleep(100.millis)
           _      <- r.inbound.offer(cancelMsg)
           peeked <- r.outbound.tryTake.delayBy(200.millis)
@@ -148,22 +150,25 @@ class StdioTransportSuite extends CatsEffectSuite:
       gate    <- Deferred[IO, Unit]
       counter <- Ref.of[IO, Int](0)
       maxSeen <- Ref.of[IO, Int](0)
-      tool = new Tool.Resolved[IO]:
-        val name         = "concurrent"
-        val description  = ""
-        val inputSchema  = Json.obj()
-        val outputSchema = None
-        def handle(arguments: Json): IO[CallToolResponse] =
-          counter.updateAndGet(_ + 1).flatMap(n => maxSeen.update(_ max n)) *>
-            gate.get *>
-            counter.update(_ - 1) *>
-            IO.pure(CallToolResponse(List(Content.Text("d")), None, false))
+      tool     = new Tool.Resolved[IO]:
+               val name                                          = "concurrent"
+               val description                                   = ""
+               val inputSchema                                   = Json.obj()
+               val outputSchema                                  = None
+               def handle(arguments: Json): IO[CallToolResponse] =
+                 counter.updateAndGet(_ + 1).flatMap(n => maxSeen.update(_.max(n))) *>
+                   gate.get *>
+                   counter.update(_ - 1) *>
+                   IO.pure(CallToolResponse(List(Content.Text("d")), None, false))
       _ <- buildSession(tools = List(tool), maxConcurrent = 2) { (r, _) =>
              for
                _ <- (1 to 4).toList.traverse_(i =>
                       r.inbound.offer(
-                        Message.request(RequestId.fromLong(i.toLong), "tools/call",
-                          Some(CallToolRequest("concurrent", Json.obj()).asJson))
+                        Message.request(
+                          RequestId.fromLong(i.toLong),
+                          "tools/call",
+                          Some(CallToolRequest("concurrent", Json.obj()).asJson)
+                        )
                       )
                     )
                _ <- IO.sleep(300.millis)
