@@ -1,12 +1,12 @@
 :root {
-  --primary-color: #007c99;
-  --primary-light: #eef5f6;
-  --primary-medium: #a7d4de;
-  --secondary-color: #931813;
-  --text-color: #5f5f5f;
-  --bg-color: #ffffff;
-  --gradient-top: #095269;
-  --gradient-bottom: #007c99;
+  --primary-color: #266BB0;
+  --primary-light: #F7FAFD;
+  --primary-medium: #71A8E0;
+  --secondary-color: #8706E5;
+  --text-color: #1A1A1A;
+  --bg-color: #FFFFFF;
+  --gradient-top: #AA3DFA;
+  --gradient-bottom: #3A87D4;
   --component-color: var(--primary-color);
   --component-area-bg: var(--primary-light);
   --component-hover: var(--secondary-color);
@@ -28,9 +28,9 @@
   --syntax-wheel3: #ffc66d;
   --syntax-wheel4: #7fb971;
   --syntax-wheel5: #4dbed4;
-  --body-font: "Lato", sans-serif;
-  --header-font: "Lato", sans-serif;
-  --code-font: "Fira Mono", monospace;
+  --body-font: "Inter", sans-serif;
+  --header-font: "Inter", sans-serif;
+  --code-font: "JetBrains Mono", monospace;
   --body-font-size: 15px;
   --code-font-size: 0.9em;
   --small-font-size: 12px;
@@ -56,14 +56,14 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --primary-color: #a7d4de;
-    --primary-light: #125d75;
-    --primary-medium: #a7d4de;
-    --secondary-color: #f1c47b;
-    --text-color: #eeeeee;
-    --bg-color: #064458;
-    --gradient-top: #064458;
-    --gradient-bottom: #197286;
+    --primary-color: #71A8E0;
+    --primary-light: #133658;
+    --primary-medium: #266BB0;
+    --secondary-color: #CB88FC;
+    --text-color: #FFFFFF;
+    --bg-color: #0A1C2E;
+    --gradient-top: #CB88FC;
+    --gradient-bottom: #71A8E0;
     --component-color: var(--primary-color);
     --component-area-bg: var(--primary-light);
     --component-hover: var(--secondary-color);
