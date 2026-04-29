@@ -1,0 +1,9 @@
+/* Top-nav home link: center the logo SVG with the "scala-mcp" text label.
+   Helium emits <a class="icon-link svg-link"><span><svg/></span>text</a>;
+   default inline alignment leaves the text on the SVG's baseline, which sits
+   well below the SVG's vertical centre. Flex aligns them properly. */
+.icon-link.svg-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4em;
+}

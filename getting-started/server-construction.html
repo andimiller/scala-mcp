@@ -28,6 +28,7 @@
   
   <link rel="stylesheet" type="text/css" href="../helium/site/icofont.min.css" />
     <link rel="stylesheet" type="text/css" href="../helium/site/laika-helium.css" />
+    <link rel="stylesheet" type="text/css" href="../css/scala-mcp.css" />
   <script src="../helium/site/laika-helium.js"></script>
   
   
@@ -171,16 +172,16 @@
   </span><span class="identifier">tool</span><span>.</span><span class="identifier">name</span><span>(</span><span class="string-literal">&quot;greet&quot;</span><span>).</span><span class="identifier">in</span><span>[</span><span class="type-name">Req</span><span>].</span><span class="identifier">out</span><span>[</span><span class="type-name">Resp</span><span>]
     .</span><span class="identifier">run</span><span>(</span><span class="identifier">req</span><span> =&gt; </span><span class="type-name">IO</span><span>.</span><span class="identifier">pure</span><span>(</span><span class="type-name">Resp</span><span>(</span><span class="string-literal">s&quot;Hello, </span><span class="substitution">${req.value}</span><span class="string-literal">!&quot;</span><span>)))
 
-</span><span class="keyword">val</span><span> </span><span class="identifier">staticRes</span><span> = </span><span class="type-name">McpResource</span><span>.</span><span class="identifier">static</span><span>[</span><span class="type-name">IO</span><span>](
-  </span><span class="identifier">resourceUri</span><span>  = </span><span class="string-literal">&quot;file:///config.json&quot;</span><span>,
-  </span><span class="identifier">resourceName</span><span> = </span><span class="string-literal">&quot;Config File&quot;</span><span>,
-  </span><span class="identifier">content</span><span>      = </span><span class="string-literal">&quot;&quot;&quot;{&quot;key&quot;: &quot;value&quot;}&quot;&quot;&quot;</span><span>
-)
+</span><span class="keyword">val</span><span> </span><span class="identifier">staticRes</span><span> =
+  </span><span class="identifier">resource</span><span>
+    .</span><span class="identifier">uri</span><span>(</span><span class="string-literal">&quot;file:///config.json&quot;</span><span>)
+    .</span><span class="identifier">name</span><span>(</span><span class="string-literal">&quot;Config File&quot;</span><span>)
+    .</span><span class="identifier">staticContent</span><span>[</span><span class="type-name">IO</span><span>](</span><span class="string-literal">&quot;&quot;&quot;{&quot;key&quot;: &quot;value&quot;}&quot;&quot;&quot;</span><span>)
 
-</span><span class="keyword">val</span><span> </span><span class="identifier">staticPrompt</span><span> = </span><span class="type-name">Prompt</span><span>.</span><span class="identifier">static</span><span>[</span><span class="type-name">IO</span><span>](
-  </span><span class="identifier">promptName</span><span> = </span><span class="string-literal">&quot;explain&quot;</span><span>,
-  </span><span class="identifier">messages</span><span>   = </span><span class="type-name">List</span><span>(</span><span class="type-name">PromptMessage</span><span>.</span><span class="identifier">user</span><span>(</span><span class="string-literal">&quot;Explain MCP.&quot;</span><span>))
-)</span></code></pre>
+</span><span class="keyword">val</span><span> </span><span class="identifier">staticPrompt</span><span> =
+  </span><span class="identifier">prompt</span><span>
+    .</span><span class="identifier">name</span><span>(</span><span class="string-literal">&quot;explain&quot;</span><span>)
+    .</span><span class="identifier">messages</span><span>[</span><span class="type-name">IO</span><span>](</span><span class="type-name">List</span><span>(</span><span class="type-name">PromptMessage</span><span>.</span><span class="identifier">user</span><span>(</span><span class="string-literal">&quot;Explain MCP.&quot;</span><span>)))</span></code></pre>
         
         <h2 id="stdio-server" class="section"><a class="anchor-link left" href="#stdio-server"><i class="icofont-laika link">&#xef71;</i></a>Stdio server</h2>
         <pre class="keep-together pdf epub"><code class="nohighlight"><span class="keyword">import</span><span> </span><span class="identifier">net</span><span>.</span><span class="identifier">andimiller</span><span>.</span><span class="identifier">mcp</span><span>.</span><span class="identifier">stdio</span><span>.</span><span class="type-name">StdioTransport</span><span>

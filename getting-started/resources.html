@@ -28,6 +28,7 @@
   
   <link rel="stylesheet" type="text/css" href="../helium/site/icofont.min.css" />
     <link rel="stylesheet" type="text/css" href="../helium/site/laika-helium.css" />
+    <link rel="stylesheet" type="text/css" href="../css/scala-mcp.css" />
   <script src="../helium/site/laika-helium.js"></script>
   
   
@@ -141,10 +142,9 @@
 
   <ul class="nav-list">
     <li class="level1 nav-node"><a href="#resource-creation">Resource creation</a></li>
-    <li class="level2 nav-leaf"><a href="#static-resource-factory-method">Static resource (factory method)</a></li>
-    <li class="level2 nav-leaf"><a href="#dynamic-resource-factory-method">Dynamic resource (factory method)</a></li>
-    <li class="level2 nav-leaf"><a href="#fluent-builder">Fluent builder</a></li>
-    <li class="level2 nav-leaf"><a href="#contextual-resource">Contextual resource</a></li>
+    <li class="level2 nav-leaf"><a href="#static-content">Static content</a></li>
+    <li class="level2 nav-leaf"><a href="#dynamic-content">Dynamic content</a></li>
+    <li class="level2 nav-leaf"><a href="#contextual">Contextual</a></li>
     <li class="level1 nav-leaf"><a href="#resource-template-creation">Resource template creation</a></li>
   </ul>
 
@@ -175,32 +175,27 @@
         
         <h2 id="resource-creation" class="section"><a class="anchor-link left" href="#resource-creation"><i class="icofont-laika link">&#xef71;</i></a>Resource creation</h2>
         
-        <h3 id="static-resource-factory-method" class="section"><a class="anchor-link left" href="#static-resource-factory-method"><i class="icofont-laika link">&#xef71;</i></a>Static resource (factory method)</h3>
-        <pre class="keep-together pdf epub"><code class="nohighlight"><span class="keyword">val</span><span> </span><span class="identifier">staticRes</span><span> = </span><span class="type-name">McpResource</span><span>.</span><span class="identifier">static</span><span>[</span><span class="type-name">IO</span><span>](
-  </span><span class="identifier">resourceUri</span><span>          = </span><span class="string-literal">&quot;file:///config.json&quot;</span><span>,
-  </span><span class="identifier">resourceName</span><span>         = </span><span class="string-literal">&quot;Config File&quot;</span><span>,
-  </span><span class="identifier">content</span><span>              = </span><span class="string-literal">&quot;&quot;&quot;{&quot;key&quot;: &quot;value&quot;}&quot;&quot;&quot;</span><span>,
-  </span><span class="identifier">resourceDescription</span><span>  = </span><span class="type-name">Some</span><span>(</span><span class="string-literal">&quot;Application config&quot;</span><span>),
-  </span><span class="identifier">resourceMimeType</span><span>     = </span><span class="type-name">Some</span><span>(</span><span class="string-literal">&quot;application/json&quot;</span><span>)
-)</span></code></pre>
+        <h3 id="static-content" class="section"><a class="anchor-link left" href="#static-content"><i class="icofont-laika link">&#xef71;</i></a>Static content</h3>
+        <p>Use <code>.staticContent</code> when the body is a fixed string at server-construction
+        time:</p>
+        <pre class="keep-together pdf epub"><code class="nohighlight"><span class="keyword">val</span><span> </span><span class="identifier">staticRes</span><span> =
+  </span><span class="identifier">resource</span><span>
+    .</span><span class="identifier">uri</span><span>(</span><span class="string-literal">&quot;file:///config.json&quot;</span><span>)
+    .</span><span class="identifier">name</span><span>(</span><span class="string-literal">&quot;Config File&quot;</span><span>)
+    .</span><span class="identifier">description</span><span>(</span><span class="string-literal">&quot;Application config&quot;</span><span>)
+    .</span><span class="identifier">mimeType</span><span>(</span><span class="string-literal">&quot;application/json&quot;</span><span>)
+    .</span><span class="identifier">staticContent</span><span>[</span><span class="type-name">IO</span><span>](</span><span class="string-literal">&quot;&quot;&quot;{&quot;key&quot;: &quot;value&quot;}&quot;&quot;&quot;</span><span>)</span></code></pre>
         
-        <h3 id="dynamic-resource-factory-method" class="section"><a class="anchor-link left" href="#dynamic-resource-factory-method"><i class="icofont-laika link">&#xef71;</i></a>Dynamic resource (factory method)</h3>
-        <pre class="keep-together pdf epub"><code class="nohighlight"><span class="keyword">val</span><span> </span><span class="identifier">dynamicRes</span><span> = </span><span class="type-name">McpResource</span><span>.</span><span class="identifier">dynamic</span><span>[</span><span class="type-name">IO</span><span>](
-  </span><span class="identifier">resourceUri</span><span>          = </span><span class="string-literal">&quot;app://status&quot;</span><span>,
-  </span><span class="identifier">resourceName</span><span>         = </span><span class="string-literal">&quot;Server Status&quot;</span><span>,
-  </span><span class="identifier">reader</span><span>               = () =&gt; </span><span class="type-name">IO</span><span>.</span><span class="identifier">pure</span><span>(</span><span class="string-literal">s&quot;Status at </span><span class="substitution">${Instant.now}</span><span class="string-literal">&quot;</span><span>),
-  </span><span class="identifier">resourceMimeType</span><span>     = </span><span class="type-name">Some</span><span>(</span><span class="string-literal">&quot;text/plain&quot;</span><span>)
-)</span></code></pre>
-        
-        <h3 id="fluent-builder" class="section"><a class="anchor-link left" href="#fluent-builder"><i class="icofont-laika link">&#xef71;</i></a>Fluent builder</h3>
-        <pre class="keep-together pdf epub"><code class="nohighlight"><span class="keyword">val</span><span> </span><span class="identifier">builderRes</span><span> =
+        <h3 id="dynamic-content" class="section"><a class="anchor-link left" href="#dynamic-content"><i class="icofont-laika link">&#xef71;</i></a>Dynamic content</h3>
+        <p>Use <code>.read</code> when the body is computed on each read:</p>
+        <pre class="keep-together pdf epub"><code class="nohighlight"><span class="keyword">val</span><span> </span><span class="identifier">dynamicRes</span><span> =
   </span><span class="identifier">resource</span><span>
     .</span><span class="identifier">uri</span><span>(</span><span class="string-literal">&quot;app://status&quot;</span><span>)
     .</span><span class="identifier">name</span><span>(</span><span class="string-literal">&quot;Server Status&quot;</span><span>)
     .</span><span class="identifier">mimeType</span><span>(</span><span class="string-literal">&quot;text/plain&quot;</span><span>)
     .</span><span class="identifier">read</span><span>(() =&gt; </span><span class="type-name">IO</span><span>.</span><span class="identifier">pure</span><span>(</span><span class="string-literal">s&quot;Status at </span><span class="substitution">${Instant.now}</span><span class="string-literal">&quot;</span><span>))</span></code></pre>
         
-        <h3 id="contextual-resource" class="section"><a class="anchor-link left" href="#contextual-resource"><i class="icofont-laika link">&#xef71;</i></a>Contextual resource</h3>
+        <h3 id="contextual" class="section"><a class="anchor-link left" href="#contextual"><i class="icofont-laika link">&#xef71;</i></a>Contextual</h3>
         <p>Resolved per-session with a context value:</p>
         <pre class="keep-together pdf epub"><code class="nohighlight"><span class="keyword">trait</span><span> </span><span class="type-name">MyStatusCtx</span><span>:
   </span><span class="keyword">def</span><span> </span><span class="declaration-name">getStatus</span><span>: </span><span class="type-name">IO</span><span>[</span><span class="type-name">String</span><span>]
@@ -210,10 +205,13 @@
     .</span><span class="identifier">uri</span><span>(</span><span class="string-literal">&quot;app://status&quot;</span><span>)
     .</span><span class="identifier">name</span><span>(</span><span class="string-literal">&quot;Server Status&quot;</span><span>)
     .</span><span class="identifier">read</span><span>(</span><span class="identifier">ctx</span><span> =&gt; </span><span class="identifier">ctx</span><span>.</span><span class="identifier">getStatus</span><span>)</span></code></pre>
+        <p>The factory methods <code>McpResource.static[IO](...)</code> and <code>McpResource.dynamic[IO](...)</code>
+        are equivalent to the fluent forms above and remain available.</p>
         
         <h2 id="resource-template-creation" class="section"><a class="anchor-link left" href="#resource-template-creation"><i class="icofont-laika link">&#xef71;</i></a>Resource template creation</h2>
-        <p>The recommended style uses the <code>path</code> DSL — segments combine with <code>*&gt;</code> / <code>&lt;*</code>,
-        and named segments are extracted as typed parameters:</p>
+        <p>Resource templates use the same fluent entry point (<code>resourceTemplate</code>) but
+        with a <code>.path</code> DSL that builds typed parameter extraction. Segments combine
+        with <code>*&gt;</code> / <code>&lt;*</code> and named segments are extracted:</p>
         <pre class="keep-together pdf epub"><code class="nohighlight"><span class="keyword">val</span><span> </span><span class="identifier">itemTemplate</span><span> =
   </span><span class="identifier">resourceTemplate</span><span>
     .</span><span class="identifier">path</span><span>(</span><span class="identifier">path</span><span>.</span><span class="identifier">static</span><span>(</span><span class="string-literal">&quot;app://items/&quot;</span><span>) *&gt; </span><span class="identifier">path</span><span>.</span><span class="identifier">named</span><span>(</span><span class="string-literal">&quot;id&quot;</span><span>))
@@ -234,20 +232,6 @@
     )
     .</span><span class="identifier">name</span><span>(</span><span class="string-literal">&quot;Note by User &amp; ID&quot;</span><span>)
     .</span><span class="identifier">read</span><span> { </span><span class="keyword">case</span><span> (</span><span class="identifier">user</span><span>, </span><span class="identifier">note</span><span>) =&gt; </span><span class="identifier">readNote</span><span>(</span><span class="identifier">user</span><span>, </span><span class="identifier">note</span><span>) }</span></code></pre>
-        <p>The older string-based API still works:</p>
-        <pre><code class="nohighlight"><span class="keyword">val</span><span> </span><span class="identifier">legacyTemplate</span><span> =
-  </span><span class="identifier">resourceTemplate</span><span>
-    .</span><span class="identifier">uriTemplate</span><span>(</span><span class="string-literal">&quot;app://items/{id}&quot;</span><span>)
-    .</span><span class="identifier">name</span><span>(</span><span class="string-literal">&quot;Item by ID&quot;</span><span>)
-    .</span><span class="identifier">mimeType</span><span>(</span><span class="string-literal">&quot;application/json&quot;</span><span>)
-    .</span><span class="identifier">read</span><span> { </span><span class="identifier">uri</span><span> =&gt;
-      </span><span class="type-name">Option</span><span>.</span><span class="identifier">when</span><span>(</span><span class="identifier">uri</span><span>.</span><span class="identifier">startsWith</span><span>(</span><span class="string-literal">&quot;app://items/&quot;</span><span>)) {
-        </span><span class="keyword">val</span><span> </span><span class="identifier">id</span><span> = </span><span class="identifier">uri</span><span>.</span><span class="identifier">stripPrefix</span><span>(</span><span class="string-literal">&quot;app://items/&quot;</span><span>)
-        </span><span class="identifier">lookupItem</span><span>(</span><span class="identifier">id</span><span>).</span><span class="identifier">map</span><span>(</span><span class="identifier">item</span><span> =&gt;
-          </span><span class="type-name">ResourceContent</span><span>.</span><span class="identifier">text</span><span>(</span><span class="identifier">uri</span><span>, </span><span class="identifier">item</span><span>.</span><span class="identifier">toJson</span><span>, </span><span class="type-name">Some</span><span>(</span><span class="string-literal">&quot;application/json&quot;</span><span>))
-        )
-      }
-    }</span></code></pre>
 
         
 <hr class="footer-rule"/>
