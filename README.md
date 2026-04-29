@@ -46,10 +46,12 @@ Targeting MCP spec **2025-11-25**. Client-support column reflects the state of m
 | **core** | JVM, JS, Native | Protocol types, server abstraction, schema derivation, JSON codecs |
 | **stdio** | JVM, JS, Native | stdin/stdout transport for subprocess-based servers |
 | **http4s** | JVM, JS | Streamable HTTP + SSE transport via http4s Ember |
+| **openapi** | JVM, JS, Native | OpenAPI 3.x schema model + tool-builder helpers |
+| **redis** | JVM | Redis-backed `SessionStore` / `SessionRefs` / `StateRef` / notification sink |
 | **tapir** | JVM | Bridge that turns any `sttp.tapir.Schema[A]` into a `JsonSchema[A]` |
-| **explorer** | JS | Browser-based UI for exploring and testing MCP servers |
-| **openapi-mcp-proxy** | JVM | Tool to expose OpenAPI APIs as MCP servers |
 | **golden-munit** | JVM, JS, Native | Golden testing framework for MCP server specs (munit) |
+| **explorer** | JS | Browser-based UI for exploring and testing MCP servers |
+| **openapi-mcp-proxy** | JVM | Standalone CLI that exposes any OpenAPI API as an MCP server |
 
 ## Quick Start
 
@@ -58,15 +60,18 @@ Targeting MCP spec **2025-11-25**. Client-support column reflects the state of m
 ```scala
 // For stdio-based servers
 libraryDependencies ++= Seq(
-  "net.andimiller.mcp" %%% "mcp-core" % "0.1.0-SNAPSHOT",
-  "net.andimiller.mcp" %%% "mcp-stdio" % "0.1.0-SNAPSHOT"
+  "net.andimiller.mcp" %%% "mcp-core"  % "0.9.0",
+  "net.andimiller.mcp" %%% "mcp-stdio" % "0.9.0"
 )
 
 // For HTTP-based servers
 libraryDependencies ++= Seq(
-  "net.andimiller.mcp" %%% "mcp-core" % "0.1.0-SNAPSHOT",
-  "net.andimiller.mcp" %%% "mcp-http4s" % "0.1.0-SNAPSHOT"
+  "net.andimiller.mcp" %%% "mcp-core"   % "0.9.0",
+  "net.andimiller.mcp" %%% "mcp-http4s" % "0.9.0"
 )
+
+// Optional: Redis-backed session/state for stateful HTTP servers
+libraryDependencies += "net.andimiller.mcp" %% "mcp-redis" % "0.9.0"
 ```
 
 ### Creating a Simple Tool
@@ -75,40 +80,53 @@ libraryDependencies ++= Seq(
 import cats.effect.IO
 import io.circe.{Decoder, Encoder}
 import net.andimiller.mcp.core.schema.JsonSchema
-import net.andimiller.mcp.core.server.Tool
+import net.andimiller.mcp.core.server.*
 
 // Define your request/response types with automatic derivation
 case class GreetRequest(name: String) derives JsonSchema, Decoder
 case class GreetResponse(message: String) derives JsonSchema, Encoder.AsObject
 
-val greetTool = Tool.builder[IO]
-  .name("greet")
-  .description("Greet someone by name")
-  .in[GreetRequest]
-  .run(req => IO.pure(GreetResponse(s"Hello, ${req.name}!")))
+val greetTool =
+  tool.name("greet")
+    .description("Greet someone by name")
+    .in[GreetRequest]
+    .out[GreetResponse]
+    .run(req => IO.pure(GreetResponse(s"Hello, ${req.name}!")))
 ```
+
+The package object `net.andimiller.mcp.core.server` exposes `tool`, `resource`,
+`resourceTemplate`, `prompt`, and their `contextual*` variants as fluent
+builder entry points. They are equivalent to `Tool.builder[IO]`,
+`McpResource.builder`, etc., but read more naturally inside servers.
 
 ## Examples
 
-The project includes three example MCP servers, each demonstrating a different transport and platform:
+The project ships six example MCP servers, each demonstrating a different
+transport, platform, or server feature:
 
-| Example | Transport | Platform | Port |
-|---------|-----------|----------|------|
-| **Dice** | Stdio | JVM / JS / Native | N/A |
-| **Pomodoro** | HTTP + SSE | JVM | 25000 |
-| **DNS** | HTTP + SSE | Scala.js (Node.js) | 8053 |
+| Example | Transport | Platform | Port | Highlights |
+|---------|-----------|----------|------|------------|
+| **Dice** | Stdio | JVM / JS / Native | — | Tools, resources, prompts; form elicitation |
+| **Pomodoro** | HTTP + SSE | JVM | 25000 | Per-session state, resource subscriptions, cancellation |
+| **DNS** | HTTP + SSE | Scala.js (Node.js) | 8053 | Wrapping Node callback APIs into `IO` |
+| **Chat** | HTTP + SSE | JVM | 27000 | Redis-backed session state and notifications |
+| **Shared Notebook** | HTTP + SSE | JVM | 26000 | HTTP Basic auth; per-user contextual tools |
+| **RPG Character Creator** | HTTP + SSE | JVM | 1974 | Multi-step elicitation wizard |
 
 ---
 
 ### Dice MCP Server (`modules/example-dice-mcp`)
 
-A cross-platform stdio MCP server demonstrating tools, resources, and prompts.
+A cross-platform stdio MCP server demonstrating tools, resources, prompts,
+and form elicitation.
 
-- **Tool**: `roll_dice` — roll dice using standard notation (e.g., `2d20 + 5`)
+- **Tools**: `roll_dice` — roll dice using standard notation (e.g., `2d20 + 5`); `roll_interactive` — build a dice expression by repeatedly asking the client for `(face, count)` choices via elicitation
 - **Resources**: `dice://rules/standard` (static reference), `dice://history` (recent rolls)
 - **Prompt**: `explain_notation` — explains dice notation to the user
 
-Uses `IOApp.Simple` with `McpDsl`, `ServerBuilder`, and `StdioTransport`.
+Uses `IOApp.Simple`, `ServerBuilder`, and `StdioTransport.run` with a
+`SessionContext`-aware factory so each session gets its own `Random`, history
+ref, and `ElicitationClient`.
 
 **Build and run (JVM):**
 
@@ -123,6 +141,9 @@ sbt exampleDiceJVM/run
 sbt exampleDiceNative/nativeLink
 ./modules/example-dice-mcp/native/target/scala-3.3.4/example-dice-mcp-out
 ```
+
+> **Note:** the native binary must be re-linked any time the server changes —
+> `sbt exampleDiceJVM/run` is the fastest feedback loop during development.
 
 **Configure in Claude Code** (`.mcp.json`):
 
@@ -153,19 +174,29 @@ Or with a pre-built Native binary:
 
 ### Pomodoro MCP Server (`modules/example-pomodoro-mcp`)
 
-A JVM HTTP server demonstrating dynamic resources with subscription notifications, server-initiated logging, and argument-based prompts. Uses `McpHttp.streaming` with per-session state — each client session gets its own `PomodoroTimer` wired to the notification sink.
+A JVM HTTP server demonstrating dynamic resources with subscription
+notifications, server-initiated logging, argument-based prompts, and
+**MCP cancellation**. Uses `McpHttp.streaming` with per-session state —
+each client session gets its own `PomodoroTimer` wired to the notification sink.
 
-- **Tools**: `start_timer`, `pause_timer`, `resume_timer`, `stop_timer`, `get_status`
-- **Resources**: `pomodoro://status` (subscribable), `pomodoro://history`, `pomodoro://timers/{name}` (template)
-- **Prompts**: `plan_session` (with arguments), `review_day`
+- **Tools**: `start_timer`, `pause_timer`, `resume_timer`, `stop_timer`, `get_status`, `sleep_blocking` (cancellation demo — its `onCancel` hook reports how long it actually slept)
+- **Resources**: `pomodoro://status` (subscribable), `pomodoro://history`, `pomodoro://timers/{name}` (template via `path.static(...) *> path.named(...)`)
+- **Prompts**: `plan_session` (with `task` / `session_count` arguments), `review_day`
 - **Explorer**: Bundled at `/explorer` with redirect from `/`
 
-**Build and run:**
+**Build and run (in-memory state):**
 
 ```bash
 sbt examplePomodoro/run
 # Server starts on http://0.0.0.0:25000
 # Explorer UI at http://localhost:25000 (redirects to /explorer/index.html)
+```
+
+**Build and run (Redis-backed state, port 25001):**
+
+```bash
+# Requires a Redis server on redis://localhost:6379
+sbt 'examplePomodoro/runMain net.andimiller.mcp.examples.pomodoro.PomodoroMcpServerRedis'
 ```
 
 **Configure in Claude Code** (`.mcp.json`):
@@ -213,6 +244,70 @@ node modules/example-dns-mcp/target/scala-3.3.4/example-dns-mcp-fastopt/main.js
     }
   }
 }
+```
+
+---
+
+### Chat MCP Server (`modules/example-chat-mcp`)
+
+A JVM HTTP server demonstrating **Redis-backed session state**. Each connected
+session has its own username and current room, and the chat history itself is
+shared across sessions through Redis. Resource subscription updates are pushed
+when new messages arrive.
+
+- **Tools**: `set_username`, `create_room`, `join_room`, `send_message`, `read_messages`
+- **Resources**: `chat://rooms` (list of rooms), `chat://rooms/{room}/messages` (resource template, subscribable)
+- **Prompt**: `summarize_chat` — summarises recent messages in the current room
+- Built with `McpRedis.configure(...)` wrapping `McpHttp.streaming` so the per-session refs live in Redis instead of in-memory
+
+**Build and run:**
+
+```bash
+# Requires a Redis server on redis://localhost:6379
+sbt exampleChat/run
+# Server starts on http://0.0.0.0:27000
+```
+
+---
+
+### Shared Notebook MCP Server (`modules/example-shared-notebook-mcp`)
+
+A JVM HTTP server demonstrating **HTTP authentication with per-user contextual
+tools**. Authenticated users (alice/bob/charlie via Basic Auth) can write,
+read, and share notes; the server uses `.authenticated[UserContext](...)` to
+extract the current user and pass it as the context to every tool, resource
+template, and prompt.
+
+- **Tools**: `write_note`, `read_note`, `share_note`, `unshare_note`, `list_my_notes`, `list_shared_notes`
+- **Resource templates**: `notebook://{username}` and `notebook://{username}/{note_id}` — built with the multi-segment `path` DSL
+- **Prompts**: `summarize_notes`, `collaborate_with` (with arguments)
+
+**Build and run:**
+
+```bash
+sbt exampleNotebook/run
+# Server starts on http://0.0.0.0:26000
+# Use HTTP Basic auth with alice/password123, bob/password456, or charlie/password789
+```
+
+---
+
+### RPG Character Creator (`modules/example-rpg-character-creator`)
+
+A JVM HTTP server demonstrating **multi-step elicitation over HTTP**. The
+`create_character` tool walks the client through race → class → starting weapon
+→ name using `requestForm` calls, where the weapon enum is generated
+dynamically from the chosen class.
+
+- **Tools**: `create_character` (interactive wizard), `list_characters`
+- **Per-session state**: each session keeps its own list of created characters
+- A good example of folding `ElicitResult.{Accept, Decline, Cancel}` and `ElicitationError` into a clean `EitherT` flow
+
+**Build and run:**
+
+```bash
+sbt exampleRpgCharacterCreator/run
+# Server starts on http://0.0.0.0:1974
 ```
 
 ---
@@ -289,7 +384,7 @@ The `mcp-golden-munit` module provides snapshot testing for MCP server specs. It
 ### Adding the Dependency
 
 ```scala
-libraryDependencies += "net.andimiller.mcp" %%% "mcp-golden-munit" % "0.1.0-SNAPSHOT" % Test
+libraryDependencies += "net.andimiller.mcp" %%% "mcp-golden-munit" % "0.9.0" % Test
 ```
 
 > **Scala.js note:** Your project must configure `scalaJSLinkerConfig ~= (_.withModuleKind(ModuleKind.CommonJSModule))` for the test to work on JS.
@@ -324,48 +419,65 @@ class MyServerGoldenSuite extends McpGoldenSuite:
 ### Tool Creation
 
 ```scala
-// Fluent builder (returns Tool[F, Unit, A, R], call .resolve to get Tool.Resolved[F])
-val myTool = Tool.builder[IO]
-  .name("my_tool")
-  .description("Tool description")
-  .in[MyRequest]
-  .run(req => IO.pure(MyResponse(...)))
+import net.andimiller.mcp.core.server.*
 
-// Contextual tool (needs a context value to resolve)
-val ctxTool = Tool.contextual[IO, MyCtx]
-  .name("my_tool")
-  .description("Tool description")
-  .in[MyRequest]
-  .run((ctx, req) => ctx.doSomething(req))
+// Fluent builder (returns Tool[F, Unit, A, R]; .resolve gives Tool.Resolved[F])
+val myTool =
+  tool.name("my_tool")
+    .description("Tool description")
+    .in[MyRequest]
+    .out[MyResponse]
+    .run(req => IO.pure(MyResponse(...)))
+
+// `.runResult` lets you return ToolResult[Out] (Success / Text / Error) directly
+val mayFail =
+  tool.name("risky")
+    .in[MyRequest]
+    .out[MyResponse]
+    .runResult(req => IO.pure(ToolResult.Error("nope")))
+
+// Contextual tool — receives a per-session context value when called
+val ctxTool =
+  contextualTool[MyCtx]
+    .name("my_tool")
+    .description("Tool description")
+    .in[MyRequest]
+    .out[MyResponse]
+    .run((ctx, req) => ctx.doSomething(req))
 ```
+
+`Tool.builder[IO]` and `Tool.contextual[MyCtx]` are equivalent to the helpers
+above and remain available.
 
 ### Resource Creation
 
 ```scala
 // Static resource (factory method)
 McpResource.static[IO](
-  resourceUri = "file:///config.json",
-  resourceName = "Config File",
-  content = """{"key": "value"}""",
-  resourceMimeType = Some("application/json")
+  resourceUri          = "file:///config.json",
+  resourceName         = "Config File",
+  content              = """{"key": "value"}""",
+  resourceDescription  = Some("Application config"),
+  resourceMimeType     = Some("application/json")
 )
 
 // Dynamic resource (factory method)
 McpResource.dynamic[IO](
-  resourceUri = "app://status",
-  resourceName = "Server Status",
-  reader = () => IO.pure(s"Status at ${Instant.now}")
+  resourceUri          = "app://status",
+  resourceName         = "Server Status",
+  reader               = () => IO.pure(s"Status at ${Instant.now}"),
+  resourceMimeType     = Some("text/plain")
 )
 
 // Fluent builder
-McpResource.builder[IO]
+resource
   .uri("app://status")
   .name("Server Status")
   .mimeType("text/plain")
   .read(() => IO.pure(s"Status at ${Instant.now}"))
 
 // Contextual resource (resolved per-session with a context value)
-McpResource.contextual[IO, MyCtx]
+contextualResource[MyCtx]
   .uri("app://status")
   .name("Server Status")
   .read(ctx => ctx.getStatus)
@@ -373,8 +485,37 @@ McpResource.contextual[IO, MyCtx]
 
 ### Resource Template Creation
 
+The recommended style uses the `path` DSL — segments combine with `*>` / `<*`
+and named segments are extracted as typed parameters:
+
 ```scala
-ResourceTemplate.builder[IO]
+import net.andimiller.mcp.core.server.*
+
+resourceTemplate
+  .path(path.static("app://items/") *> path.named("id"))
+  .name("Item by ID")
+  .description("Look up a single item by its ID")
+  .mimeType("application/json")
+  .read { id =>
+    lookupItem(id).map(item =>
+      ResourceContent.text(s"app://items/$id", item.toJson, Some("application/json"))
+    )
+  }
+
+// Multi-parameter templates: combine named segments with `.tupled`
+resourceTemplate
+  .path(
+    path.static("app://users/") *>
+      (path.named("user"), path.static("/notes/") *> path.named("note")).tupled
+  )
+  .name("Note by User & ID")
+  .read { case (user, note) => readNote(user, note) }
+```
+
+The older string-based API still works:
+
+```scala
+resourceTemplate
   .uriTemplate("app://items/{id}")
   .name("Item by ID")
   .mimeType("application/json")
@@ -389,11 +530,21 @@ ResourceTemplate.builder[IO]
 ### Prompt Creation
 
 ```scala
-// Factory method
+// Static prompt (no arguments, fixed messages)
+Prompt.static[IO](
+  promptName        = "explain_protocol",
+  promptDescription = Some("Explain the MCP protocol"),
+  messages          = List(
+    PromptMessage.user("Please explain how MCP works."),
+    PromptMessage.assistant("MCP is a JSON-RPC 2.0 protocol …")
+  )
+)
+
+// Dynamic prompt (factory method)
 Prompt.dynamic[IO](
-  promptName = "code_review",
+  promptName        = "code_review",
   promptDescription = Some("Code review prompt"),
-  promptArguments = List(
+  promptArguments   = List(
     PromptArgument("code", Some("Code to review"), required = true)
   ),
   generator = { args =>
@@ -403,7 +554,7 @@ Prompt.dynamic[IO](
 )
 
 // Fluent builder
-Prompt.builder[IO]
+prompt
   .name("code_review")
   .description("Code review prompt")
   .argument("code", Some("Code to review"), required = true)
@@ -411,6 +562,11 @@ Prompt.builder[IO]
     val code = args.get("code").flatMap(_.asString).getOrElse("")
     IO.pure(List(PromptMessage.user(s"Please review this code: $code")))
   }
+
+// Contextual prompt (per-session context)
+contextualPrompt[MyCtx]
+  .name("review_day")
+  .generate((ctx, _) => ctx.history.map(h => List(PromptMessage.user(h))))
 ```
 
 ### Server Construction
@@ -418,39 +574,77 @@ Prompt.builder[IO]
 #### Stdio Server
 
 ```scala
-object MyServer extends IOApp.Simple, McpDsl[IO]:
-  def run: IO[Unit] =
+import cats.effect.{IO, IOApp}
+import net.andimiller.mcp.core.server.*
+import net.andimiller.mcp.stdio.StdioTransport
+
+object MyServer extends IOApp.Simple:
+  def server: IO[Server[IO]] =
     ServerBuilder[IO]("my-server", "1.0.0")
-      .withTool(tool.name("greet").in[GreetRequest].run(req => IO.pure(GreetResponse(...))))
+      .withTool(
+        tool.name("greet").in[GreetRequest].out[GreetResponse]
+          .run(req => IO.pure(GreetResponse(s"Hello, ${req.name}!")))
+      )
       .withResource(McpResource.static[IO](...))
       .withPrompt(Prompt.static[IO](...))
       .build
-      .flatMap(StdioTransport.run[IO])
+
+  def run: IO[Unit] = server.flatMap(StdioTransport.run[IO])
 ```
+
+`StdioTransport.run` also has a factory overload — `run(ctx => F[Server[F]])` —
+that hands you a `SessionContext` so you can wire per-session refs, an
+`ElicitationClient`, or a notification sink in.
 
 #### HTTP Server (basic)
 
 ```scala
+import com.comcast.ip4s.*
+
 McpHttp.basic[IO]
   .name("my-server").version("1.0.0")
+  .port(port"8080")
   .withTool(...)
   .withResource(...)
+  .withPrompt(...)
   .withExplorer(redirectToRoot = true)
-  .serve.useForever
+  .serve     // : Resource[IO, http4s.server.Server]
+  .useForever
 ```
 
 #### HTTP Server (streaming with per-session state)
 
 ```scala
+import com.comcast.ip4s.*
+
 McpHttp.streaming[IO]
   .name("my-server").version("1.0.0")
-  .stateful[MyTimer](sink => MyTimer.create(sink))
-  .withContextualTool(contextualTool[MyTimer].name("start").in[Req].run((timer, req) => ...))
-  .withContextualResource(contextualResource[MyTimer].uri("app://status").read(timer => timer.status))
-  .withContextualPrompt(contextualPrompt[MyTimer].name("review").generate((timer, args) => ...))
+  .port(port"25000")
+  .stateful[MyTimer](ctx => MyTimer.create(ctx.sink))
+  .withContextualTool(
+    contextualTool[MyTimer].name("start").in[Req].out[Resp]
+      .run((timer, req) => timer.start(req).map(Resp(_)))
+  )
+  .withContextualResource(
+    contextualResource[MyTimer].uri("app://status").read(_.status)
+  )
+  .withContextualPrompt(
+    contextualPrompt[MyTimer].name("review").generate((timer, _) => timer.summary)
+  )
   .withExplorer(redirectToRoot = true)
   .enableResourceSubscriptions
+  .enableLogging
   .serve.useForever
+```
+
+`.stateful[S](ctx => F[S])` chains, so multiple `stateful` / `authenticated`
+calls compose into a tuple-shaped context. For example:
+
+```scala
+McpHttp.streaming[IO]
+  .authenticated[User](authFn, onUnauthorized) // Ctx becomes User
+  .stateful[MyState](ctx => MyState.create(ctx.refs))
+  // contextual handlers now receive an (Append[MyState, User]) value
 ```
 
 ## JSON Schema Derivation

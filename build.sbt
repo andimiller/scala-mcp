@@ -5,7 +5,7 @@ ThisBuild / scalaVersion := "3.3.4"
 
 lazy val commonSettings = Seq(
   organization := "net.andimiller.mcp",
-  version      := "0.8.0"
+  version      := "0.9.0"
 )
 
 // scoverage instrumentation produces JVM-only bytecode, so coverage must be disabled on every
