@@ -142,7 +142,10 @@
 
   <ul class="nav-list">
     <li class="level1 nav-leaf"><a href="#adding-the-dependency">Adding the dependency</a></li>
-    <li class="level1 nav-leaf"><a href="#creating-a-simple-tool">Creating a simple tool</a></li>
+    <li class="level1 nav-leaf"><a href="#defining-a-tool">Defining a tool</a></li>
+    <li class="level1 nav-leaf"><a href="#stdio-server">Stdio server</a></li>
+    <li class="level1 nav-leaf"><a href="#http-server">HTTP server</a></li>
+    <li class="level1 nav-leaf"><a href="#where-to-next">Where to next</a></li>
   </ul>
 
   <p class="footer"></p>
@@ -152,6 +155,9 @@
       <main class="content">
 
         <h1 id="quick-start" class="title">Quick start</h1>
+        <p>This page walks you from an empty sbt project to a runnable MCP server. The
+        same tool is wired to two transports below — pick stdio for subprocess-based
+        clients (Claude Desktop, Claude Code) or HTTP for a networked server.</p>
         
         <h2 id="adding-the-dependency" class="section"><a class="anchor-link left" href="#adding-the-dependency"><i class="icofont-laika link">&#xef71;</i></a>Adding the dependency</h2>
         <pre><code class="nohighlight"><span class="comment">// For stdio-based servers
@@ -169,13 +175,15 @@
 </span><span class="comment">// Optional: Redis-backed session/state for stateful HTTP servers
 </span><span class="identifier">libraryDependencies</span><span> += </span><span class="string-literal">&quot;net.andimiller.mcp&quot;</span><span> %% </span><span class="string-literal">&quot;mcp-redis&quot;</span><span> % </span><span class="string-literal">&quot;0.9.0&quot;</span></code></pre>
         
-        <h2 id="creating-a-simple-tool" class="section"><a class="anchor-link left" href="#creating-a-simple-tool"><i class="icofont-laika link">&#xef71;</i></a>Creating a simple tool</h2>
+        <h2 id="defining-a-tool" class="section"><a class="anchor-link left" href="#defining-a-tool"><i class="icofont-laika link">&#xef71;</i></a>Defining a tool</h2>
+        <p>A tool needs typed request/response case classes — <code>derives JsonSchema</code> plus a
+        circe codec for each. The fluent <code>tool</code> builder gives the schemas + handler
+        to the server:</p>
         <pre><code class="nohighlight"><span class="keyword">import</span><span> </span><span class="identifier">cats</span><span>.</span><span class="identifier">effect</span><span>.</span><span class="type-name">IO</span><span>
 </span><span class="keyword">import</span><span> </span><span class="identifier">io</span><span>.</span><span class="identifier">circe</span><span>.{</span><span class="type-name">Decoder</span><span>, </span><span class="type-name">Encoder</span><span>}
 </span><span class="keyword">import</span><span> </span><span class="identifier">net</span><span>.</span><span class="identifier">andimiller</span><span>.</span><span class="identifier">mcp</span><span>.</span><span class="identifier">core</span><span>.</span><span class="identifier">schema</span><span>.</span><span class="type-name">JsonSchema</span><span>
 </span><span class="keyword">import</span><span> </span><span class="identifier">net</span><span>.</span><span class="identifier">andimiller</span><span>.</span><span class="identifier">mcp</span><span>.</span><span class="identifier">core</span><span>.</span><span class="identifier">server</span><span>.*
 
-</span><span class="comment">// Define your request/response types with automatic derivation
 </span><span class="keyword">case</span><span> </span><span class="keyword">class</span><span> </span><span class="type-name">GreetRequest</span><span>(</span><span class="identifier">name</span><span>: </span><span class="type-name">String</span><span>) </span><span class="keyword">derives</span><span> </span><span class="type-name">JsonSchema</span><span>, </span><span class="type-name">Decoder</span><span>
 </span><span class="keyword">case</span><span> </span><span class="keyword">class</span><span> </span><span class="type-name">GreetResponse</span><span>(</span><span class="identifier">message</span><span>: </span><span class="type-name">String</span><span>) </span><span class="keyword">derives</span><span> </span><span class="type-name">JsonSchema</span><span>, </span><span class="type-name">Encoder</span><span>.</span><span class="type-name">AsObject</span><span>
 
@@ -185,14 +193,51 @@
     .</span><span class="identifier">in</span><span>[</span><span class="type-name">GreetRequest</span><span>]
     .</span><span class="identifier">out</span><span>[</span><span class="type-name">GreetResponse</span><span>]
     .</span><span class="identifier">run</span><span>(</span><span class="identifier">req</span><span> =&gt; </span><span class="type-name">IO</span><span>.</span><span class="identifier">pure</span><span>(</span><span class="type-name">GreetResponse</span><span>(</span><span class="string-literal">s&quot;Hello, </span><span class="substitution">${req.name}</span><span class="string-literal">!&quot;</span><span>)))</span></code></pre>
-        <p>The package object <code>net.andimiller.mcp.core.server</code> exposes <code>tool</code>, <code>resource</code>,
-        <code>resourceTemplate</code>, <code>prompt</code>, and their <code>contextual*</code> variants as fluent
-        builder entry points. They are equivalent to <code>Tool.builder[IO]</code>,
-        <code>McpResource.builder</code>, etc., but read more naturally inside servers.</p>
-        <p>See <a href="tools.html">Tools</a>, <a href="resources.html">Resources</a>, and <a href="prompts.html">Prompts</a>
-        for the full builder reference, <a href="server-construction.html">Server construction</a>
-        to wire everything together, and <a href="../examples/">Examples</a> for
-        runnable end-to-end servers.</p>
+        
+        <h2 id="stdio-server" class="section"><a class="anchor-link left" href="#stdio-server"><i class="icofont-laika link">&#xef71;</i></a>Stdio server</h2>
+        <p>A <code>Server[IO]</code> built with <code>ServerBuilder</code> becomes a stdio server by handing
+        it to <code>StdioTransport.run</code>. This is what Claude Desktop / Claude Code expect
+        for local MCP servers:</p>
+        <pre class="keep-together pdf epub"><code class="nohighlight"><span class="keyword">import</span><span> </span><span class="identifier">cats</span><span>.</span><span class="identifier">effect</span><span>.{</span><span class="type-name">IO</span><span>, </span><span class="type-name">IOApp</span><span>}
+</span><span class="keyword">import</span><span> </span><span class="identifier">net</span><span>.</span><span class="identifier">andimiller</span><span>.</span><span class="identifier">mcp</span><span>.</span><span class="identifier">core</span><span>.</span><span class="identifier">server</span><span>.*
+</span><span class="keyword">import</span><span> </span><span class="identifier">net</span><span>.</span><span class="identifier">andimiller</span><span>.</span><span class="identifier">mcp</span><span>.</span><span class="identifier">stdio</span><span>.</span><span class="type-name">StdioTransport</span><span>
+
+</span><span class="keyword">object</span><span> </span><span class="type-name">MyStdioServer</span><span> </span><span class="keyword">extends</span><span> </span><span class="type-name">IOApp</span><span>.</span><span class="type-name">Simple</span><span>:
+  </span><span class="keyword">def</span><span> </span><span class="declaration-name">server</span><span>: </span><span class="type-name">IO</span><span>[</span><span class="type-name">Server</span><span>[</span><span class="type-name">IO</span><span>]] =
+    </span><span class="type-name">ServerBuilder</span><span>[</span><span class="type-name">IO</span><span>](</span><span class="string-literal">&quot;my-server&quot;</span><span>, </span><span class="string-literal">&quot;1.0.0&quot;</span><span>)
+      .</span><span class="identifier">withTool</span><span>(</span><span class="identifier">greetTool</span><span>)
+      .</span><span class="identifier">build</span><span>
+
+  </span><span class="keyword">def</span><span> </span><span class="declaration-name">run</span><span>: </span><span class="type-name">IO</span><span>[</span><span class="type-name">Unit</span><span>] = </span><span class="identifier">server</span><span>.</span><span class="identifier">flatMap</span><span>(</span><span class="type-name">StdioTransport</span><span>.</span><span class="identifier">run</span><span>[</span><span class="type-name">IO</span><span>])</span></code></pre>
+        <p>Run it with <code>sbt run</code> (or <code>nativeLink</code> for a Scala Native binary) and
+        register the resulting command in your client&#39;s MCP config.</p>
+        
+        <h2 id="http-server" class="section"><a class="anchor-link left" href="#http-server"><i class="icofont-laika link">&#xef71;</i></a>HTTP server</h2>
+        <p>Same tool, wired into <code>McpHttp.basic[IO]</code> and served on a port via http4s
+        Ember. This is what you want for networked clients (Cursor&#39;s HTTP transport,
+        remote agents, multi-user setups):</p>
+        <pre class="keep-together pdf epub"><code class="nohighlight"><span class="keyword">import</span><span> </span><span class="identifier">cats</span><span>.</span><span class="identifier">effect</span><span>.{</span><span class="type-name">IO</span><span>, </span><span class="type-name">IOApp</span><span>}
+</span><span class="keyword">import</span><span> </span><span class="identifier">com</span><span>.</span><span class="identifier">comcast</span><span>.</span><span class="identifier">ip4s</span><span>.*
+</span><span class="keyword">import</span><span> </span><span class="identifier">net</span><span>.</span><span class="identifier">andimiller</span><span>.</span><span class="identifier">mcp</span><span>.</span><span class="identifier">http4s</span><span>.</span><span class="type-name">McpHttp</span><span>
+
+</span><span class="keyword">object</span><span> </span><span class="type-name">MyHttpServer</span><span> </span><span class="keyword">extends</span><span> </span><span class="type-name">IOApp</span><span>.</span><span class="type-name">Simple</span><span>:
+  </span><span class="keyword">def</span><span> </span><span class="declaration-name">run</span><span>: </span><span class="type-name">IO</span><span>[</span><span class="type-name">Unit</span><span>] =
+    </span><span class="type-name">McpHttp</span><span>.</span><span class="identifier">basic</span><span>[</span><span class="type-name">IO</span><span>]
+      .</span><span class="identifier">name</span><span>(</span><span class="string-literal">&quot;my-server&quot;</span><span>).</span><span class="identifier">version</span><span>(</span><span class="string-literal">&quot;1.0.0&quot;</span><span>)
+      .</span><span class="identifier">port</span><span>(</span><span class="string-literal">port&quot;8080&quot;</span><span>)
+      .</span><span class="identifier">withTool</span><span>(</span><span class="identifier">greetTool</span><span>)
+      .</span><span class="identifier">serve</span><span>
+      .</span><span class="identifier">useForever</span></code></pre>
+        <p>Hit it at <code>http://localhost:8080/mcp</code>.</p>
+        
+        <h2 id="where-to-next" class="section"><a class="anchor-link left" href="#where-to-next"><i class="icofont-laika link">&#xef71;</i></a>Where to next</h2>
+        <p>The fluent builders shown above (<code>tool</code>, <code>resource</code>, <code>resourceTemplate</code>,
+        <code>prompt</code>, plus their <code>contextual*</code> variants) are documented in detail in
+        <a href="tools.html">Tools</a>, <a href="resources.html">Resources</a>, and <a href="prompts.html">Prompts</a>.
+        <a href="server-construction.html">Server construction</a> covers the streaming HTTP
+        builder with per-session state, authentication, and the embedded Explorer
+        UI. <a href="../examples/">Examples</a> has six end-to-end runnable servers
+        covering every transport.</p>
 
         
 <hr class="footer-rule"/>
