@@ -4,6 +4,7 @@ import laika.ast.InlineSVGIcon
 import laika.ast.Path.Root
 import laika.helium.config.Favicon
 import laika.helium.config.IconLink
+import laika.helium.config.TextLink
 import laika.theme.config.Font
 import laika.theme.config.FontDefinition
 import laika.theme.config.FontStyle
@@ -394,6 +395,9 @@ lazy val docs = project
             Root / "index.md",
             InlineSVGIcon(logoSvg, Some("scala-mcp")),
             text = Some("scala-mcp")
+          ),
+          navLinks = Seq(
+            TextLink.external("https://andimiller.github.io/scala-mcp/llms.txt", "llms.txt")
           )
         )
         .site

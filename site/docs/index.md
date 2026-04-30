@@ -25,3 +25,4 @@ Claude to access tools, resources, and prompts.
 - **[Tools → OpenAPI MCP Proxy](tools/openapi-mcp-proxy.md)** — turn any OpenAPI API into an MCP server
 - **[Testing → Golden testing](testing/golden-testing.md)** — snapshot-test your server's spec
 - **[Examples](examples/index.md)** — six runnable example servers covering every transport
+- **Using an LLM?** Point it at [`llms.txt`](https://andimiller.github.io/scala-mcp/llms.txt) for a structured index of every doc page, or [`llms-full.txt`](https://andimiller.github.io/scala-mcp/llms-full.txt) for the entire documentation in a single file. Each page is also available as raw Markdown — swap `.html` for `.md` in any URL. Tell your assistant to start at `llms.txt` and follow the links rather than scraping the HTML.

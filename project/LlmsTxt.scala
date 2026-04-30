@@ -72,7 +72,7 @@ object LlmsTxt {
     writeLlmsTxt(siteOut, siteUrl, projectName, tagline, rootPages, sectionPages, log)
     writeLlmsFullTxt(siteOut, projectName, tagline, rootPages, sectionPages, log)
     copyRawMarkdown(siteOut, pages, log)
-    injectAlternateLinks(siteOut, pages, log)
+    postProcessHtml(siteOut, pages, siteUrl, log)
   }
 
   // ---------- writers ----------
@@ -135,38 +135,62 @@ object LlmsTxt {
     log.info(s"[llms] copied ${pages.size} raw markdown files into ${siteOut.getName}/")
   }
 
-  // Inject `<link rel="alternate" type="text/markdown" ...>` into each rendered HTML page,
-  // pointing at its sibling .md file. Done as a post-process because Laika templates only
-  // expose the absolute virtual sourcePath; we want a relative href.
-  private def injectAlternateLinks(siteOut: File, pages: Seq[DocPage], log: Logger): Unit = {
+  // Post-process each rendered HTML page to inject:
+  //   1. `<link rel="alternate" type="text/markdown" ...>` after </title> — for browsers
+  //      and crawlers that read head metadata.
+  //   2. A small `[md]` link as the first child of the page's `<h1 class="title">`. This
+  //      sits inside the article body, so AI content extractors keep it; CSS floats it
+  //      right and dims it so humans can ignore it but click through if they want the
+  //      raw markdown.
+  // Done here rather than in the Laika template because templates only expose the
+  // absolute virtual sourcePath, and we need relative hrefs plus CSS-classed markup.
+  private def postProcessHtml(siteOut: File, pages: Seq[DocPage], siteUrl: String, log: Logger): Unit = {
     val titleClose = "</title>"
-    var injected   = 0
-    var skipped    = 0
+    val h1Marker   = """class="title">"""
+
+    var linksInjected   = 0
+    var mdLinksInjected = 0
+    var skipped         = 0
+
     pages.foreach { p =>
       val htmlPath = p.relPath.stripSuffix(".md") + ".html"
       val htmlFile = new File(siteOut, htmlPath)
       if (!htmlFile.exists()) skipped += 1
       else {
-        val mdName = p.relPath.split('/').last
-        val link   =
-          s"""<link rel="alternate" type="text/markdown" href="$mdName" title="Markdown source"/>"""
-        val current = new String(Files.readAllBytes(htmlFile.toPath), StandardCharsets.UTF_8)
-        if (current.contains("""rel="alternate" type="text/markdown"""")) {
-          // Already present (idempotent re-run) — leave alone.
-          ()
-        } else {
-          val idx = current.indexOf(titleClose)
-          if (idx < 0) skipped += 1
-          else {
-            val cut    = idx + titleClose.length
-            val update = current.substring(0, cut) + "\n  " + link + current.substring(cut)
-            Files.write(htmlFile.toPath, update.getBytes(StandardCharsets.UTF_8))
-            injected += 1
+        val mdName  = p.relPath.split('/').last
+        var content = new String(Files.readAllBytes(htmlFile.toPath), StandardCharsets.UTF_8)
+        var changed = false
+
+        if (!content.contains("""rel="alternate" type="text/markdown"""")) {
+          val link =
+            s"""<link rel="alternate" type="text/markdown" href="$mdName" title="Markdown source"/>"""
+          val idx = content.indexOf(titleClose)
+          if (idx >= 0) {
+            val cut = idx + titleClose.length
+            content = content.substring(0, cut) + "\n  " + link + content.substring(cut)
+            linksInjected += 1
+            changed = true
           }
         }
+
+        if (!content.contains("""class="md-link"""")) {
+          val mdLink =
+            s"""<a class="md-link" href="$mdName" title="View this page as raw Markdown">[md]</a>"""
+          val idx = content.indexOf(h1Marker)
+          if (idx >= 0) {
+            val cut = idx + h1Marker.length
+            content = content.substring(0, cut) + mdLink + content.substring(cut)
+            mdLinksInjected += 1
+            changed = true
+          }
+        }
+
+        if (changed) Files.write(htmlFile.toPath, content.getBytes(StandardCharsets.UTF_8))
       }
     }
-    log.info(s"[llms] injected alternate links into $injected html pages (skipped $skipped)")
+    log.info(
+      s"[llms] post-processed html: $linksInjected alternate links, $mdLinksInjected [md] links, $skipped skipped"
+    )
   }
 
   private def formatLink(p: DocPage, siteUrl: String): String = {
