@@ -7,3 +7,23 @@
   align-items: center;
   gap: 0.4em;
 }
+
+/* Subtle "[md]" link injected by the LlmsTxt sbt task as the first child of every
+   page's <h1 class="title">. Floats right, lighter weight, dimmed — humans can ignore
+   it; AI content extractors that grab the article body keep it as a discovery hint
+   pointing at the raw markdown. */
+.md-link {
+  float: right;
+  font-size: 0.7em;
+  font-weight: 400;
+  font-family: var(--code-font, monospace);
+  letter-spacing: 0.02em;
+  opacity: 0.4;
+  text-decoration: none;
+  margin-top: 0.6em;
+  margin-left: 1em;
+}
+.md-link:hover {
+  opacity: 1;
+  text-decoration: underline;
+}
