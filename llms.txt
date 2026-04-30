@@ -1,0 +1,46 @@
+# scala-mcp
+
+> Cross-platform Scala 3 library for building Model Context Protocol (MCP) servers. Cats Effect, automatic JSON Schema derivation, JVM/JS/Native.
+
+## Documentation
+
+- [scala-mcp](https://andimiller.github.io/scala-mcp/index.md): A Scala 3 library for building Model Context Protocol (MCP) servers. MCP is a JSON-RPC 2.0 based protocol that allows AI applications like Claude to access tools, resources, and prompts.
+
+### Introduction
+- [MCP feature support](https://andimiller.github.io/scala-mcp/introduction/feature-support.md): Targeting MCP spec 2025-11-25. The "Client support" column reflects the state of major clients (Claude Code, Claude Desktop, Cursor, opencode) per modelcontextprotocol.io/clients as of April 2026:
+
+### Getting Started
+- [Quick start](https://andimiller.github.io/scala-mcp/getting-started/quick-start.md): This page walks you from an empty sbt project to a runnable MCP server. The same tool is wired to two transports below — pick stdio for subprocess-based clients (Claude Desktop, Claude Code) or HTTP for a networked server.
+- [Tools](https://andimiller.github.io/scala-mcp/getting-started/tools.md): Tools are the most-used MCP feature: typed, schema-described functions an AI client can call. The snippets below are type-checked by mdoc — they share the imports and placeholder types in the setup block.
+- [Resources & resource templates](https://andimiller.github.io/scala-mcp/getting-started/resources.md): Resources expose readable data to clients (e.g. file:///config.json, app://status). Resource templates expose parametrised URIs — clients can fill in path segments to read specific instances. Snippets below are type-checked by mdoc.
+- [Prompts](https://andimiller.github.io/scala-mcp/getting-started/prompts.md): Prompts are reusable message templates the client can render or inject into a conversation. They can be static (fixed messages) or dynamic (computed from arguments / per-session context). Snippets below are type-checked by mdoc.
+- [JSON Schema derivation](https://andimiller.github.io/scala-mcp/getting-started/json-schema-derivation.md): The library provides automatic JSON Schema derivation using Scala 3's derives clause, powered by the sttp-apispec Schema type. Annotations allow adding descriptions and examples:
+- [Server construction](https://andimiller.github.io/scala-mcp/getting-started/server-construction.md): Once you have your tools, resources, and prompts, you wire them into a Server and pick a transport. Stdio for subprocess-based servers (Claude Desktop, Claude Code), Http for networked servers (Streamable HTTP + SSE).
+
+### Modules
+- [Modules](https://andimiller.github.io/scala-mcp/modules/index.md): scala-mcp is a multi-module library — pick the modules you need for the transports and features your server uses. Core types and the stdio transport are tiny; HTTP, Redis, and OpenAPI support layer on top.
+- [core](https://andimiller.github.io/scala-mcp/modules/core.md): mcp-core · JVM · Scala.js · Scala Native
+- [stdio](https://andimiller.github.io/scala-mcp/modules/stdio.md): mcp-stdio · JVM · Scala.js · Scala Native
+- [http4s](https://andimiller.github.io/scala-mcp/modules/http4s.md): mcp-http4s · JVM · Scala.js
+- [openapi](https://andimiller.github.io/scala-mcp/modules/openapi.md): mcp-openapi · JVM · Scala.js · Scala Native
+- [redis](https://andimiller.github.io/scala-mcp/modules/redis.md): mcp-redis · JVM
+- [tapir](https://andimiller.github.io/scala-mcp/modules/tapir.md): mcp-tapir · JVM
+- [golden-munit](https://andimiller.github.io/scala-mcp/modules/golden-munit.md): mcp-golden-munit · JVM · Scala.js · Scala Native
+- [explorer](https://andimiller.github.io/scala-mcp/modules/explorer.md): Scala.js · not published
+
+### Tools
+- [Tools](https://andimiller.github.io/scala-mcp/tools/index.md): Standalone tools and CLIs built on top of the scala-mcp library. Drop-in binaries you can run without writing any Scala — point them at an existing API or service and they expose it as MCP.
+- [OpenAPI MCP Proxy](https://andimiller.github.io/scala-mcp/tools/openapi-mcp-proxy.md): The OpenAPI MCP Proxy tool converts any OpenAPI-compliant REST API into an MCP server that AI agents can interact with.
+
+### Testing
+- [Golden testing](https://andimiller.github.io/scala-mcp/testing/golden-testing.md): The mcp-golden-munit module provides snapshot testing for MCP server specs. It captures your server's tools, resources, resource templates, prompts, and capabilities as a JSON golden file, then fails the test if the spec changes unexpectedly.
+
+### Examples
+- [Examples](https://andimiller.github.io/scala-mcp/examples/index.md): The project ships six example MCP servers, each demonstrating a different transport, platform, or server feature. Each has its own page below — pick the one closest to what you're building.
+- [Dice MCP server](https://andimiller.github.io/scala-mcp/examples/dice.md): modules/example-dice-mcp · Stdio · JVM / JS / Native
+- [Pomodoro MCP server](https://andimiller.github.io/scala-mcp/examples/pomodoro.md): modules/example-pomodoro-mcp · HTTP + SSE · JVM · port 25000
+- [DNS MCP server](https://andimiller.github.io/scala-mcp/examples/dns.md): modules/example-dns-mcp · HTTP + SSE · Scala.js (Node.js) · port 8053
+- [Chat MCP server](https://andimiller.github.io/scala-mcp/examples/chat.md): modules/example-chat-mcp · HTTP + SSE · JVM · port 27000
+- [Shared Notebook MCP server](https://andimiller.github.io/scala-mcp/examples/shared-notebook.md): modules/example-shared-notebook-mcp · HTTP + SSE · JVM · port 26000
+- [RPG Character Creator](https://andimiller.github.io/scala-mcp/examples/rpg-character-creator.md): modules/example-rpg-character-creator · HTTP + SSE · JVM · port 1974
+

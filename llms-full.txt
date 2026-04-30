@@ -1,0 +1,1301 @@
+# scala-mcp
+
+> Cross-platform Scala 3 library for building Model Context Protocol (MCP) servers. Cats Effect, automatic JSON Schema derivation, JVM/JS/Native.
+
+
+---
+
+<!-- source: index.md -->
+
+# scala-mcp
+
+A Scala 3 library for building [Model Context Protocol (MCP)](https://modelcontextprotocol.io)
+servers. MCP is a JSON-RPC 2.0 based protocol that allows AI applications like
+Claude to access tools, resources, and prompts.
+
+## Highlights
+
+- Type-safe protocol implementation with Scala 3 enums and opaque types
+- Automatic JSON Schema derivation via `derives JsonSchema`
+- Multiple transport layers — stdio for subprocess servers, Streamable HTTP + SSE for networked servers
+- Cross-platform — `core` and `stdio` run on JVM, Scala.js, and Scala Native; `http4s` on JVM and Scala.js
+- Fluent builder API for servers, tools, resources, and prompts
+- Effect-polymorphic, built on Cats Effect
+- Zero-boilerplate codec derivation with Scala 3's `derives` syntax
+
+## Where to next
+
+- **[Introduction → MCP feature support](introduction/feature-support.md)** — what's implemented vs. what isn't
+- **[Getting Started → Quick start](getting-started/quick-start.md)** — add the dependency and write your first tool
+- **Getting Started → [Tools](getting-started/tools.md), [Resources](getting-started/resources.md), [Prompts](getting-started/prompts.md)** — the core building blocks
+- **[Getting Started → JSON schema derivation](getting-started/json-schema-derivation.md)** — `derives JsonSchema` and annotations
+- **[Getting Started → Server construction](getting-started/server-construction.md)** — Stdio + HTTP transports
+- **[Modules](modules/index.md)** — one page per module (core, stdio, http4s, openapi, redis, tapir, golden-munit, explorer)
+- **[Tools → OpenAPI MCP Proxy](tools/openapi-mcp-proxy.md)** — turn any OpenAPI API into an MCP server
+- **[Testing → Golden testing](testing/golden-testing.md)** — snapshot-test your server's spec
+- **[Examples](examples/index.md)** — six runnable example servers covering every transport
+
+
+---
+
+<!-- source: introduction/feature-support.md -->
+
+# MCP feature support
+
+Targeting MCP spec **2025-11-25**. The "Client support" column reflects the
+state of major clients (Claude Code, Claude Desktop, Cursor, opencode) per
+[modelcontextprotocol.io/clients](https://modelcontextprotocol.io/clients) as
+of April 2026:
+
+- **Universal** — all four
+- **Most** — three of four
+- **Some** — one or two
+- **Rare** — niche/inconsistent
+- **None** — no major client
+
+| Feature                         | scala-mcp | Client support | Notes                                              |
+|---------------------------------|-----------|----------------|----------------------------------------------------|
+| Tools (`list` / `call`)         | ✅        | Universal      | Includes `structuredContent`                       |
+| Resources, subs, templates      | ✅        | Most           | Cursor doesn't expose resources                    |
+| Prompts                         | ✅        | Universal      |                                                    |
+| Initialize / capabilities       | ✅        | Universal      | Required by spec                                   |
+| Ping                            | ✅        | Universal      | Required by spec                                   |
+| Logging notifications           | ✅        | Most           | Accepted; rendering varies. `logging/setLevel` not yet |
+| Elicitation                     | 🟡        | Some           | Claude Code + Cursor. Form mode ✅, URL mode ❌    |
+| Pagination                      | 🟡        | Universal      | Cursors typed; server always returns `nextCursor=None` |
+| Cancellation                    | ✅        | Most           | `notifications/cancelled` cancels the in-flight fiber via per-session registry |
+| Sessions (Streamable HTTP)      | ✅        | Most           | `Mcp-Session-Id` + auth-aware sessions             |
+| `MCP-Protocol-Version` header   | ❌        | Universal      | Clients send it; we don't validate                 |
+| Progress (`progressToken`)      | ❌        | Rare           | Few clients emit the token                         |
+| `_meta` on requests/responses   | ❌        | Universal      | Spec-mandated passthrough                          |
+| Sampling                        | ❌        | None           | Capability stub only                               |
+| Roots                           | ❌        | Most           | Type stubs only. opencode lacks it                 |
+| Completion                      | ❌        | None           | No client surfaces it                              |
+| Tasks (experimental)            | ❌        | None           |                                                    |
+| Tool/prompt `list_changed`      | ❌        | Universal      | Required for `listChanged` capability              |
+| 2025-11-25 metadata fields      | ❌        | Some           | `title` / `icons` increasingly rendered; rest unused |
+
+
+---
+
+<!-- source: getting-started/quick-start.md -->
+
+# Quick start
+
+This page walks you from an empty sbt project to a runnable MCP server. The
+same tool is wired to two transports below — pick stdio for subprocess-based
+clients (Claude Desktop, Claude Code) or HTTP for a networked server.
+
+## Adding the dependency
+
+```scala
+// For stdio-based servers
+libraryDependencies ++= Seq(
+  "net.andimiller.mcp" %%% "mcp-core"  % "0.9.0",
+  "net.andimiller.mcp" %%% "mcp-stdio" % "0.9.0"
+)
+
+// For HTTP-based servers
+libraryDependencies ++= Seq(
+  "net.andimiller.mcp" %%% "mcp-core"   % "0.9.0",
+  "net.andimiller.mcp" %%% "mcp-http4s" % "0.9.0"
+)
+
+// Optional: Redis-backed session/state for stateful HTTP servers
+libraryDependencies += "net.andimiller.mcp" %% "mcp-redis" % "0.9.0"
+```
+
+## Defining a tool
+
+A tool needs typed request/response case classes — `derives JsonSchema` plus a
+circe codec for each. The fluent `tool` builder gives the schemas + handler
+to the server:
+
+```scala
+import cats.effect.IO
+import io.circe.{Decoder, Encoder}
+import net.andimiller.mcp.core.schema.JsonSchema
+import net.andimiller.mcp.core.server.*
+
+case class GreetRequest(name: String) derives JsonSchema, Decoder
+case class GreetResponse(message: String) derives JsonSchema, Encoder.AsObject
+
+val greetTool: Tool.Resolved[IO] =
+  tool.name("greet")
+    .description("Greet someone by name")
+    .in[GreetRequest]
+    .out[GreetResponse]
+    .run(req => IO.pure(GreetResponse(s"Hello, ${req.name}!")))
+```
+
+## Stdio server
+
+A `Server[IO]` built with `ServerBuilder` becomes a stdio server by handing
+it to `StdioTransport.run`. This is what Claude Desktop / Claude Code expect
+for local MCP servers:
+
+```scala
+import cats.effect.{IO, IOApp}
+import net.andimiller.mcp.core.server.*
+import net.andimiller.mcp.stdio.StdioTransport
+
+object MyStdioServer extends IOApp.Simple:
+  def server: IO[Server[IO]] =
+    ServerBuilder[IO]("my-server", "1.0.0")
+      .withTool(greetTool)
+      .build
+
+  def run: IO[Unit] = server.flatMap(StdioTransport.run[IO])
+```
+
+Run it with `sbt run` (or `nativeLink` for a Scala Native binary) and
+register the resulting command in your client's MCP config.
+
+## HTTP server
+
+Same tool, wired into `McpHttp.basic[IO]` and served on a port via http4s
+Ember. This is what you want for networked clients (Cursor's HTTP transport,
+remote agents, multi-user setups):
+
+```scala
+import cats.effect.{IO, IOApp}
+import com.comcast.ip4s.*
+import net.andimiller.mcp.http4s.McpHttp
+
+object MyHttpServer extends IOApp.Simple:
+  def run: IO[Unit] =
+    McpHttp.basic[IO]
+      .name("my-server").version("1.0.0")
+      .port(port"8080")
+      .withTool(greetTool)
+      .serve
+      .useForever
+```
+
+Hit it at `http://localhost:8080/mcp`.
+
+## Where to next
+
+The fluent builders shown above (`tool`, `resource`, `resourceTemplate`,
+`prompt`, plus their `contextual*` variants) are documented in detail in
+[Tools](tools.md), [Resources](resources.md), and [Prompts](prompts.md).
+[Server construction](server-construction.md) covers the streaming HTTP
+builder with per-session state, authentication, and the embedded Explorer
+UI. [Examples](../examples/index.md) has six end-to-end runnable servers
+covering every transport.
+
+
+---
+
+<!-- source: getting-started/tools.md -->
+
+# Tools
+
+Tools are the most-used MCP feature: typed, schema-described functions an AI
+client can call. The snippets below are type-checked by mdoc — they share the
+imports and placeholder types in the setup block.
+
+```scala
+import cats.effect.IO
+import io.circe.{Decoder, Encoder}
+import net.andimiller.mcp.core.schema.JsonSchema
+import net.andimiller.mcp.core.server.*
+import net.andimiller.mcp.core.protocol.ToolResult
+
+case class MyRequest(value: String)  derives JsonSchema, Decoder, Encoder.AsObject
+case class MyResponse(value: String) derives JsonSchema, Decoder, Encoder.AsObject
+
+trait MyCtx:
+  def doSomething(req: MyRequest): IO[MyResponse]
+```
+
+## Fluent builder
+
+`.run` on a non-contextual builder erases the input/output types into JSON
+schemas and returns a `Tool.Resolved[F]` — the form a `Server` dispatches:
+
+```scala
+val myTool: Tool.Resolved[IO] =
+  tool.name("my_tool")
+    .description("Tool description")
+    .in[MyRequest]
+    .out[MyResponse]
+    .run(req => IO.pure(MyResponse(req.value)))
+```
+
+## Returning `ToolResult` directly
+
+`.runResult` lets you return `ToolResult[Out]` (`Success` / `Text` / `Error`)
+directly when the call can fail or wants to short-circuit:
+
+```scala
+val mayFail: Tool.Resolved[IO] =
+  tool.name("risky")
+    .in[MyRequest]
+    .out[MyResponse]
+    .runResult(req => IO.pure(ToolResult.Error("nope")))
+```
+
+## Contextual tools
+
+A contextual tool receives a per-session context value when called. Use this
+for state, auth-derived identity, or per-session resources. The return type
+keeps the context, input, and output types so the server can wire it up
+later:
+
+```scala
+val ctxTool: Tool[IO, MyCtx, MyRequest, MyResponse] =
+  contextualTool[MyCtx]
+    .name("my_tool")
+    .description("Tool description")
+    .in[MyRequest]
+    .out[MyResponse]
+    .run((ctx, req) => ctx.doSomething(req))
+```
+
+`Tool.builder[IO]` and `Tool.contextual[MyCtx]` are equivalent to the `tool`
+and `contextualTool` helpers above and remain available.
+
+
+---
+
+<!-- source: getting-started/resources.md -->
+
+# Resources & resource templates
+
+Resources expose readable data to clients (e.g. `file:///config.json`,
+`app://status`). Resource templates expose **parametrised** URIs — clients
+can fill in path segments to read specific instances. Snippets below are
+type-checked by mdoc.
+
+```scala
+import cats.effect.IO
+import cats.syntax.all.*
+import java.time.Instant
+import net.andimiller.mcp.core.server.*
+import net.andimiller.mcp.core.protocol.ResourceContent
+
+case class Item(id: String):
+  def toJson: String = s"""{"id":"$id"}"""
+
+def lookupItem(id: String): IO[Item] = IO.pure(Item(id))
+
+def readNote(user: String, note: String): IO[ResourceContent] =
+  IO.pure(ResourceContent.text(s"app://users/$user/notes/$note", "...", Some("application/json")))
+```
+
+## Resource creation
+
+### Static content
+
+Use `.staticContent` when the body is a fixed string at server-construction
+time:
+
+```scala
+val staticRes: McpResource[IO, Unit] =
+  resource
+    .uri("file:///config.json")
+    .name("Config File")
+    .description("Application config")
+    .mimeType("application/json")
+    .staticContent[IO]("""{"key": "value"}""")
+```
+
+### Dynamic content
+
+Use `.read` when the body is computed on each read:
+
+```scala
+val dynamicRes: McpResource[IO, Unit] =
+  resource
+    .uri("app://status")
+    .name("Server Status")
+    .mimeType("text/plain")
+    .read(() => IO.pure(s"Status at ${Instant.now}"))
+```
+
+### Contextual
+
+Resolved per-session with a context value:
+
+```scala
+trait MyStatusCtx:
+  def getStatus: IO[String]
+
+val ctxRes: McpResource[IO, MyStatusCtx] =
+  contextualResource[MyStatusCtx]
+    .uri("app://status")
+    .name("Server Status")
+    .read(ctx => ctx.getStatus)
+```
+
+The factory methods `McpResource.static[IO](...)` and `McpResource.dynamic[IO](...)`
+are equivalent to the fluent forms above and remain available.
+
+## Resource template creation
+
+Resource templates use the same fluent entry point (`resourceTemplate`) but
+with a `.path` DSL that builds typed parameter extraction. Segments combine
+with `*>` / `<*` and named segments are extracted:
+
+```scala
+val itemTemplate: ResourceTemplate[IO, Unit] =
+  resourceTemplate
+    .path(path.static("app://items/") *> path.named("id"))
+    .name("Item by ID")
+    .description("Look up a single item by its ID")
+    .mimeType("application/json")
+    .read { id =>
+      lookupItem(id).map(item =>
+        ResourceContent.text(s"app://items/$id", item.toJson, Some("application/json"))
+      )
+    }
+```
+
+Multi-parameter templates combine named segments with `.tupled`:
+
+```scala
+val noteTemplate: ResourceTemplate[IO, Unit] =
+  resourceTemplate
+    .path(
+      path.static("app://users/") *>
+        (path.named("user"), path.static("/notes/") *> path.named("note")).tupled
+    )
+    .name("Note by User & ID")
+    .read { case (user, note) => readNote(user, note) }
+```
+
+
+---
+
+<!-- source: getting-started/prompts.md -->
+
+# Prompts
+
+Prompts are reusable message templates the client can render or inject into a
+conversation. They can be static (fixed messages) or dynamic (computed from
+arguments / per-session context). Snippets below are type-checked by mdoc.
+
+```scala
+import cats.effect.IO
+import net.andimiller.mcp.core.server.*
+import net.andimiller.mcp.core.protocol.PromptMessage
+```
+
+## Static prompt
+
+No arguments, fixed messages — use `.messages`:
+
+```scala
+val staticPrompt: Prompt[IO, Unit] =
+  prompt
+    .name("explain_protocol")
+    .description("Explain the MCP protocol")
+    .messages[IO](List(
+      PromptMessage.user("Please explain how MCP works."),
+      PromptMessage.assistant("MCP is a JSON-RPC 2.0 protocol …")
+    ))
+```
+
+## Dynamic prompt
+
+Generated from client-supplied arguments — declare each argument with
+`.argument(name, description, required)`, then return the messages from
+`.generate`:
+
+```scala
+val dynamicPrompt: Prompt[IO, Unit] =
+  prompt
+    .name("code_review")
+    .description("Code review prompt")
+    .argument("code", Some("Code to review"), required = true)
+    .generate { args =>
+      val code = args.get("code").flatMap(_.asString).getOrElse("")
+      IO.pure(List(PromptMessage.user(s"Please review this code: $code")))
+    }
+```
+
+## Contextual prompt
+
+Generated from per-session context (the second lambda parameter receives the
+client-supplied arguments map):
+
+```scala
+trait MyHistoryCtx:
+  def history: IO[String]
+
+val ctxPrompt: Prompt[IO, MyHistoryCtx] =
+  contextualPrompt[MyHistoryCtx]
+    .name("review_day")
+    .generate((ctx, _) => ctx.history.map(h => List(PromptMessage.user(h))))
+```
+
+The factory methods `Prompt.static[IO](...)` and `Prompt.dynamic[IO](...)` are
+equivalent to the fluent forms above and remain available.
+
+
+---
+
+<!-- source: getting-started/json-schema-derivation.md -->
+
+# JSON Schema derivation
+
+The library provides automatic JSON Schema derivation using Scala 3's
+`derives` clause, powered by the
+[sttp-apispec](https://github.com/softwaremill/sttp-apispec) `Schema` type.
+Annotations allow adding descriptions and examples:
+
+```scala
+import io.circe.Decoder
+import net.andimiller.mcp.core.schema.{JsonSchema, description, example}
+
+case class SearchRequest(
+  @description("The search query")
+  query: String,
+  @description("Maximum number of results")
+  @example(10)
+  maxResults: Int = 10,
+  filters: Option[List[String]] = None
+) derives JsonSchema, Decoder
+```
+
+
+---
+
+<!-- source: getting-started/server-construction.md -->
+
+# Server construction
+
+Once you have your tools, resources, and prompts, you wire them into a `Server`
+and pick a transport. `Stdio` for subprocess-based servers (Claude Desktop,
+Claude Code), `Http` for networked servers (Streamable HTTP + SSE).
+
+The setup block below builds a minimal tool / resource / prompt so the
+`.withTool / .withResource / .withPrompt` chains compile in isolation.
+
+```scala
+import cats.effect.{IO, IOApp}
+import com.comcast.ip4s.*
+import io.circe.{Decoder, Encoder}
+import net.andimiller.mcp.core.schema.JsonSchema
+import net.andimiller.mcp.core.server.*
+import net.andimiller.mcp.core.protocol.PromptMessage
+
+case class Req(value: String)  derives JsonSchema, Decoder, Encoder.AsObject
+case class Resp(value: String) derives JsonSchema, Decoder, Encoder.AsObject
+
+val myTool: Tool.Resolved[IO] =
+  tool.name("greet").in[Req].out[Resp]
+    .run(req => IO.pure(Resp(s"Hello, ${req.value}!")))
+
+val staticRes: McpResource[IO, Unit] =
+  resource
+    .uri("file:///config.json")
+    .name("Config File")
+    .staticContent[IO]("""{"key": "value"}""")
+
+val staticPrompt: Prompt[IO, Unit] =
+  prompt
+    .name("explain")
+    .messages[IO](List(PromptMessage.user("Explain MCP.")))
+```
+
+## Stdio server
+
+```scala
+import net.andimiller.mcp.stdio.StdioTransport
+
+object MyServer extends IOApp.Simple:
+  def server: IO[Server[IO]] =
+    ServerBuilder[IO]("my-server", "1.0.0")
+      .withTool(myTool)
+      .withResource(staticRes)
+      .withPrompt(staticPrompt)
+      .build
+
+  def run: IO[Unit] = server.flatMap(StdioTransport.run[IO])
+```
+
+`StdioTransport.run` also has a factory overload — `run(ctx => F[Server[F]])` —
+that hands you a `SessionContext` so you can wire per-session refs, an
+`ElicitationClient`, or a notification sink in.
+
+## HTTP server (basic)
+
+```scala
+import net.andimiller.mcp.http4s.McpHttp
+
+val basicServer =
+  McpHttp.basic[IO]
+    .name("my-server").version("1.0.0")
+    .port(port"8080")
+    .withTool(myTool)
+    .withResource(staticRes)
+    .withPrompt(staticPrompt)
+    .withExplorer(redirectToRoot = true)
+    .serve     // : Resource[IO, http4s.server.Server]
+    .useForever
+```
+
+## HTTP server (streaming with per-session state)
+
+```scala
+import net.andimiller.mcp.http4s.McpHttp
+
+trait MyTimer:
+  def start(req: Req): IO[String]
+  def status: IO[String]
+  def summary: IO[List[PromptMessage]]
+
+object MyTimer:
+  def create(sink: Any): IO[MyTimer] = IO(new MyTimer {
+    def start(req: Req)                = IO.pure("ok")
+    def status: IO[String]             = IO.pure("idle")
+    def summary: IO[List[PromptMessage]] = IO.pure(Nil)
+  })
+
+val streamingServer =
+  McpHttp.streaming[IO]
+    .name("my-server").version("1.0.0")
+    .port(port"25000")
+    .stateful[MyTimer](ctx => MyTimer.create(ctx.sink))
+    .withContextualTool(
+      contextualTool[MyTimer].name("start").in[Req].out[Resp]
+        .run((timer, req) => timer.start(req).map(Resp(_)))
+    )
+    .withContextualResource(
+      contextualResource[MyTimer].uri("app://status").read(_.status)
+    )
+    .withContextualPrompt(
+      contextualPrompt[MyTimer].name("review").generate((timer, _) => timer.summary)
+    )
+    .withExplorer(redirectToRoot = true)
+    .enableResourceSubscriptions
+    .enableLogging
+    .serve.useForever
+```
+
+`.stateful[S](ctx => F[S])` chains, so multiple `stateful` / `authenticated`
+calls compose into a tuple-shaped context. See [Examples](../examples/index.md) — the
+Shared Notebook server uses `.authenticated` for HTTP Basic auth, and the
+Pomodoro server uses `.stateful` for per-session timers.
+
+
+---
+
+<!-- source: modules/index.md -->
+
+# Modules
+
+scala-mcp is a multi-module library — pick the modules you need for the
+transports and features your server uses. Core types and the stdio transport
+are tiny; HTTP, Redis, and OpenAPI support layer on top.
+
+| Module | Platforms | Description |
+|--------|-----------|-------------|
+| [core](core.md) | JVM, JS, Native | Protocol types, server abstraction, schema derivation, JSON codecs |
+| [stdio](stdio.md) | JVM, JS, Native | stdin/stdout transport for subprocess-based servers |
+| [http4s](http4s.md) | JVM, JS | Streamable HTTP + SSE transport via http4s Ember; bundles the Explorer UI |
+| [openapi](openapi.md) | JVM, JS, Native | OpenAPI 3.x schema model + tool-builder helpers |
+| [redis](redis.md) | JVM | Redis-backed `SessionStore` / `SessionRefs` / `StateRef` / notification sink |
+| [tapir](tapir.md) | JVM | Bridge that turns any `sttp.tapir.Schema[A]` into a `JsonSchema[A]` |
+| [golden-munit](golden-munit.md) | JVM, JS, Native | Golden testing framework for MCP server specs (munit) |
+| [explorer](explorer.md) | JS | Browser-based UI for exploring and testing MCP servers (consumed via `http4s`) |
+
+
+---
+
+<!-- source: modules/core.md -->
+
+# core
+
+`mcp-core` · JVM · Scala.js · Scala Native
+
+The foundation. Defines the MCP protocol types (tools, resources, resource
+templates, prompts, capabilities), the `Server[F]` abstraction, the fluent
+builders (`tool`, `resource`, `prompt`, plus their `contextual*` variants),
+and the JSON Schema derivation machinery. Every other module depends on this.
+
+```scala
+libraryDependencies += "net.andimiller.mcp" %%% "mcp-core" % "0.9.0"
+```
+
+Most user docs live in [Getting Started](../getting-started/quick-start.md) — start
+with [Tools](../getting-started/tools.md), [Resources](../getting-started/resources.md),
+and [Prompts](../getting-started/prompts.md) to see what the core builders look like
+in practice.
+
+
+---
+
+<!-- source: modules/stdio.md -->
+
+# stdio
+
+`mcp-stdio` · JVM · Scala.js · Scala Native
+
+stdin/stdout JSON-RPC transport for subprocess-based MCP servers — the format
+expected by Claude Desktop and Claude Code's local server config. A server
+built with `core` becomes a stdio server by handing it to
+`StdioTransport.run`.
+
+```scala
+libraryDependencies += "net.andimiller.mcp" %%% "mcp-stdio" % "0.9.0"
+```
+
+See [Server construction → Stdio server](../getting-started/server-construction.md#stdio-server)
+for usage.
+
+
+---
+
+<!-- source: modules/http4s.md -->
+
+# http4s
+
+`mcp-http4s` · JVM · Scala.js
+
+Streamable HTTP + SSE transport via http4s Ember. Two builder entry points:
+
+- `McpHttp.basic[IO]` — plain request/response MCP over HTTP
+- `McpHttp.streaming[IO]` — adds session management, resource subscriptions, server-initiated logging, cancellation, and per-session state via `.stateful` / `.authenticated` chains
+
+```scala
+libraryDependencies += "net.andimiller.mcp" %%% "mcp-http4s" % "0.9.0"
+```
+
+See [Server construction → HTTP server](../getting-started/server-construction.md#http-server-basic)
+for the builder chain.
+
+## Embedded Explorer UI
+
+The `http4s` module bundles the [Explorer](explorer.md) — a Scala.js + Tyrian
+browser UI for exploring tools, resources, templates, and prompts on any HTTP
+MCP server. Enable it on your server with `.withExplorer(...)`:
+
+```scala
+import cats.effect.IO
+import net.andimiller.mcp.http4s.McpHttp
+
+val builder =
+  McpHttp.streaming[IO]
+    .withExplorer(redirectToRoot = true) // serves at /explorer, optionally redirects / there
+```
+
+The Explorer is served at `/explorer/index.html` and defaults the connection
+URL to the current origin + `/mcp`.
+
+The Explorer assets are pre-built into the http4s module's classpath
+resources. To rebuild after changes to the Explorer source:
+
+```bash
+sbt buildExplorer
+```
+
+This compiles the Scala.js app and runs Parcel to bundle the JS and CSS into
+`modules/explorer/dist/`, which is then copied into the http4s classpath
+resources.
+
+
+---
+
+<!-- source: modules/openapi.md -->
+
+# openapi
+
+`mcp-openapi` · JVM · Scala.js · Scala Native
+
+OpenAPI 3.x schema model plus tool-builder helpers for converting OpenAPI
+operations into MCP tools. Used by the [OpenAPI MCP Proxy](../tools/openapi-mcp-proxy.md)
+CLI but also available directly when you want to embed OpenAPI-driven tool
+generation inside your own server.
+
+```scala
+libraryDependencies += "net.andimiller.mcp" %%% "mcp-openapi" % "0.9.0"
+```
+
+
+---
+
+<!-- source: modules/redis.md -->
+
+# redis
+
+`mcp-redis` · JVM
+
+Redis-backed implementations of the per-session state primitives used by the
+streaming HTTP server: `SessionStore`, `SessionRefs`, `StateRef`, and the
+notification sink. Wraps an `McpHttp.streaming` builder via
+`McpRedis.configure(...)` so each session's state lives in Redis instead of
+in-memory — the right move for multi-replica deployments and when sessions
+need to survive process restarts.
+
+```scala
+libraryDependencies += "net.andimiller.mcp" %% "mcp-redis" % "0.9.0"
+```
+
+The [Chat](../examples/chat.md) example server uses this module end-to-end.
+
+
+---
+
+<!-- source: modules/tapir.md -->
+
+# tapir
+
+`mcp-tapir` · JVM
+
+Bridge module that turns any `sttp.tapir.Schema[A]` into a `JsonSchema[A]`.
+Drop this in if you already have Tapir-derived schemas elsewhere in your
+application and want to reuse them as MCP tool input/output schemas without
+deriving twice.
+
+```scala
+libraryDependencies += "net.andimiller.mcp" %% "mcp-tapir" % "0.9.0"
+```
+
+
+---
+
+<!-- source: modules/golden-munit.md -->
+
+# golden-munit
+
+`mcp-golden-munit` · JVM · Scala.js · Scala Native
+
+Snapshot-testing helpers for MCP server specs, built on
+[munit](https://scalameta.org/munit/) and `munit-cats-effect`. Captures your
+server's tools, resources, resource templates, prompts, and capabilities as a
+JSON golden file and fails the test if the spec changes unexpectedly.
+
+```scala
+libraryDependencies += "net.andimiller.mcp" %%% "mcp-golden-munit" % "0.9.0" % Test
+```
+
+See [Testing → Golden testing](../testing/golden-testing.md) for the full guide.
+
+
+---
+
+<!-- source: modules/explorer.md -->
+
+# explorer
+
+Scala.js · not published
+
+A browser-based UI for interacting with any HTTP MCP server: browse tools,
+resources, resource templates, and prompts; call them interactively; inspect
+results. Useful for development and debugging without rigging up a real
+client.
+
+The Explorer is a Scala.js + [Tyrian](https://tyrian.indigoengine.io/) app
+styled with [Bulma](https://bulma.io/), bundled into static assets by Parcel.
+You don't add it as a dependency directly — instead, the [http4s](http4s.md)
+module bundles the pre-built assets and serves them via `.withExplorer(...)`
+on your `McpHttp.basic` / `McpHttp.streaming` builder.
+
+See [http4s → Embedded Explorer UI](http4s.md#embedded-explorer-ui) for how
+to enable it on your server.
+
+
+---
+
+<!-- source: tools/index.md -->
+
+# Tools
+
+Standalone tools and CLIs built on top of the scala-mcp library. Drop-in
+binaries you can run without writing any Scala — point them at an existing
+API or service and they expose it as MCP.
+
+| Tool | Description |
+|------|-------------|
+| [OpenAPI MCP Proxy](openapi-mcp-proxy.md) | Turn any OpenAPI 3.x REST API into an MCP server, with automatic agent-config generation for Claude Desktop, Claude Code, Cursor, and OpenCode. |
+
+
+---
+
+<!-- source: tools/openapi-mcp-proxy.md -->
+
+# OpenAPI MCP Proxy
+
+The OpenAPI MCP Proxy tool converts any OpenAPI-compliant REST API into an
+MCP server that AI agents can interact with.
+
+## Features
+
+- **Automatic tool generation** — converts OpenAPI operations into MCP tools with proper JSON schemas
+- **Multi-agent support** — works with Claude Desktop, Cursor, and OpenCode via automatic config generation
+- **Interactive management** — interactive shell for browsing and selecting API operations
+- **Flexible input** — load specs from URLs (`https://api.example.com/openapi.json`) or local files
+- **Full HTTP support** — handles GET, POST, PUT, DELETE, PATCH with path params, query params, headers, and request bodies
+
+## Installation
+
+```bash
+# Build the executable JAR
+sbt openapiMcpProxy/assembly
+
+# The JAR is created as ./openapi-mcp-proxy.jar
+# Make it executable and add to your PATH
+chmod +x openapi-mcp-proxy.jar
+mv openapi-mcp-proxy.jar /usr/local/bin/openapi-mcp-proxy
+```
+
+## Commands
+
+| Command | Description |
+|---------|-------------|
+| `list <spec>` | List all available operationIds with their HTTP method and path |
+| `proxy <spec> <operationIds...>` | Run the MCP stdio proxy for selected operations |
+| `mcp add [--agent] <spec> [operationIds...]` | Register operations in agent config |
+| `mcp del [--agent] <name>` | Remove a server entry from config |
+| `mcp manage [--agent]` | Interactive shell for managing config entries |
+
+**Supported agents:**
+- `claude` — Claude Code (`.mcp.json`)
+- `claude-desktop` — Claude Desktop app (macOS only)
+- `cursor` — Cursor IDE (`.cursor/mcp.json`)
+- `opencode` — OpenCode (`opencode.json`)
+
+## Quick start
+
+### 1. List available operations
+
+See what endpoints are available in an OpenAPI spec:
+
+```bash
+openapi-mcp-proxy list https://api.example.com/openapi.json
+# or
+openapi-mcp-proxy list ./my-api-spec.yaml
+```
+
+Output:
+
+```
+  GET    /users       listUsers
+  POST   /users       createUser
+  GET    /users/{id}  getUserById
+  DELETE /users/{id}  deleteUser
+```
+
+### 2. Register with your AI agent
+
+**Option A: use the built-in config manager (recommended)**
+
+```bash
+# Add specific operations for Claude Desktop
+openapi-mcp-proxy mcp add --agent claude-desktop https://api.example.com/openapi.json listUsers getUserById
+
+# Add all operations (with confirmation if >10 endpoints)
+openapi-mcp-proxy mcp add --agent claude-desktop https://api.example.com/openapi.json '*'
+
+# Interactive mode — browse and select operations
+openapi-mcp-proxy mcp add --agent cursor https://api.example.com/openapi.json
+
+# Manage existing entries
+openapi-mcp-proxy mcp manage --agent opencode
+```
+
+**Option B: manual configuration**
+
+**Claude Desktop** (`~/Library/Application Support/Claude/claude_desktop_config.json`):
+
+```json
+{
+  "mcpServers": {
+    "openapi-my-api": {
+      "command": "openapi-mcp-proxy",
+      "args": ["proxy", "https://api.example.com/openapi.json", "listUsers", "getUserById"]
+    }
+  }
+}
+```
+
+**OpenCode** (`opencode.json`):
+
+```json
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "openapi-my-api": {
+      "type": "local",
+      "command": ["openapi-mcp-proxy", "proxy", "./my-api.yaml", "searchItems", "createOrder"]
+    }
+  }
+}
+```
+
+**Cursor** (`.cursor/mcp.json`):
+
+```json
+{
+  "mcpServers": {
+    "my-api": {
+      "command": "openapi-mcp-proxy",
+      "args": ["proxy", "https://api.example.com/openapi.json", "listUsers"]
+    }
+  }
+}
+```
+
+## How it works
+
+1. **Spec loading** — loads OpenAPI 3.x specs from URL or file (JSON or YAML)
+2. **Schema conversion** — converts OpenAPI schemas to MCP-compatible JSON schemas
+3. **Tool generation** — each selected operation becomes an MCP tool with:
+   - Input schema from path/query/header parameters and request body
+   - Output schema from 200/201/default response
+   - Description from operation summary
+4. **Request execution** — when called, constructs and executes HTTP requests using http4s
+
+## Example: EVE Online ESI API
+
+The repository includes an example configuration for the EVE Online ESI API.
+See `.mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "eve-online": {
+      "command": "openapi-mcp-proxy",
+      "args": ["proxy", "https://esi.evetech.net/latest/swagger.json",
+        "get_characters_character_id",
+        "get_corporations_corporation_id",
+        "post_universe_ids"]
+    }
+  }
+}
+```
+
+## Configuration management
+
+The `mcp` subcommands handle different config file formats automatically:
+
+| Agent | Config file | Format |
+|-------|-------------|--------|
+| Claude | `.mcp.json` | `{ "mcpServers": {...} }` |
+| Claude Desktop | `~/Library/Application Support/Claude/claude_desktop_config.json` | `{ "mcpServers": {...} }` |
+| Cursor | `.cursor/mcp.json` | `{ "mcpServers": {...} }` |
+| OpenCode | `opencode.json` | `{ "$schema": "...", "mcp": {...} }` |
+
+Server names are auto-derived from the spec title (e.g., "EVE Swagger
+Interface" → `openapi-eve-swagger-interface`).
+
+## Tips
+
+- **Start small** — add only the operations you need to avoid bloating the context window
+- **Use wildcards carefully** — adding `*` includes all operations; you'll be warned if >10 endpoints
+- **Mix and match** — can run multiple openapi-mcp-proxy instances for different APIs
+- **Security** — the proxy executes HTTP requests as-is; ensure your API has proper auth if needed
+
+
+---
+
+<!-- source: testing/golden-testing.md -->
+
+# Golden testing
+
+The `mcp-golden-munit` module provides snapshot testing for MCP server specs.
+It captures your server's tools, resources, resource templates, prompts, and
+capabilities as a JSON golden file, then fails the test if the spec changes
+unexpectedly.
+
+## Adding the dependency
+
+```scala
+libraryDependencies += "net.andimiller.mcp" %%% "mcp-golden-munit" % "0.9.0" % Test
+```
+
+> **Scala.js note:** Your project must configure
+> `scalaJSLinkerConfig ~= (_.withModuleKind(ModuleKind.CommonJSModule))` for
+> the test to work on JS.
+
+## Writing a golden test
+
+Extend `McpGoldenSuite`, override `goldenFileName`, and implement
+`def server: IO[Server[IO]]`:
+
+```scala
+import cats.effect.IO
+import net.andimiller.mcp.core.server.{Server, ServerBuilder}
+import net.andimiller.mcp.golden.McpGoldenSuite
+
+class MyServerGoldenSuite extends McpGoldenSuite:
+  override def goldenFileName = "my-server.json"
+
+  def server: IO[Server[IO]] =
+    ServerBuilder[IO]("my-server", "1.0.0").build
+```
+
+## How it works
+
+1. **First run** — the golden file doesn't exist yet, so the test creates
+   `src/test/resources/{goldenFileName}` containing the server's full spec as
+   JSON.
+2. **Subsequent runs** — the test extracts the current spec and compares it
+   against the golden file. Any difference fails the test with a diff.
+3. **Regenerating** — delete the golden file and rerun the test to create a
+   fresh snapshot.
+4. **CI** — if the golden file is missing when the `CI` environment variable
+   is set, the test fails immediately. Always run locally first to generate
+   the file.
+
+
+---
+
+<!-- source: examples/index.md -->
+
+# Examples
+
+The project ships six example MCP servers, each demonstrating a different
+transport, platform, or server feature. Each has its own page below — pick the
+one closest to what you're building.
+
+| Example | Transport | Platform | Port | Highlights |
+|---------|-----------|----------|------|------------|
+| [Dice](dice.md) | Stdio | JVM / JS / Native | — | Tools, resources, prompts; form elicitation |
+| [Pomodoro](pomodoro.md) | HTTP + SSE | JVM | 25000 | Per-session state, resource subscriptions, cancellation |
+| [DNS](dns.md) | HTTP + SSE | Scala.js (Node.js) | 8053 | Wrapping Node callback APIs into `IO` |
+| [Chat](chat.md) | HTTP + SSE | JVM | 27000 | Redis-backed session state and notifications |
+| [Shared Notebook](shared-notebook.md) | HTTP + SSE | JVM | 26000 | HTTP Basic auth; per-user contextual tools |
+| [RPG Character Creator](rpg-character-creator.md) | HTTP + SSE | JVM | 1974 | Multi-step elicitation wizard |
+
+For a runnable CLI tool that wraps any OpenAPI 3.x API, see
+[Tools → OpenAPI MCP Proxy](../tools/openapi-mcp-proxy.md).
+
+
+---
+
+<!-- source: examples/dice.md -->
+
+# Dice MCP server
+
+`modules/example-dice-mcp` · Stdio · JVM / JS / Native
+
+A cross-platform stdio MCP server demonstrating tools, resources, prompts,
+and form elicitation.
+
+- **Tools:** `roll_dice` — roll dice using standard notation (e.g., `2d20 + 5`); `roll_interactive` — build a dice expression by repeatedly asking the client for `(face, count)` choices via elicitation
+- **Resources:** `dice://rules/standard` (static reference), `dice://history` (recent rolls)
+- **Prompt:** `explain_notation` — explains dice notation to the user
+
+Uses `IOApp.Simple`, `ServerBuilder`, and `StdioTransport.run` with a
+`SessionContext`-aware factory so each session gets its own `Random`, history
+ref, and `ElicitationClient`.
+
+## Build and run (JVM)
+
+```bash
+sbt exampleDiceJVM/run
+```
+
+## Build a Scala Native binary
+
+```bash
+# Requires clang/llvm (e.g. via nix-shell)
+sbt exampleDiceNative/nativeLink
+./modules/example-dice-mcp/native/target/scala-3.3.4/example-dice-mcp-out
+```
+
+> **Note:** the native binary must be re-linked any time the server changes —
+> `sbt exampleDiceJVM/run` is the fastest feedback loop during development.
+
+## Configure in Claude Code
+
+`.mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "dice": {
+      "command": "sbt",
+      "args": ["exampleDiceJVM/run"]
+    }
+  }
+}
+```
+
+Or with a pre-built Native binary:
+
+```json
+{
+  "mcpServers": {
+    "dice": {
+      "command": "./modules/example-dice-mcp/native/target/scala-3.3.4/example-dice-mcp-out"
+    }
+  }
+}
+```
+
+
+---
+
+<!-- source: examples/pomodoro.md -->
+
+# Pomodoro MCP server
+
+`modules/example-pomodoro-mcp` · HTTP + SSE · JVM · port 25000
+
+A JVM HTTP server demonstrating dynamic resources with subscription
+notifications, server-initiated logging, argument-based prompts, and
+**MCP cancellation**. Uses `McpHttp.streaming` with per-session state —
+each client session gets its own `PomodoroTimer` wired to the notification sink.
+
+- **Tools:** `start_timer`, `pause_timer`, `resume_timer`, `stop_timer`, `get_status`, `sleep_blocking` (cancellation demo — its `onCancel` hook reports how long it actually slept)
+- **Resources:** `pomodoro://status` (subscribable), `pomodoro://history`, `pomodoro://timers/{name}` (template via `path.static(...) *> path.named(...)`)
+- **Prompts:** `plan_session` (with `task` / `session_count` arguments), `review_day`
+- **Explorer:** Bundled at `/explorer` with redirect from `/`
+
+## Build and run (in-memory state)
+
+```bash
+sbt examplePomodoro/run
+# Server starts on http://0.0.0.0:25000
+# Explorer UI at http://localhost:25000 (redirects to /explorer/index.html)
+```
+
+## Build and run (Redis-backed state, port 25001)
+
+```bash
+# Requires a Redis server on redis://localhost:6379
+sbt 'examplePomodoro/runMain net.andimiller.mcp.examples.pomodoro.PomodoroMcpServerRedis'
+```
+
+## Configure in Claude Code
+
+`.mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "pomodoro": {
+      "type": "streamable-http",
+      "url": "http://localhost:25000/mcp"
+    }
+  }
+}
+```
+
+
+---
+
+<!-- source: examples/dns.md -->
+
+# DNS MCP server
+
+`modules/example-dns-mcp` · HTTP + SSE · Scala.js (Node.js) · port 8053
+
+A Scala.js server running on Node.js, demonstrating how to wrap Node.js
+callback-based APIs (`dns` module) into cats-effect `IO` via `IO.async_`. Uses
+the HTTP transport, which allows concurrent requests — a good fit for the
+async nature of Node.js.
+
+- **Tools:** `resolve_dns` (A, AAAA, MX, TXT, CNAME, NS records), `reverse_dns` (IP to hostnames)
+- **Resource:** `dns://reference/record-types` (static markdown reference)
+- **Prompt:** `diagnose_dns` — comprehensive DNS diagnosis for a domain
+
+## Build and run
+
+```bash
+# Link the Scala.js output
+sbt exampleDns/fastLinkJS
+
+# Run on Node.js
+node modules/example-dns-mcp/target/scala-3.3.4/example-dns-mcp-fastopt/main.js
+# Server starts on http://0.0.0.0:8053
+```
+
+## Configure in Claude Code
+
+`.mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "dns": {
+      "type": "streamable-http",
+      "url": "http://localhost:8053/mcp"
+    }
+  }
+}
+```
+
+
+---
+
+<!-- source: examples/chat.md -->
+
+# Chat MCP server
+
+`modules/example-chat-mcp` · HTTP + SSE · JVM · port 27000
+
+A JVM HTTP server demonstrating **Redis-backed session state**. Each connected
+session has its own username and current room, and the chat history itself is
+shared across sessions through Redis. Resource subscription updates are pushed
+when new messages arrive.
+
+- **Tools:** `set_username`, `create_room`, `join_room`, `send_message`, `read_messages`
+- **Resources:** `chat://rooms` (list of rooms), `chat://rooms/{room}/messages` (resource template, subscribable)
+- **Prompt:** `summarize_chat` — summarises recent messages in the current room
+- Built with `McpRedis.configure(...)` wrapping `McpHttp.streaming` so the per-session refs live in Redis instead of in-memory
+
+## Build and run
+
+```bash
+# Requires a Redis server on redis://localhost:6379
+sbt exampleChat/run
+# Server starts on http://0.0.0.0:27000
+```
+
+
+---
+
+<!-- source: examples/shared-notebook.md -->
+
+# Shared Notebook MCP server
+
+`modules/example-shared-notebook-mcp` · HTTP + SSE · JVM · port 26000
+
+A JVM HTTP server demonstrating **HTTP authentication with per-user contextual
+tools**. Authenticated users (alice/bob/charlie via Basic Auth) can write,
+read, and share notes; the server uses `.authenticated[UserContext](...)` to
+extract the current user and pass it as the context to every tool, resource
+template, and prompt.
+
+- **Tools:** `write_note`, `read_note`, `share_note`, `unshare_note`, `list_my_notes`, `list_shared_notes`
+- **Resource templates:** `notebook://{username}` and `notebook://{username}/{note_id}` — built with the multi-segment `path` DSL
+- **Prompts:** `summarize_notes`, `collaborate_with` (with arguments)
+
+## Build and run
+
+```bash
+sbt exampleNotebook/run
+# Server starts on http://0.0.0.0:26000
+# Use HTTP Basic auth with alice/password123, bob/password456, or charlie/password789
+```
+
+
+---
+
+<!-- source: examples/rpg-character-creator.md -->
+
+# RPG Character Creator
+
+`modules/example-rpg-character-creator` · HTTP + SSE · JVM · port 1974
+
+A JVM HTTP server demonstrating **multi-step elicitation over HTTP**. The
+`create_character` tool walks the client through race → class → starting weapon
+→ name using `requestForm` calls, where the weapon enum is generated
+dynamically from the chosen class.
+
+- **Tools:** `create_character` (interactive wizard), `list_characters`
+- **Per-session state:** each session keeps its own list of created characters
+- A good example of folding `ElicitResult.{Accept, Decline, Cancel}` and `ElicitationError` into a clean `EitherT` flow
+
+## Build and run
+
+```bash
+sbt exampleRpgCharacterCreator/run
+# Server starts on http://0.0.0.0:1974
+```
