@@ -337,6 +337,13 @@ lazy val openapiMcpProxy = project
   )
   .dependsOn(core.jvm, stdio.jvm, openapi.jvm)
 
+lazy val llmsTxtSiteUrl = settingKey[String]("Public site URL used in llms.txt links")
+
+lazy val llmsTxtTagline = settingKey[String]("One-line project description used in llms.txt and llms-full.txt")
+
+lazy val generateLlmsArtifacts =
+  taskKey[Unit]("Generate llms.txt, llms-full.txt and copy raw markdown alongside the Laika site output")
+
 lazy val docs = project
   .in(file("site"))
   .enablePlugins(TypelevelSitePlugin)
@@ -432,7 +439,27 @@ lazy val docs = project
     },
     laikaConfig := laikaConfig.value.withConfigValue("version", version.value),
     // Docs snippets often build values for illustration without using them.
-    tpolecatExcludeOptions += ScalacOptions.warnNonUnitStatement
+    tpolecatExcludeOptions += ScalacOptions.warnNonUnitStatement,
+    llmsTxtSiteUrl         := "https://andimiller.github.io/scala-mcp/",
+    llmsTxtTagline         :=
+      "Cross-platform Scala 3 library for building Model Context Protocol (MCP) servers. Cats Effect, automatic JSON Schema derivation, JVM/JS/Native.",
+    generateLlmsArtifacts := {
+      // .value on laikaSite forces the site build first; we read its target dir afterwards.
+      val _          = laikaSite.value
+      val mdocOutDir = mdocOut.value
+      val siteOutDir = (laikaSite / target).value
+      LlmsTxt.run(
+        mdocOut = mdocOutDir,
+        siteOut = siteOutDir,
+        siteUrl = llmsTxtSiteUrl.value,
+        projectName = (LocalRootProject / name).value,
+        tagline = llmsTxtTagline.value,
+        log = streams.value.log
+      )
+    },
+    // tlSite (the user-facing build task) runs mdoc, then laikaSite. We extend it so the
+    // LLM-friendly artifacts are produced as part of the same invocation.
+    tlSite := Def.sequential(mdoc.toTask(""), laikaSite, generateLlmsArtifacts).value
   )
   .dependsOn(
     core.jvm, stdio.jvm, http4s.jvm, openapi.jvm, goldenMunit.jvm, tapir, redis
