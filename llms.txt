@@ -4,7 +4,7 @@
 
 ## Documentation
 
-- [scala-mcp](https://andimiller.github.io/scala-mcp/index.md): A Scala 3 library for building Model Context Protocol (MCP) servers. MCP is a JSON-RPC 2.0 based protocol that allows AI applications like Claude to access tools, resources, and prompts.
+- [Scala MCP Library](https://andimiller.github.io/scala-mcp/index.md): A Scala 3 library for building Model Context Protocol (MCP) servers. MCP is a JSON-RPC 2.0 based protocol that allows AI applications like Claude to access tools, resources, and prompts.
 
 ### Introduction
 - [MCP feature support](https://andimiller.github.io/scala-mcp/introduction/feature-support.md): Targeting MCP spec 2025-11-25. The "Client support" column reflects the state of major clients (Claude Code, Claude Desktop, Cursor, opencode) per modelcontextprotocol.io/clients as of April 2026:

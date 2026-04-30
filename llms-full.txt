@@ -7,7 +7,10 @@
 
 <!-- source: index.md -->
 
-# scala-mcp
+{%
+  seo.titleSuffix = ""
+%}
+# Scala MCP Library
 
 A Scala 3 library for building [Model Context Protocol (MCP)](https://modelcontextprotocol.io)
 servers. MCP is a JSON-RPC 2.0 based protocol that allows AI applications like
