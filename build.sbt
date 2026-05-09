@@ -16,7 +16,7 @@ ThisBuild / scalaVersion := "3.3.4"
 
 lazy val commonSettings = Seq(
   organization := "net.andimiller.mcp",
-  version      := "0.9.0"
+  version      := "0.10.0"
 )
 
 // scoverage instrumentation produces JVM-only bytecode, so coverage must be disabled on every
@@ -88,19 +88,25 @@ lazy val stdio = crossProject(JVMPlatform, JSPlatform, NativePlatform)
   .dependsOn(core)
   .settings(libraryDependencies ++= Seq("co.fs2" %%% "fs2-io" % "3.13.0"))
 
-lazy val http4s = crossProject(JVMPlatform, JSPlatform)
+lazy val http4s = crossProject(JVMPlatform, JSPlatform, NativePlatform)
   .in(file("modules/http4s"))
   .settings(commonSettings)
   .settings(publishSettings)
   .settings(
     name                 := "mcp-http4s",
     libraryDependencies ++= Seq(
-      "org.http4s"    %%% "http4s-dsl"          % "0.23.33",
-      "org.http4s"    %%% "http4s-ember-server" % "0.23.33",
-      "org.http4s"    %%% "http4s-circe"        % "0.23.33",
-      "org.scalameta" %%% "munit"               % "1.0.0" % Test,
-      "org.typelevel" %%% "munit-cats-effect"   % "2.2.0" % Test
-    ),
+      "org.http4s"    %%% "http4s-dsl"          % "0.23.34",
+      "org.http4s"    %%% "http4s-ember-server" % "0.23.34",
+      "org.http4s"    %%% "http4s-client"       % "0.23.34",
+      "org.http4s"    %%% "http4s-circe"        % "0.23.34",
+      "org.http4s"    %%% "http4s-ember-client" % "0.23.34" % Test,
+      "org.scalameta" %%% "munit"               % "1.0.0"   % Test,
+      "org.typelevel" %%% "munit-cats-effect"   % "2.2.0"   % Test
+    )
+  )
+  .jvmSettings(
+    // Bundle the Scala.js explorer SPA into the JVM build's resources so the embedded http4s
+    // server can serve it under /explorer. Native and JS builds don't ship the SPA.
     Compile / resourceGenerators += Def.task {
       val _ = (LocalRootProject / buildExplorer).value
 
@@ -113,6 +119,7 @@ lazy val http4s = crossProject(JVMPlatform, JSPlatform)
     }.taskValue
   )
   .jsSettings(noCoverage *)
+  .nativeSettings(noCoverage *)
   .dependsOn(core)
 
 lazy val exampleDice = crossProject(JVMPlatform, JSPlatform, NativePlatform)
@@ -133,6 +140,36 @@ lazy val exampleDice = crossProject(JVMPlatform, JSPlatform, NativePlatform)
   .jsSettings(noCoverage *)
   .nativeSettings(noCoverage *)
   .dependsOn(core, stdio, goldenMunit % Test)
+
+lazy val exampleClient = project
+  .in(file("modules/example-client"))
+  .settings(commonSettings)
+  .settings(
+    name                 := "example-client",
+    publish / skip       := true,
+    Compile / mainClass  := Some("net.andimiller.mcp.examples.client.McpCliClient"),
+    libraryDependencies ++= Seq(
+      "com.monovore" %% "decline-effect"      % "2.6.1",
+      "org.http4s"   %% "http4s-ember-client" % "0.23.34"
+    )
+  )
+  .dependsOn(core.jvm, stdio.jvm, http4s.jvm)
+
+lazy val exampleHarness = crossProject(JVMPlatform, NativePlatform)
+  .in(file("modules/example-harness"))
+  .settings(commonSettings)
+  .settings(
+    name                 := "example-harness",
+    publish / skip       := true,
+    Compile / mainClass  := Some("net.andimiller.mcp.examples.harness.Main"),
+    libraryDependencies ++= Seq(
+      "com.monovore" %%% "decline-effect"      % "2.6.1",
+      "org.http4s"   %%% "http4s-ember-client" % "0.23.34",
+      "com.lihaoyi"  %%% "fansi"               % "0.5.1"
+    )
+  )
+  .nativeSettings(noCoverage *)
+  .dependsOn(core, stdio, http4s)
 
 lazy val examplePomodoro = project
   .in(file("modules/example-pomodoro-mcp"))
@@ -212,7 +249,7 @@ lazy val explorer = project
     libraryDependencies            ++= Seq(
       "io.indigoengine" %%% "tyrian-io"    % "0.14.0",
       "org.http4s"      %%% "http4s-dom"   % "0.2.1",
-      "org.http4s"      %%% "http4s-circe" % "0.23.33"
+      "org.http4s"      %%% "http4s-circe" % "0.23.34"
     )
   )
   .dependsOn(core.js)
@@ -317,8 +354,8 @@ lazy val openapiMcpProxy = project
     publish / skip       := true,
     libraryDependencies ++= Seq(
       "io.circe"      %% "circe-yaml"          % "1.15.0",
-      "org.http4s"    %% "http4s-ember-client" % "0.23.33",
-      "org.http4s"    %% "http4s-circe"        % "0.23.33",
+      "org.http4s"    %% "http4s-ember-client" % "0.23.34",
+      "org.http4s"    %% "http4s-circe"        % "0.23.34",
       "com.monovore"  %% "decline-effect"      % "2.6.1",
       "ch.qos.logback" % "logback-classic"     % "1.5.6",
       "org.scalameta" %% "munit"               % "1.0.0" % Test,
@@ -478,7 +515,7 @@ lazy val root = project
   )
   .aggregate(
     core.jvm, core.js, core.native, stdio.jvm, stdio.js, stdio.native, exampleDice.jvm, exampleDice.js,
-    exampleDice.native, http4s.jvm, http4s.js, redis, tapir, examplePomodoro, exampleChat, exampleDns, exampleNotebook,
-    exampleRpgCharacterCreator, explorer, goldenMunit.jvm, goldenMunit.js, goldenMunit.native, openapi.jvm, openapi.js,
-    openapi.native, openapiMcpProxy
+    exampleDice.native, http4s.jvm, http4s.js, http4s.native, redis, tapir, examplePomodoro, exampleChat, exampleClient,
+    exampleHarness.jvm, exampleHarness.native, exampleDns, exampleNotebook, exampleRpgCharacterCreator, explorer,
+    goldenMunit.jvm, goldenMunit.js, goldenMunit.native, openapi.jvm, openapi.js, openapi.native, openapiMcpProxy
   )

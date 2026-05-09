@@ -9,6 +9,8 @@ pkgs.mkShell {
     libunwind
     boehmgc
     re2
+    # TLS for fs2.io.net / http4s-ember-client on Native (used by example-harness).
+    s2n-tls
 
     # Build tools
     sbt

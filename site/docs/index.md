@@ -12,7 +12,7 @@ Claude to access tools, resources, and prompts.
 - Type-safe protocol implementation with Scala 3 enums and opaque types
 - Automatic JSON Schema derivation via `derives JsonSchema`
 - Multiple transport layers — stdio for subprocess servers, Streamable HTTP + SSE for networked servers
-- Cross-platform — `core` and `stdio` run on JVM, Scala.js, and Scala Native; `http4s` on JVM and Scala.js
+- Cross-platform — `core`, `stdio`, and `http4s` all run on JVM, Scala.js, and Scala Native
 - Fluent builder API for servers, tools, resources, and prompts
 - Effect-polymorphic, built on Cats Effect
 - Zero-boilerplate codec derivation with Scala 3's `derives` syntax
@@ -24,6 +24,7 @@ Claude to access tools, resources, and prompts.
 - **Getting Started → [Tools](getting-started/tools.md), [Resources](getting-started/resources.md), [Prompts](getting-started/prompts.md)** — the core building blocks
 - **[Getting Started → JSON schema derivation](getting-started/json-schema-derivation.md)** — `derives JsonSchema` and annotations
 - **[Getting Started → Server construction](getting-started/server-construction.md)** — Stdio + HTTP transports
+- **[Clients](clients/index.md)** — `McpClient` over stdio or HTTP, plus handlers for server-initiated sampling / elicitation / roots requests
 - **[Modules](modules/index.md)** — one page per module (core, stdio, http4s, openapi, redis, tapir, golden-munit, explorer)
 - **[Tools → OpenAPI MCP Proxy](tools/openapi-mcp-proxy.md)** — turn any OpenAPI API into an MCP server
 - **[Testing → Golden testing](testing/golden-testing.md)** — snapshot-test your server's spec
