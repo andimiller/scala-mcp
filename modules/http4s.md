@@ -1,6 +1,6 @@
 # http4s
 
-`mcp-http4s` · JVM · Scala.js
+`mcp-http4s` · JVM · Scala.js · Scala Native
 
 Streamable HTTP + SSE transport via http4s Ember. Two builder entry points:
 
@@ -8,11 +8,32 @@ Streamable HTTP + SSE transport via http4s Ember. Two builder entry points:
 - `McpHttp.streaming[IO]` — adds session management, resource subscriptions, server-initiated logging, cancellation, and per-session state via `.stateful` / `.authenticated` chains
 
 ```scala
-libraryDependencies += "net.andimiller.mcp" %%% "mcp-http4s" % "0.9.0"
+libraryDependencies += "net.andimiller.mcp" %%% "mcp-http4s" % "0.10.0"
 ```
 
+A minimal HTTP server built on `McpHttp.basic` looks like:
+
+```scala
+import cats.effect.{IO, IOApp}
+import com.comcast.ip4s.*
+import net.andimiller.mcp.http4s.McpHttp
+
+object MyHttpServer extends IOApp.Simple:
+  def run: IO[Unit] =
+    McpHttp.basic[IO]
+      .name("my-server").version("1.0.0")
+      .port(port"8080")
+      .serve
+      .useForever
+```
+
+`.serve` returns a `Resource[IO, http4s.server.Server]`; tools, resources,
+and prompts are added with `.withTool` / `.withResource` / `.withPrompt`
+before the call.
+
 See [Server construction → HTTP server](../getting-started/server-construction.md#http-server-basic)
-for the builder chain.
+for the server side, or [Clients → Client construction](../clients/client-construction.md#http-client)
+for connecting to a streamable HTTP server as an `McpClient`.
 
 ## Embedded Explorer UI
 

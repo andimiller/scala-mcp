@@ -8,7 +8,7 @@ are tiny; HTTP, Redis, and OpenAPI support layer on top.
 |--------|-----------|-------------|
 | [core](core.md) | JVM, JS, Native | Protocol types, server abstraction, schema derivation, JSON codecs |
 | [stdio](stdio.md) | JVM, JS, Native | stdin/stdout transport for subprocess-based servers |
-| [http4s](http4s.md) | JVM, JS | Streamable HTTP + SSE transport via http4s Ember; bundles the Explorer UI |
+| [http4s](http4s.md) | JVM, JS, Native | Streamable HTTP + SSE transport via http4s Ember; bundles the Explorer UI |
 | [openapi](openapi.md) | JVM, JS, Native | OpenAPI 3.x schema model + tool-builder helpers |
 | [redis](redis.md) | JVM | Redis-backed `SessionStore` / `SessionRefs` / `StateRef` / notification sink |
 | [tapir](tapir.md) | JVM | Bridge that turns any `sttp.tapir.Schema[A]` into a `JsonSchema[A]` |

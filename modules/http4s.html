@@ -140,6 +140,10 @@
     <li class="level2 nav-leaf"><a href="../getting-started/prompts.html">Prompts</a></li>
     <li class="level2 nav-leaf"><a href="../getting-started/json-schema-derivation.html">JSON Schema derivation</a></li>
     <li class="level2 nav-leaf"><a href="../getting-started/server-construction.html">Server construction</a></li>
+    <li class="level1 nav-header">Clients</li>
+    <li class="level2 nav-leaf"><a href="../clients/">Clients</a></li>
+    <li class="level2 nav-leaf"><a href="../clients/client-construction.html">Client construction</a></li>
+    <li class="level2 nav-leaf"><a href="../clients/client-handlers.html">Client handlers</a></li>
     <li class="level1 nav-header">Modules</li>
     <li class="level2 nav-leaf"><a href="index.html">Modules</a></li>
     <li class="level2 nav-leaf"><a href="core.html">core</a></li>
@@ -163,6 +167,8 @@
     <li class="level2 nav-leaf"><a href="../examples/chat.html">Chat MCP server</a></li>
     <li class="level2 nav-leaf"><a href="../examples/shared-notebook.html">Shared Notebook MCP server</a></li>
     <li class="level2 nav-leaf"><a href="../examples/rpg-character-creator.html">RPG Character Creator</a></li>
+    <li class="level2 nav-leaf"><a href="../examples/cli-client.html">CLI client (mcp-client)</a></li>
+    <li class="level2 nav-leaf"><a href="../examples/harness.html">LLM harness</a></li>
   </ul>
 
 </nav>
@@ -184,15 +190,31 @@
       <main class="content">
 
         <h1 id="http4s" class="title"><a class="md-link" href="http4s.md" title="View this page as raw Markdown">[md]</a>http4s</h1>
-        <p><code>mcp-http4s</code> · JVM · Scala.js</p>
+        <p><code>mcp-http4s</code> · JVM · Scala.js · Scala Native</p>
         <p>Streamable HTTP + SSE transport via http4s Ember. Two builder entry points:</p>
         <ul>
           <li><code>McpHttp.basic[IO]</code> — plain request/response MCP over HTTP</li>
           <li><code>McpHttp.streaming[IO]</code> — adds session management, resource subscriptions, server-initiated logging, cancellation, and per-session state via <code>.stateful</code> / <code>.authenticated</code> chains</li>
         </ul>
-        <pre class="keep-together pdf epub"><code class="nohighlight"><span class="identifier">libraryDependencies</span><span> += </span><span class="string-literal">&quot;net.andimiller.mcp&quot;</span><span> %%% </span><span class="string-literal">&quot;mcp-http4s&quot;</span><span> % </span><span class="string-literal">&quot;0.9.0&quot;</span></code></pre>
+        <pre class="keep-together pdf epub"><code class="nohighlight"><span class="identifier">libraryDependencies</span><span> += </span><span class="string-literal">&quot;net.andimiller.mcp&quot;</span><span> %%% </span><span class="string-literal">&quot;mcp-http4s&quot;</span><span> % </span><span class="string-literal">&quot;0.10.0&quot;</span></code></pre>
+        <p>A minimal HTTP server built on <code>McpHttp.basic</code> looks like:</p>
+        <pre class="keep-together pdf epub"><code class="nohighlight"><span class="keyword">import</span><span> </span><span class="identifier">cats</span><span>.</span><span class="identifier">effect</span><span>.{</span><span class="type-name">IO</span><span>, </span><span class="type-name">IOApp</span><span>}
+</span><span class="keyword">import</span><span> </span><span class="identifier">com</span><span>.</span><span class="identifier">comcast</span><span>.</span><span class="identifier">ip4s</span><span>.*
+</span><span class="keyword">import</span><span> </span><span class="identifier">net</span><span>.</span><span class="identifier">andimiller</span><span>.</span><span class="identifier">mcp</span><span>.</span><span class="identifier">http4s</span><span>.</span><span class="type-name">McpHttp</span><span>
+
+</span><span class="keyword">object</span><span> </span><span class="type-name">MyHttpServer</span><span> </span><span class="keyword">extends</span><span> </span><span class="type-name">IOApp</span><span>.</span><span class="type-name">Simple</span><span>:
+  </span><span class="keyword">def</span><span> </span><span class="declaration-name">run</span><span>: </span><span class="type-name">IO</span><span>[</span><span class="type-name">Unit</span><span>] =
+    </span><span class="type-name">McpHttp</span><span>.</span><span class="identifier">basic</span><span>[</span><span class="type-name">IO</span><span>]
+      .</span><span class="identifier">name</span><span>(</span><span class="string-literal">&quot;my-server&quot;</span><span>).</span><span class="identifier">version</span><span>(</span><span class="string-literal">&quot;1.0.0&quot;</span><span>)
+      .</span><span class="identifier">port</span><span>(</span><span class="string-literal">port&quot;8080&quot;</span><span>)
+      .</span><span class="identifier">serve</span><span>
+      .</span><span class="identifier">useForever</span></code></pre>
+        <p><code>.serve</code> returns a <code>Resource[IO, http4s.server.Server]</code>; tools, resources,
+        and prompts are added with <code>.withTool</code> / <code>.withResource</code> / <code>.withPrompt</code>
+        before the call.</p>
         <p>See <a href="../getting-started/server-construction.html#http-server-basic">Server construction → HTTP server</a>
-        for the builder chain.</p>
+        for the server side, or <a href="../clients/client-construction.html#http-client">Clients → Client construction</a>
+        for connecting to a streamable HTTP server as an <code>McpClient</code>.</p>
         
         <h2 id="embedded-explorer-ui" class="section"><a class="anchor-link left" href="#embedded-explorer-ui"><i class="icofont-laika link">&#xef71;</i></a>Embedded Explorer UI</h2>
         <p>The <code>http4s</code> module bundles the <a href="explorer.html">Explorer</a> — a Scala.js + Tyrian

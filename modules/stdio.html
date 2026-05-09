@@ -140,6 +140,10 @@
     <li class="level2 nav-leaf"><a href="../getting-started/prompts.html">Prompts</a></li>
     <li class="level2 nav-leaf"><a href="../getting-started/json-schema-derivation.html">JSON Schema derivation</a></li>
     <li class="level2 nav-leaf"><a href="../getting-started/server-construction.html">Server construction</a></li>
+    <li class="level1 nav-header">Clients</li>
+    <li class="level2 nav-leaf"><a href="../clients/">Clients</a></li>
+    <li class="level2 nav-leaf"><a href="../clients/client-construction.html">Client construction</a></li>
+    <li class="level2 nav-leaf"><a href="../clients/client-handlers.html">Client handlers</a></li>
     <li class="level1 nav-header">Modules</li>
     <li class="level2 nav-leaf"><a href="index.html">Modules</a></li>
     <li class="level2 nav-leaf"><a href="core.html">core</a></li>
@@ -163,6 +167,8 @@
     <li class="level2 nav-leaf"><a href="../examples/chat.html">Chat MCP server</a></li>
     <li class="level2 nav-leaf"><a href="../examples/shared-notebook.html">Shared Notebook MCP server</a></li>
     <li class="level2 nav-leaf"><a href="../examples/rpg-character-creator.html">RPG Character Creator</a></li>
+    <li class="level2 nav-leaf"><a href="../examples/cli-client.html">CLI client (mcp-client)</a></li>
+    <li class="level2 nav-leaf"><a href="../examples/harness.html">LLM harness</a></li>
   </ul>
 
 </nav>
@@ -188,9 +194,22 @@
         expected by Claude Desktop and Claude Code&#39;s local server config. A server
         built with <code>core</code> becomes a stdio server by handing it to
         <code>StdioTransport.run</code>.</p>
-        <pre class="keep-together pdf epub"><code class="nohighlight"><span class="identifier">libraryDependencies</span><span> += </span><span class="string-literal">&quot;net.andimiller.mcp&quot;</span><span> %%% </span><span class="string-literal">&quot;mcp-stdio&quot;</span><span> % </span><span class="string-literal">&quot;0.9.0&quot;</span></code></pre>
+        <pre class="keep-together pdf epub"><code class="nohighlight"><span class="identifier">libraryDependencies</span><span> += </span><span class="string-literal">&quot;net.andimiller.mcp&quot;</span><span> %%% </span><span class="string-literal">&quot;mcp-stdio&quot;</span><span> % </span><span class="string-literal">&quot;0.10.0&quot;</span></code></pre>
+        <p><code>StdioTransport.run</code> reads JSON-RPC from stdin, dispatches it to your
+        <code>Server[F]</code>, and writes responses back to stdout. The whole serve loop is
+        one line:</p>
+        <pre class="keep-together pdf epub"><code class="nohighlight"><span class="keyword">import</span><span> </span><span class="identifier">cats</span><span>.</span><span class="identifier">effect</span><span>.{</span><span class="type-name">IO</span><span>, </span><span class="type-name">IOApp</span><span>}
+</span><span class="keyword">import</span><span> </span><span class="identifier">net</span><span>.</span><span class="identifier">andimiller</span><span>.</span><span class="identifier">mcp</span><span>.</span><span class="identifier">core</span><span>.</span><span class="identifier">server</span><span>.{</span><span class="type-name">Server</span><span>, </span><span class="type-name">ServerBuilder</span><span>}
+</span><span class="keyword">import</span><span> </span><span class="identifier">net</span><span>.</span><span class="identifier">andimiller</span><span>.</span><span class="identifier">mcp</span><span>.</span><span class="identifier">stdio</span><span>.</span><span class="type-name">StdioTransport</span><span>
+
+</span><span class="keyword">object</span><span> </span><span class="type-name">MyServer</span><span> </span><span class="keyword">extends</span><span> </span><span class="type-name">IOApp</span><span>.</span><span class="type-name">Simple</span><span>:
+  </span><span class="keyword">def</span><span> </span><span class="declaration-name">server</span><span>: </span><span class="type-name">IO</span><span>[</span><span class="type-name">Server</span><span>[</span><span class="type-name">IO</span><span>]] =
+    </span><span class="type-name">ServerBuilder</span><span>[</span><span class="type-name">IO</span><span>](</span><span class="string-literal">&quot;my-server&quot;</span><span>, </span><span class="string-literal">&quot;1.0.0&quot;</span><span>).</span><span class="identifier">build</span><span>
+
+  </span><span class="keyword">def</span><span> </span><span class="declaration-name">run</span><span>: </span><span class="type-name">IO</span><span>[</span><span class="type-name">Unit</span><span>] = </span><span class="identifier">server</span><span>.</span><span class="identifier">flatMap</span><span>(</span><span class="type-name">StdioTransport</span><span>.</span><span class="identifier">run</span><span>[</span><span class="type-name">IO</span><span>])</span></code></pre>
         <p>See <a href="../getting-started/server-construction.html#stdio-server">Server construction → Stdio server</a>
-        for usage.</p>
+        for the server side, or <a href="../clients/client-construction.html#stdio-client">Clients → Client construction</a>
+        for spawning a subprocess server as an <code>McpClient</code>.</p>
 
         
 <hr class="footer-rule"/>

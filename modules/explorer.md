@@ -11,7 +11,16 @@ The Explorer is a Scala.js + [Tyrian](https://tyrian.indigoengine.io/) app
 styled with [Bulma](https://bulma.io/), bundled into static assets by Parcel.
 You don't add it as a dependency directly — instead, the [http4s](http4s.md)
 module bundles the pre-built assets and serves them via `.withExplorer(...)`
-on your `McpHttp.basic` / `McpHttp.streaming` builder.
+on your `McpHttp.basic` / `McpHttp.streaming` builder:
 
-See [http4s → Embedded Explorer UI](http4s.md#embedded-explorer-ui) for how
-to enable it on your server.
+```scala
+import cats.effect.IO
+import net.andimiller.mcp.http4s.McpHttp
+
+val builder =
+  McpHttp.streaming[IO]
+    .withExplorer(redirectToRoot = true) // serves at /explorer; redirects / there too
+```
+
+See [http4s → Embedded Explorer UI](http4s.md#embedded-explorer-ui) for the
+asset-rebuild workflow.

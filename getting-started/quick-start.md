@@ -9,18 +9,18 @@ clients (Claude Desktop, Claude Code) or HTTP for a networked server.
 ```scala
 // For stdio-based servers
 libraryDependencies ++= Seq(
-  "net.andimiller.mcp" %%% "mcp-core"  % "0.9.0",
-  "net.andimiller.mcp" %%% "mcp-stdio" % "0.9.0"
+  "net.andimiller.mcp" %%% "mcp-core"  % "0.10.0",
+  "net.andimiller.mcp" %%% "mcp-stdio" % "0.10.0"
 )
 
 // For HTTP-based servers
 libraryDependencies ++= Seq(
-  "net.andimiller.mcp" %%% "mcp-core"   % "0.9.0",
-  "net.andimiller.mcp" %%% "mcp-http4s" % "0.9.0"
+  "net.andimiller.mcp" %%% "mcp-core"   % "0.10.0",
+  "net.andimiller.mcp" %%% "mcp-http4s" % "0.10.0"
 )
 
 // Optional: Redis-backed session/state for stateful HTTP servers
-libraryDependencies += "net.andimiller.mcp" %% "mcp-redis" % "0.9.0"
+libraryDependencies += "net.andimiller.mcp" %% "mcp-redis" % "0.10.0"
 ```
 
 ## Defining a tool

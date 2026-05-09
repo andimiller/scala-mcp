@@ -140,6 +140,10 @@
     <li class="level2 nav-leaf"><a href="../getting-started/prompts.html">Prompts</a></li>
     <li class="level2 nav-leaf"><a href="../getting-started/json-schema-derivation.html">JSON Schema derivation</a></li>
     <li class="level2 nav-leaf"><a href="../getting-started/server-construction.html">Server construction</a></li>
+    <li class="level1 nav-header">Clients</li>
+    <li class="level2 nav-leaf"><a href="../clients/">Clients</a></li>
+    <li class="level2 nav-leaf"><a href="../clients/client-construction.html">Client construction</a></li>
+    <li class="level2 nav-leaf"><a href="../clients/client-handlers.html">Client handlers</a></li>
     <li class="level1 nav-header">Modules</li>
     <li class="level2 nav-leaf"><a href="index.html">Modules</a></li>
     <li class="level2 active nav-leaf"><a href="#">core</a></li>
@@ -163,6 +167,8 @@
     <li class="level2 nav-leaf"><a href="../examples/chat.html">Chat MCP server</a></li>
     <li class="level2 nav-leaf"><a href="../examples/shared-notebook.html">Shared Notebook MCP server</a></li>
     <li class="level2 nav-leaf"><a href="../examples/rpg-character-creator.html">RPG Character Creator</a></li>
+    <li class="level2 nav-leaf"><a href="../examples/cli-client.html">CLI client (mcp-client)</a></li>
+    <li class="level2 nav-leaf"><a href="../examples/harness.html">LLM harness</a></li>
   </ul>
 
 </nav>
@@ -188,7 +194,24 @@
         templates, prompts, capabilities), the <code>Server[F]</code> abstraction, the fluent
         builders (<code>tool</code>, <code>resource</code>, <code>prompt</code>, plus their <code>contextual*</code> variants),
         and the JSON Schema derivation machinery. Every other module depends on this.</p>
-        <pre class="keep-together pdf epub"><code class="nohighlight"><span class="identifier">libraryDependencies</span><span> += </span><span class="string-literal">&quot;net.andimiller.mcp&quot;</span><span> %%% </span><span class="string-literal">&quot;mcp-core&quot;</span><span> % </span><span class="string-literal">&quot;0.9.0&quot;</span></code></pre>
+        <pre class="keep-together pdf epub"><code class="nohighlight"><span class="identifier">libraryDependencies</span><span> += </span><span class="string-literal">&quot;net.andimiller.mcp&quot;</span><span> %%% </span><span class="string-literal">&quot;mcp-core&quot;</span><span> % </span><span class="string-literal">&quot;0.10.0&quot;</span></code></pre>
+        <p>A taste of the surface — typed I/O case classes derive JSON Schema and circe
+        codecs in one shot, and <code>tool</code> / <code>resource</code> / <code>prompt</code> are the fluent
+        builders that produce values you hand to <code>ServerBuilder</code>:</p>
+        <pre><code class="nohighlight"><span class="keyword">import</span><span> </span><span class="identifier">cats</span><span>.</span><span class="identifier">effect</span><span>.</span><span class="type-name">IO</span><span>
+</span><span class="keyword">import</span><span> </span><span class="identifier">io</span><span>.</span><span class="identifier">circe</span><span>.{</span><span class="type-name">Decoder</span><span>, </span><span class="type-name">Encoder</span><span>}
+</span><span class="keyword">import</span><span> </span><span class="identifier">net</span><span>.</span><span class="identifier">andimiller</span><span>.</span><span class="identifier">mcp</span><span>.</span><span class="identifier">core</span><span>.</span><span class="identifier">schema</span><span>.</span><span class="type-name">JsonSchema</span><span>
+</span><span class="keyword">import</span><span> </span><span class="identifier">net</span><span>.</span><span class="identifier">andimiller</span><span>.</span><span class="identifier">mcp</span><span>.</span><span class="identifier">core</span><span>.</span><span class="identifier">server</span><span>.*
+
+</span><span class="keyword">case</span><span> </span><span class="keyword">class</span><span> </span><span class="type-name">Greet</span><span>(</span><span class="identifier">name</span><span>: </span><span class="type-name">String</span><span>)    </span><span class="keyword">derives</span><span> </span><span class="type-name">JsonSchema</span><span>, </span><span class="type-name">Decoder</span><span>
+</span><span class="keyword">case</span><span> </span><span class="keyword">class</span><span> </span><span class="type-name">Greeting</span><span>(</span><span class="identifier">text</span><span>: </span><span class="type-name">String</span><span>) </span><span class="keyword">derives</span><span> </span><span class="type-name">JsonSchema</span><span>, </span><span class="type-name">Encoder</span><span>.</span><span class="type-name">AsObject</span><span>
+
+</span><span class="keyword">val</span><span> </span><span class="identifier">greetTool</span><span>: </span><span class="type-name">Tool</span><span>.</span><span class="type-name">Resolved</span><span>[</span><span class="type-name">IO</span><span>] =
+  </span><span class="identifier">tool</span><span>.</span><span class="identifier">name</span><span>(</span><span class="string-literal">&quot;greet&quot;</span><span>).</span><span class="identifier">in</span><span>[</span><span class="type-name">Greet</span><span>].</span><span class="identifier">out</span><span>[</span><span class="type-name">Greeting</span><span>]
+    .</span><span class="identifier">run</span><span>(</span><span class="identifier">req</span><span> =&gt; </span><span class="type-name">IO</span><span>.</span><span class="identifier">pure</span><span>(</span><span class="type-name">Greeting</span><span>(</span><span class="string-literal">s&quot;Hello, </span><span class="substitution">${req.name}</span><span class="string-literal">!&quot;</span><span>)))
+
+</span><span class="keyword">val</span><span> </span><span class="identifier">server</span><span>: </span><span class="type-name">IO</span><span>[</span><span class="type-name">Server</span><span>[</span><span class="type-name">IO</span><span>]] =
+  </span><span class="type-name">ServerBuilder</span><span>[</span><span class="type-name">IO</span><span>](</span><span class="string-literal">&quot;my-server&quot;</span><span>, </span><span class="string-literal">&quot;1.0.0&quot;</span><span>).</span><span class="identifier">withTool</span><span>(</span><span class="identifier">greetTool</span><span>).</span><span class="identifier">build</span></code></pre>
         <p>Most user docs live in <a href="../getting-started/quick-start.html">Getting Started</a> — start
         with <a href="../getting-started/tools.html">Tools</a>, <a href="../getting-started/resources.html">Resources</a>,
         and <a href="../getting-started/prompts.html">Prompts</a> to see what the core builders look like

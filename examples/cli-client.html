@@ -15,8 +15,8 @@
   <meta name="generator" content="Typelevel Laika + Helium Theme" />
   <meta name="x-llms-txt" content="https://andimiller.github.io/scala-mcp/llms.txt"/>
   <meta name="x-llms-full-txt" content="https://andimiller.github.io/scala-mcp/llms-full.txt"/>
-  <title>Tools - Scala MCP Library</title>
-  <link rel="alternate" type="text/markdown" href="tools.md" title="Markdown source"/>
+  <title>CLI client (mcp-client) - Scala MCP Library</title>
+  <link rel="alternate" type="text/markdown" href="cli-client.md" title="Markdown source"/>
   
   <meta name="author" content="scala-mcp contributors"/>
   
@@ -28,8 +28,8 @@
   
   <meta property="og:type" content="website"/>
   <meta name="twitter:card" content="summary_large_image"/>
-  <meta property="og:title" content="Tools"/>
-  <meta name="twitter:title" content="Tools"/>
+  <meta property="og:title" content="CLI client (mcp-client)"/>
+  <meta name="twitter:title" content="CLI client (mcp-client)"/>
   
   <meta property="og:description" content="A Scala 3 library for building Model Context Protocol (MCP) servers. Cross-platform (JVM, JS, Native), built on Cats Effect, with automatic JSON Schema derivation."/>
   <meta name="twitter:description" content="A Scala 3 library for building Model Context Protocol (MCP) servers. Cross-platform (JVM, JS, Native), built on Cats Effect, with automatic JSON Schema derivation."/>
@@ -134,12 +134,12 @@
     <li class="level1 nav-header">Introduction</li>
     <li class="level2 nav-leaf"><a href="../introduction/feature-support.html">MCP feature support</a></li>
     <li class="level1 nav-header">Getting Started</li>
-    <li class="level2 nav-leaf"><a href="quick-start.html">Quick start</a></li>
-    <li class="level2 active nav-leaf"><a href="#">Tools</a></li>
-    <li class="level2 nav-leaf"><a href="resources.html">Resources &amp; resource templates</a></li>
-    <li class="level2 nav-leaf"><a href="prompts.html">Prompts</a></li>
-    <li class="level2 nav-leaf"><a href="json-schema-derivation.html">JSON Schema derivation</a></li>
-    <li class="level2 nav-leaf"><a href="server-construction.html">Server construction</a></li>
+    <li class="level2 nav-leaf"><a href="../getting-started/quick-start.html">Quick start</a></li>
+    <li class="level2 nav-leaf"><a href="../getting-started/tools.html">Tools</a></li>
+    <li class="level2 nav-leaf"><a href="../getting-started/resources.html">Resources &amp; resource templates</a></li>
+    <li class="level2 nav-leaf"><a href="../getting-started/prompts.html">Prompts</a></li>
+    <li class="level2 nav-leaf"><a href="../getting-started/json-schema-derivation.html">JSON Schema derivation</a></li>
+    <li class="level2 nav-leaf"><a href="../getting-started/server-construction.html">Server construction</a></li>
     <li class="level1 nav-header">Clients</li>
     <li class="level2 nav-leaf"><a href="../clients/">Clients</a></li>
     <li class="level2 nav-leaf"><a href="../clients/client-construction.html">Client construction</a></li>
@@ -160,15 +160,15 @@
     <li class="level1 nav-header">Testing</li>
     <li class="level2 nav-leaf"><a href="../testing/golden-testing.html">Golden testing</a></li>
     <li class="level1 nav-header">Examples</li>
-    <li class="level2 nav-leaf"><a href="../examples/">Examples</a></li>
-    <li class="level2 nav-leaf"><a href="../examples/dice.html">Dice MCP server</a></li>
-    <li class="level2 nav-leaf"><a href="../examples/pomodoro.html">Pomodoro MCP server</a></li>
-    <li class="level2 nav-leaf"><a href="../examples/dns.html">DNS MCP server</a></li>
-    <li class="level2 nav-leaf"><a href="../examples/chat.html">Chat MCP server</a></li>
-    <li class="level2 nav-leaf"><a href="../examples/shared-notebook.html">Shared Notebook MCP server</a></li>
-    <li class="level2 nav-leaf"><a href="../examples/rpg-character-creator.html">RPG Character Creator</a></li>
-    <li class="level2 nav-leaf"><a href="../examples/cli-client.html">CLI client (mcp-client)</a></li>
-    <li class="level2 nav-leaf"><a href="../examples/harness.html">LLM harness</a></li>
+    <li class="level2 nav-leaf"><a href="index.html">Examples</a></li>
+    <li class="level2 nav-leaf"><a href="dice.html">Dice MCP server</a></li>
+    <li class="level2 nav-leaf"><a href="pomodoro.html">Pomodoro MCP server</a></li>
+    <li class="level2 nav-leaf"><a href="dns.html">DNS MCP server</a></li>
+    <li class="level2 nav-leaf"><a href="chat.html">Chat MCP server</a></li>
+    <li class="level2 nav-leaf"><a href="shared-notebook.html">Shared Notebook MCP server</a></li>
+    <li class="level2 nav-leaf"><a href="rpg-character-creator.html">RPG Character Creator</a></li>
+    <li class="level2 active nav-leaf"><a href="#">CLI client (mcp-client)</a></li>
+    <li class="level2 nav-leaf"><a href="harness.html">LLM harness</a></li>
   </ul>
 
 </nav>
@@ -177,12 +177,11 @@
 
       
 <nav id="page-nav">
-  <p class="header"><a href="#">Tools</a></p>
+  <p class="header"><a href="#">CLI client (mcp-client)</a></p>
 
   <ul class="nav-list">
-    <li class="level1 nav-leaf"><a href="#fluent-builder">Fluent builder</a></li>
-    <li class="level1 nav-leaf"><a href="#returning-toolresult-directly">Returning <code>ToolResult</code> directly</a></li>
-    <li class="level1 nav-leaf"><a href="#contextual-tools">Contextual tools</a></li>
+    <li class="level1 nav-leaf"><a href="#build-and-run">Build and run</a></li>
+    <li class="level1 nav-leaf"><a href="#what-it-shows">What it shows</a></li>
   </ul>
 
   <p class="footer"></p>
@@ -191,55 +190,50 @@
 
       <main class="content">
 
-        <h1 id="tools" class="title"><a class="md-link" href="tools.md" title="View this page as raw Markdown">[md]</a>Tools</h1>
-        <p>Tools are the most-used MCP feature: typed, schema-described functions an AI
-        client can call. The snippets below are type-checked by mdoc — they share the
-        imports and placeholder types in the setup block.</p>
-        <pre class="keep-together pdf epub"><code class="nohighlight"><span class="keyword">import</span><span> </span><span class="identifier">cats</span><span>.</span><span class="identifier">effect</span><span>.</span><span class="type-name">IO</span><span>
-</span><span class="keyword">import</span><span> </span><span class="identifier">io</span><span>.</span><span class="identifier">circe</span><span>.{</span><span class="type-name">Decoder</span><span>, </span><span class="type-name">Encoder</span><span>}
-</span><span class="keyword">import</span><span> </span><span class="identifier">net</span><span>.</span><span class="identifier">andimiller</span><span>.</span><span class="identifier">mcp</span><span>.</span><span class="identifier">core</span><span>.</span><span class="identifier">schema</span><span>.</span><span class="type-name">JsonSchema</span><span>
-</span><span class="keyword">import</span><span> </span><span class="identifier">net</span><span>.</span><span class="identifier">andimiller</span><span>.</span><span class="identifier">mcp</span><span>.</span><span class="identifier">core</span><span>.</span><span class="identifier">server</span><span>.*
-</span><span class="keyword">import</span><span> </span><span class="identifier">net</span><span>.</span><span class="identifier">andimiller</span><span>.</span><span class="identifier">mcp</span><span>.</span><span class="identifier">core</span><span>.</span><span class="identifier">protocol</span><span>.</span><span class="type-name">ToolResult</span><span>
+        <h1 id="cli-client-mcp-client" class="title"><a class="md-link" href="cli-client.md" title="View this page as raw Markdown">[md]</a>CLI client (mcp-client)</h1>
+        <p><code>modules/example-client</code> · Stdio + HTTP · JVM</p>
+        <p>A tiny interactive REPL over any MCP server — handy for sanity-checking a
+        server you&#39;re writing, and a worked example of using <code>StdioMcpClient</code> and
+        <code>StreamableHttpMcpClient</code> together behind a single <code>decline</code> CLI.</p>
+        <ul>
+          <li><strong>Subcommands:</strong> <code>mcp-client stdio &lt;command&gt; [args…]</code> spawns a subprocess
+          server; <code>mcp-client http &lt;url&gt; [-H &#39;k: v&#39;]…</code> connects to a streamable
+          HTTP server.</li>
+          <li><strong>REPL keys:</strong> <code>t</code> lists tools, <code>r</code> lists resources, <code>p</code> lists prompts,
+          <code>q</code> quits. Each lists the entries with numbers, lets you pick one, and
+          invokes it (tool calls prompt for JSON arguments; prompts ask for each
+          defined argument).</li>
+          <li><strong>Capabilities banner:</strong> prints the server&#39;s name, version, protocol
+          version, and which capabilities it advertised during <code>initialize</code>.</li>
+        </ul>
+        
+        <h2 id="build-and-run" class="section"><a class="anchor-link left" href="#build-and-run"><i class="icofont-laika link">&#xef71;</i></a>Build and run</h2>
+        <pre class="keep-together pdf epub"><code class="nohighlight"><span class="comment"># Stdio: spawn a subprocess MCP server
+</span><span>sbt </span><span class="string-literal">&#39;exampleClient/run stdio sbt exampleDiceJVM/run&#39;</span><span>
 
-</span><span class="keyword">case</span><span> </span><span class="keyword">class</span><span> </span><span class="type-name">MyRequest</span><span>(</span><span class="identifier">value</span><span>: </span><span class="type-name">String</span><span>)  </span><span class="keyword">derives</span><span> </span><span class="type-name">JsonSchema</span><span>, </span><span class="type-name">Decoder</span><span>, </span><span class="type-name">Encoder</span><span>.</span><span class="type-name">AsObject</span><span>
-</span><span class="keyword">case</span><span> </span><span class="keyword">class</span><span> </span><span class="type-name">MyResponse</span><span>(</span><span class="identifier">value</span><span>: </span><span class="type-name">String</span><span>) </span><span class="keyword">derives</span><span> </span><span class="type-name">JsonSchema</span><span>, </span><span class="type-name">Decoder</span><span>, </span><span class="type-name">Encoder</span><span>.</span><span class="type-name">AsObject</span><span>
+</span><span class="comment"># HTTP: connect to a networked MCP server
+</span><span>sbt </span><span class="string-literal">&#39;exampleClient/run http http://localhost:25000/mcp&#39;</span><span>
 
-</span><span class="keyword">trait</span><span> </span><span class="type-name">MyCtx</span><span>:
-  </span><span class="keyword">def</span><span> </span><span class="declaration-name">doSomething</span><span>(</span><span class="identifier">req</span><span>: </span><span class="type-name">MyRequest</span><span>): </span><span class="type-name">IO</span><span>[</span><span class="type-name">MyResponse</span><span>]</span></code></pre>
+</span><span class="comment"># HTTP with a bearer token
+</span><span>sbt </span><span class="string-literal">&#39;exampleClient/run http https://my-server/mcp -H &quot;Authorization: Bearer …&quot;&#39;</span></code></pre>
+        <p><code>--no-sse</code> disables the long-poll SSE GET if you only want plain
+        request/response over HTTP POST.</p>
         
-        <h2 id="fluent-builder" class="section"><a class="anchor-link left" href="#fluent-builder"><i class="icofont-laika link">&#xef71;</i></a>Fluent builder</h2>
-        <p><code>.run</code> on a non-contextual builder erases the input/output types into JSON
-        schemas and returns a <code>Tool.Resolved[F]</code> — the form a <code>Server</code> dispatches:</p>
-        <pre class="keep-together pdf epub"><code class="nohighlight"><span class="keyword">val</span><span> </span><span class="identifier">myTool</span><span>: </span><span class="type-name">Tool</span><span>.</span><span class="type-name">Resolved</span><span>[</span><span class="type-name">IO</span><span>] =
-  </span><span class="identifier">tool</span><span>.</span><span class="identifier">name</span><span>(</span><span class="string-literal">&quot;my_tool&quot;</span><span>)
-    .</span><span class="identifier">description</span><span>(</span><span class="string-literal">&quot;Tool description&quot;</span><span>)
-    .</span><span class="identifier">in</span><span>[</span><span class="type-name">MyRequest</span><span>]
-    .</span><span class="identifier">out</span><span>[</span><span class="type-name">MyResponse</span><span>]
-    .</span><span class="identifier">run</span><span>(</span><span class="identifier">req</span><span> =&gt; </span><span class="type-name">IO</span><span>.</span><span class="identifier">pure</span><span>(</span><span class="type-name">MyResponse</span><span>(</span><span class="identifier">req</span><span>.</span><span class="identifier">value</span><span>)))</span></code></pre>
-        
-        <h2 id="returning-toolresult-directly" class="section"><a class="anchor-link left" href="#returning-toolresult-directly"><i class="icofont-laika link">&#xef71;</i></a>Returning <code>ToolResult</code> directly</h2>
-        <p><code>.runResult</code> lets you return <code>ToolResult[Out]</code> (<code>Success</code> / <code>Text</code> / <code>Error</code>)
-        directly when the call can fail or wants to short-circuit:</p>
-        <pre class="keep-together pdf epub"><code class="nohighlight"><span class="keyword">val</span><span> </span><span class="identifier">mayFail</span><span>: </span><span class="type-name">Tool</span><span>.</span><span class="type-name">Resolved</span><span>[</span><span class="type-name">IO</span><span>] =
-  </span><span class="identifier">tool</span><span>.</span><span class="identifier">name</span><span>(</span><span class="string-literal">&quot;risky&quot;</span><span>)
-    .</span><span class="identifier">in</span><span>[</span><span class="type-name">MyRequest</span><span>]
-    .</span><span class="identifier">out</span><span>[</span><span class="type-name">MyResponse</span><span>]
-    .</span><span class="identifier">runResult</span><span>(</span><span class="identifier">req</span><span> =&gt; </span><span class="type-name">IO</span><span>.</span><span class="identifier">pure</span><span>(</span><span class="type-name">ToolResult</span><span>.</span><span class="type-name">Error</span><span>(</span><span class="string-literal">&quot;nope&quot;</span><span>)))</span></code></pre>
-        
-        <h2 id="contextual-tools" class="section"><a class="anchor-link left" href="#contextual-tools"><i class="icofont-laika link">&#xef71;</i></a>Contextual tools</h2>
-        <p>A contextual tool receives a per-session context value when called. Use this
-        for state, auth-derived identity, or per-session resources. The return type
-        keeps the context, input, and output types so the server can wire it up
-        later:</p>
-        <pre class="keep-together pdf epub"><code class="nohighlight"><span class="keyword">val</span><span> </span><span class="identifier">ctxTool</span><span>: </span><span class="type-name">Tool</span><span>[</span><span class="type-name">IO</span><span>, </span><span class="type-name">MyCtx</span><span>, </span><span class="type-name">MyRequest</span><span>, </span><span class="type-name">MyResponse</span><span>] =
-  </span><span class="identifier">contextualTool</span><span>[</span><span class="type-name">MyCtx</span><span>]
-    .</span><span class="identifier">name</span><span>(</span><span class="string-literal">&quot;my_tool&quot;</span><span>)
-    .</span><span class="identifier">description</span><span>(</span><span class="string-literal">&quot;Tool description&quot;</span><span>)
-    .</span><span class="identifier">in</span><span>[</span><span class="type-name">MyRequest</span><span>]
-    .</span><span class="identifier">out</span><span>[</span><span class="type-name">MyResponse</span><span>]
-    .</span><span class="identifier">run</span><span>((</span><span class="identifier">ctx</span><span>, </span><span class="identifier">req</span><span>) =&gt; </span><span class="identifier">ctx</span><span>.</span><span class="identifier">doSomething</span><span>(</span><span class="identifier">req</span><span>))</span></code></pre>
-        <p><code>Tool.builder[IO]</code> and <code>Tool.contextual[MyCtx]</code> are equivalent to the <code>tool</code>
-        and <code>contextualTool</code> helpers above and remain available.</p>
+        <h2 id="what-it-shows" class="section"><a class="anchor-link left" href="#what-it-shows"><i class="icofont-laika link">&#xef71;</i></a>What it shows</h2>
+        <p>The whole client is ~280 lines in
+        <code>modules/example-client/src/main/scala/net/andimiller/mcp/examples/client/McpCliClient.scala</code>.
+        Main shapes worth lifting into your own code:</p>
+        <ul>
+          <li>One CLI binary covering both transports — <code>decline</code> subcommands feed
+          into a single <code>Resource[IO, McpClient[IO]]</code> (see
+          <code>stdioResource</code> / <code>httpResource</code> in the source).</li>
+          <li><code>StdioMcpClient.builder</code> and <code>StreamableHttpMcpClient.builder</code> produce
+          the same <code>McpClient[IO]</code> shape, so the REPL itself is transport-agnostic.</li>
+          <li><code>client.serverCapabilities.{tools,resources,prompts,logging}</code> — used to
+          print a capability summary on connect.</li>
+        </ul>
+        <p>For a runnable agent example that drives multiple servers from a Claude-style
+        <code>.mcp.json</code>, see the <a href="harness.html">LLM harness</a>.</p>
 
         
 <hr class="footer-rule"/>

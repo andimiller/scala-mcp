@@ -140,6 +140,10 @@
     <li class="level2 nav-leaf"><a href="getting-started/prompts.html">Prompts</a></li>
     <li class="level2 nav-leaf"><a href="getting-started/json-schema-derivation.html">JSON Schema derivation</a></li>
     <li class="level2 nav-leaf"><a href="getting-started/server-construction.html">Server construction</a></li>
+    <li class="level1 nav-header">Clients</li>
+    <li class="level2 nav-leaf"><a href="clients/">Clients</a></li>
+    <li class="level2 nav-leaf"><a href="clients/client-construction.html">Client construction</a></li>
+    <li class="level2 nav-leaf"><a href="clients/client-handlers.html">Client handlers</a></li>
     <li class="level1 nav-header">Modules</li>
     <li class="level2 nav-leaf"><a href="modules/">Modules</a></li>
     <li class="level2 nav-leaf"><a href="modules/core.html">core</a></li>
@@ -163,6 +167,8 @@
     <li class="level2 nav-leaf"><a href="examples/chat.html">Chat MCP server</a></li>
     <li class="level2 nav-leaf"><a href="examples/shared-notebook.html">Shared Notebook MCP server</a></li>
     <li class="level2 nav-leaf"><a href="examples/rpg-character-creator.html">RPG Character Creator</a></li>
+    <li class="level2 nav-leaf"><a href="examples/cli-client.html">CLI client (mcp-client)</a></li>
+    <li class="level2 nav-leaf"><a href="examples/harness.html">LLM harness</a></li>
   </ul>
 
 </nav>
@@ -194,7 +200,7 @@
           <li>Type-safe protocol implementation with Scala 3 enums and opaque types</li>
           <li>Automatic JSON Schema derivation via <code>derives JsonSchema</code></li>
           <li>Multiple transport layers — stdio for subprocess servers, Streamable HTTP + SSE for networked servers</li>
-          <li>Cross-platform — <code>core</code> and <code>stdio</code> run on JVM, Scala.js, and Scala Native; <code>http4s</code> on JVM and Scala.js</li>
+          <li>Cross-platform — <code>core</code>, <code>stdio</code>, and <code>http4s</code> all run on JVM, Scala.js, and Scala Native</li>
           <li>Fluent builder API for servers, tools, resources, and prompts</li>
           <li>Effect-polymorphic, built on Cats Effect</li>
           <li>Zero-boilerplate codec derivation with Scala 3&#39;s <code>derives</code> syntax</li>
@@ -207,6 +213,7 @@
           <li><strong>Getting Started → <a href="getting-started/tools.html">Tools</a>, <a href="getting-started/resources.html">Resources</a>, <a href="getting-started/prompts.html">Prompts</a></strong> — the core building blocks</li>
           <li><strong><a href="getting-started/json-schema-derivation.html">Getting Started → JSON schema derivation</a></strong> — <code>derives JsonSchema</code> and annotations</li>
           <li><strong><a href="getting-started/server-construction.html">Getting Started → Server construction</a></strong> — Stdio + HTTP transports</li>
+          <li><strong><a href="clients/">Clients</a></strong> — <code>McpClient</code> over stdio or HTTP, plus handlers for server-initiated sampling / elicitation / roots requests</li>
           <li><strong><a href="modules/">Modules</a></strong> — one page per module (core, stdio, http4s, openapi, redis, tapir, golden-munit, explorer)</li>
           <li><strong><a href="tools/openapi-mcp-proxy.html">Tools → OpenAPI MCP Proxy</a></strong> — turn any OpenAPI API into an MCP server</li>
           <li><strong><a href="testing/golden-testing.html">Testing → Golden testing</a></strong> — snapshot-test your server&#39;s spec</li>

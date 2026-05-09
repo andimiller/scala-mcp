@@ -140,6 +140,10 @@
     <li class="level2 nav-leaf"><a href="../getting-started/prompts.html">Prompts</a></li>
     <li class="level2 nav-leaf"><a href="../getting-started/json-schema-derivation.html">JSON Schema derivation</a></li>
     <li class="level2 nav-leaf"><a href="../getting-started/server-construction.html">Server construction</a></li>
+    <li class="level1 nav-header">Clients</li>
+    <li class="level2 nav-leaf"><a href="../clients/">Clients</a></li>
+    <li class="level2 nav-leaf"><a href="../clients/client-construction.html">Client construction</a></li>
+    <li class="level2 nav-leaf"><a href="../clients/client-handlers.html">Client handlers</a></li>
     <li class="level1 nav-header">Modules</li>
     <li class="level2 nav-leaf"><a href="index.html">Modules</a></li>
     <li class="level2 nav-leaf"><a href="core.html">core</a></li>
@@ -163,6 +167,8 @@
     <li class="level2 nav-leaf"><a href="../examples/chat.html">Chat MCP server</a></li>
     <li class="level2 nav-leaf"><a href="../examples/shared-notebook.html">Shared Notebook MCP server</a></li>
     <li class="level2 nav-leaf"><a href="../examples/rpg-character-creator.html">RPG Character Creator</a></li>
+    <li class="level2 nav-leaf"><a href="../examples/cli-client.html">CLI client (mcp-client)</a></li>
+    <li class="level2 nav-leaf"><a href="../examples/harness.html">LLM harness</a></li>
   </ul>
 
 </nav>
@@ -188,7 +194,21 @@
         Drop this in if you already have Tapir-derived schemas elsewhere in your
         application and want to reuse them as MCP tool input/output schemas without
         deriving twice.</p>
-        <pre class="keep-together pdf epub"><code class="nohighlight"><span class="identifier">libraryDependencies</span><span> += </span><span class="string-literal">&quot;net.andimiller.mcp&quot;</span><span> %% </span><span class="string-literal">&quot;mcp-tapir&quot;</span><span> % </span><span class="string-literal">&quot;0.9.0&quot;</span></code></pre>
+        <pre class="keep-together pdf epub"><code class="nohighlight"><span class="identifier">libraryDependencies</span><span> += </span><span class="string-literal">&quot;net.andimiller.mcp&quot;</span><span> %% </span><span class="string-literal">&quot;mcp-tapir&quot;</span><span> % </span><span class="string-literal">&quot;0.10.0&quot;</span></code></pre>
+        <p>Importing the bridge brings a <code>given JsonSchema[A]</code> into scope for any
+        type that already has a <code>sttp.tapir.Schema[A]</code>. Use it with the <code>tool</code>
+        builder exactly like a directly-derived schema:</p>
+        <pre class="keep-together pdf epub"><code class="nohighlight"><span class="keyword">import</span><span> </span><span class="identifier">cats</span><span>.</span><span class="identifier">effect</span><span>.</span><span class="type-name">IO</span><span>
+</span><span class="keyword">import</span><span> </span><span class="identifier">io</span><span>.</span><span class="identifier">circe</span><span>.{</span><span class="type-name">Decoder</span><span>, </span><span class="type-name">Encoder</span><span>}
+</span><span class="keyword">import</span><span> </span><span class="identifier">sttp</span><span>.</span><span class="identifier">tapir</span><span>.</span><span class="type-name">Schema</span><span>
+</span><span class="keyword">import</span><span> </span><span class="identifier">net</span><span>.</span><span class="identifier">andimiller</span><span>.</span><span class="identifier">mcp</span><span>.</span><span class="identifier">tapir</span><span>.</span><span class="keyword">given</span><span>
+</span><span class="keyword">import</span><span> </span><span class="identifier">net</span><span>.</span><span class="identifier">andimiller</span><span>.</span><span class="identifier">mcp</span><span>.</span><span class="identifier">core</span><span>.</span><span class="identifier">server</span><span>.*
+
+</span><span class="keyword">case</span><span> </span><span class="keyword">class</span><span> </span><span class="type-name">Echo</span><span>(</span><span class="identifier">message</span><span>: </span><span class="type-name">String</span><span>) </span><span class="keyword">derives</span><span> </span><span class="type-name">Schema</span><span>, </span><span class="type-name">Decoder</span><span>, </span><span class="type-name">Encoder</span><span>.</span><span class="type-name">AsObject</span><span>
+
+</span><span class="keyword">val</span><span> </span><span class="identifier">echoTool</span><span>: </span><span class="type-name">Tool</span><span>.</span><span class="type-name">Resolved</span><span>[</span><span class="type-name">IO</span><span>] =
+  </span><span class="identifier">tool</span><span>.</span><span class="identifier">name</span><span>(</span><span class="string-literal">&quot;echo&quot;</span><span>).</span><span class="identifier">in</span><span>[</span><span class="type-name">Echo</span><span>].</span><span class="identifier">out</span><span>[</span><span class="type-name">Echo</span><span>]
+    .</span><span class="identifier">run</span><span>(</span><span class="identifier">req</span><span> =&gt; </span><span class="type-name">IO</span><span>.</span><span class="identifier">pure</span><span>(</span><span class="identifier">req</span><span>))</span></code></pre>
 
         
 <hr class="footer-rule"/>

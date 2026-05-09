@@ -17,11 +17,16 @@
 - [JSON Schema derivation](https://andimiller.github.io/scala-mcp/getting-started/json-schema-derivation.md): The library provides automatic JSON Schema derivation using Scala 3's derives clause, powered by the sttp-apispec Schema type. Annotations allow adding descriptions and examples:
 - [Server construction](https://andimiller.github.io/scala-mcp/getting-started/server-construction.md): Once you have your tools, resources, and prompts, you wire them into a Server and pick a transport. Stdio for subprocess-based servers (Claude Desktop, Claude Code), Http for networked servers (Streamable HTTP + SSE).
 
+### Clients
+- [Clients](https://andimiller.github.io/scala-mcp/clients/index.md): scala-mcp also ships an McpClient API — the symmetric counterpart to the server side. Use it to drive an MCP server from your own code: scripting tool calls, testing servers you've written, or building an LLM agent that consumes MCP tools and resources.
+- [Client construction](https://andimiller.github.io/scala-mcp/clients/client-construction.md): McpClient[F] owns a transport channel, performs the JSON-RPC initialize handshake, and exposes typed methods for the server's capabilities. This page covers the two transports — stdio (subprocess) and streamable HTTP — and the API surface you get once connected.
+- [Client handlers](https://andimiller.github.io/scala-mcp/clients/client-handlers.md): The MCP spec lets servers call back to clients for capabilities the client advertises during initialize:
+
 ### Modules
 - [Modules](https://andimiller.github.io/scala-mcp/modules/index.md): scala-mcp is a multi-module library — pick the modules you need for the transports and features your server uses. Core types and the stdio transport are tiny; HTTP, Redis, and OpenAPI support layer on top.
 - [core](https://andimiller.github.io/scala-mcp/modules/core.md): mcp-core · JVM · Scala.js · Scala Native
 - [stdio](https://andimiller.github.io/scala-mcp/modules/stdio.md): mcp-stdio · JVM · Scala.js · Scala Native
-- [http4s](https://andimiller.github.io/scala-mcp/modules/http4s.md): mcp-http4s · JVM · Scala.js
+- [http4s](https://andimiller.github.io/scala-mcp/modules/http4s.md): mcp-http4s · JVM · Scala.js · Scala Native
 - [openapi](https://andimiller.github.io/scala-mcp/modules/openapi.md): mcp-openapi · JVM · Scala.js · Scala Native
 - [redis](https://andimiller.github.io/scala-mcp/modules/redis.md): mcp-redis · JVM
 - [tapir](https://andimiller.github.io/scala-mcp/modules/tapir.md): mcp-tapir · JVM
@@ -36,11 +41,13 @@
 - [Golden testing](https://andimiller.github.io/scala-mcp/testing/golden-testing.md): The mcp-golden-munit module provides snapshot testing for MCP server specs. It captures your server's tools, resources, resource templates, prompts, and capabilities as a JSON golden file, then fails the test if the spec changes unexpectedly.
 
 ### Examples
-- [Examples](https://andimiller.github.io/scala-mcp/examples/index.md): The project ships six example MCP servers, each demonstrating a different transport, platform, or server feature. Each has its own page below — pick the one closest to what you're building.
+- [Examples](https://andimiller.github.io/scala-mcp/examples/index.md): The project ships eight runnable examples — six servers covering every transport and feature, plus two clients. Pick the page closest to what you're building.
 - [Dice MCP server](https://andimiller.github.io/scala-mcp/examples/dice.md): modules/example-dice-mcp · Stdio · JVM / JS / Native
 - [Pomodoro MCP server](https://andimiller.github.io/scala-mcp/examples/pomodoro.md): modules/example-pomodoro-mcp · HTTP + SSE · JVM · port 25000
 - [DNS MCP server](https://andimiller.github.io/scala-mcp/examples/dns.md): modules/example-dns-mcp · HTTP + SSE · Scala.js (Node.js) · port 8053
 - [Chat MCP server](https://andimiller.github.io/scala-mcp/examples/chat.md): modules/example-chat-mcp · HTTP + SSE · JVM · port 27000
 - [Shared Notebook MCP server](https://andimiller.github.io/scala-mcp/examples/shared-notebook.md): modules/example-shared-notebook-mcp · HTTP + SSE · JVM · port 26000
 - [RPG Character Creator](https://andimiller.github.io/scala-mcp/examples/rpg-character-creator.md): modules/example-rpg-character-creator · HTTP + SSE · JVM · port 1974
+- [CLI client (mcp-client)](https://andimiller.github.io/scala-mcp/examples/cli-client.md): modules/example-client · Stdio + HTTP · JVM
+- [LLM harness](https://andimiller.github.io/scala-mcp/examples/harness.md): modules/example-harness · Stdio + HTTP · JVM / Native
 

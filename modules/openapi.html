@@ -140,6 +140,10 @@
     <li class="level2 nav-leaf"><a href="../getting-started/prompts.html">Prompts</a></li>
     <li class="level2 nav-leaf"><a href="../getting-started/json-schema-derivation.html">JSON Schema derivation</a></li>
     <li class="level2 nav-leaf"><a href="../getting-started/server-construction.html">Server construction</a></li>
+    <li class="level1 nav-header">Clients</li>
+    <li class="level2 nav-leaf"><a href="../clients/">Clients</a></li>
+    <li class="level2 nav-leaf"><a href="../clients/client-construction.html">Client construction</a></li>
+    <li class="level2 nav-leaf"><a href="../clients/client-handlers.html">Client handlers</a></li>
     <li class="level1 nav-header">Modules</li>
     <li class="level2 nav-leaf"><a href="index.html">Modules</a></li>
     <li class="level2 nav-leaf"><a href="core.html">core</a></li>
@@ -163,6 +167,8 @@
     <li class="level2 nav-leaf"><a href="../examples/chat.html">Chat MCP server</a></li>
     <li class="level2 nav-leaf"><a href="../examples/shared-notebook.html">Shared Notebook MCP server</a></li>
     <li class="level2 nav-leaf"><a href="../examples/rpg-character-creator.html">RPG Character Creator</a></li>
+    <li class="level2 nav-leaf"><a href="../examples/cli-client.html">CLI client (mcp-client)</a></li>
+    <li class="level2 nav-leaf"><a href="../examples/harness.html">LLM harness</a></li>
   </ul>
 
 </nav>
@@ -188,7 +194,21 @@
         operations into MCP tools. Used by the <a href="../tools/openapi-mcp-proxy.html">OpenAPI MCP Proxy</a>
         CLI but also available directly when you want to embed OpenAPI-driven tool
         generation inside your own server.</p>
-        <pre class="keep-together pdf epub"><code class="nohighlight"><span class="identifier">libraryDependencies</span><span> += </span><span class="string-literal">&quot;net.andimiller.mcp&quot;</span><span> %%% </span><span class="string-literal">&quot;mcp-openapi&quot;</span><span> % </span><span class="string-literal">&quot;0.9.0&quot;</span></code></pre>
+        <pre class="keep-together pdf epub"><code class="nohighlight"><span class="identifier">libraryDependencies</span><span> += </span><span class="string-literal">&quot;net.andimiller.mcp&quot;</span><span> %%% </span><span class="string-literal">&quot;mcp-openapi&quot;</span><span> % </span><span class="string-literal">&quot;0.10.0&quot;</span></code></pre>
+        <p>Given a parsed <code>sttp.apispec.openapi.OpenAPI</code>, <code>OpenApiOperation</code> enumerates
+        the operations and produces an MCP <code>ToolDefinition</code> per operation —
+        input-schema lifted from the operation&#39;s path/query/header parameters and
+        request body, named after the OpenAPI <code>operationId</code>:</p>
+        <pre class="keep-together pdf epub"><code class="nohighlight"><span class="keyword">import</span><span> </span><span class="identifier">sttp</span><span>.</span><span class="identifier">apispec</span><span>.</span><span class="identifier">openapi</span><span>.</span><span class="type-name">OpenAPI</span><span>
+</span><span class="keyword">import</span><span> </span><span class="identifier">net</span><span>.</span><span class="identifier">andimiller</span><span>.</span><span class="identifier">mcp</span><span>.</span><span class="identifier">openapi</span><span>.</span><span class="type-name">OpenApiOperation</span><span>
+
+</span><span class="keyword">def</span><span> </span><span class="declaration-name">toolDefs</span><span>(</span><span class="identifier">spec</span><span>: </span><span class="type-name">OpenAPI</span><span>): </span><span class="type-name">List</span><span>[</span><span class="identifier">net</span><span>.</span><span class="identifier">andimiller</span><span>.</span><span class="identifier">mcp</span><span>.</span><span class="identifier">core</span><span>.</span><span class="identifier">protocol</span><span>.</span><span class="type-name">ToolDefinition</span><span>] =
+  </span><span class="keyword">val</span><span> </span><span class="identifier">ids</span><span> = </span><span class="type-name">OpenApiOperation</span><span>.</span><span class="identifier">listOperationIds</span><span>(</span><span class="identifier">spec</span><span>).</span><span class="identifier">map</span><span>(</span><span class="identifier">_</span><span class="number-literal">._1</span><span>)
+  </span><span class="type-name">OpenApiOperation</span><span>.</span><span class="identifier">build</span><span>(</span><span class="identifier">spec</span><span>, </span><span class="identifier">ids</span><span>).</span><span class="identifier">map</span><span>(</span><span class="identifier">_</span><span>.</span><span class="identifier">definition</span><span>)</span></code></pre>
+        <p>For a runnable wrapper that goes from <code>openapi.json</code> URL to a working stdio
+        MCP server (with auth header injection, agent-config writers, and
+        operation filtering), see the
+        <a href="../tools/openapi-mcp-proxy.html">OpenAPI MCP Proxy</a> CLI.</p>
 
         
 <hr class="footer-rule"/>

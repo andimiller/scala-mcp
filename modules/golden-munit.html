@@ -140,6 +140,10 @@
     <li class="level2 nav-leaf"><a href="../getting-started/prompts.html">Prompts</a></li>
     <li class="level2 nav-leaf"><a href="../getting-started/json-schema-derivation.html">JSON Schema derivation</a></li>
     <li class="level2 nav-leaf"><a href="../getting-started/server-construction.html">Server construction</a></li>
+    <li class="level1 nav-header">Clients</li>
+    <li class="level2 nav-leaf"><a href="../clients/">Clients</a></li>
+    <li class="level2 nav-leaf"><a href="../clients/client-construction.html">Client construction</a></li>
+    <li class="level2 nav-leaf"><a href="../clients/client-handlers.html">Client handlers</a></li>
     <li class="level1 nav-header">Modules</li>
     <li class="level2 nav-leaf"><a href="index.html">Modules</a></li>
     <li class="level2 nav-leaf"><a href="core.html">core</a></li>
@@ -163,6 +167,8 @@
     <li class="level2 nav-leaf"><a href="../examples/chat.html">Chat MCP server</a></li>
     <li class="level2 nav-leaf"><a href="../examples/shared-notebook.html">Shared Notebook MCP server</a></li>
     <li class="level2 nav-leaf"><a href="../examples/rpg-character-creator.html">RPG Character Creator</a></li>
+    <li class="level2 nav-leaf"><a href="../examples/cli-client.html">CLI client (mcp-client)</a></li>
+    <li class="level2 nav-leaf"><a href="../examples/harness.html">LLM harness</a></li>
   </ul>
 
 </nav>
@@ -188,7 +194,19 @@
         <a href="https://scalameta.org/munit/">munit</a> and <code>munit-cats-effect</code>. Captures your
         server&#39;s tools, resources, resource templates, prompts, and capabilities as a
         JSON golden file and fails the test if the spec changes unexpectedly.</p>
-        <pre class="keep-together pdf epub"><code class="nohighlight"><span class="identifier">libraryDependencies</span><span> += </span><span class="string-literal">&quot;net.andimiller.mcp&quot;</span><span> %%% </span><span class="string-literal">&quot;mcp-golden-munit&quot;</span><span> % </span><span class="string-literal">&quot;0.9.0&quot;</span><span> % </span><span class="type-name">Test</span></code></pre>
+        <pre class="keep-together pdf epub"><code class="nohighlight"><span class="identifier">libraryDependencies</span><span> += </span><span class="string-literal">&quot;net.andimiller.mcp&quot;</span><span> %%% </span><span class="string-literal">&quot;mcp-golden-munit&quot;</span><span> % </span><span class="string-literal">&quot;0.10.0&quot;</span><span> % </span><span class="type-name">Test</span></code></pre>
+        <p>A test class is a <code>McpGoldenSuite</code> that exposes the server you want to
+        snapshot. The first run writes
+        <code>src/test/resources/{goldenFileName}</code>; subsequent runs diff against it:</p>
+        <pre class="keep-together pdf epub"><code class="nohighlight"><span class="keyword">import</span><span> </span><span class="identifier">cats</span><span>.</span><span class="identifier">effect</span><span>.</span><span class="type-name">IO</span><span>
+</span><span class="keyword">import</span><span> </span><span class="identifier">net</span><span>.</span><span class="identifier">andimiller</span><span>.</span><span class="identifier">mcp</span><span>.</span><span class="identifier">core</span><span>.</span><span class="identifier">server</span><span>.{</span><span class="type-name">Server</span><span>, </span><span class="type-name">ServerBuilder</span><span>}
+</span><span class="keyword">import</span><span> </span><span class="identifier">net</span><span>.</span><span class="identifier">andimiller</span><span>.</span><span class="identifier">mcp</span><span>.</span><span class="identifier">golden</span><span>.</span><span class="type-name">McpGoldenSuite</span><span>
+
+</span><span class="keyword">class</span><span> </span><span class="type-name">MyServerGoldenSuite</span><span> </span><span class="keyword">extends</span><span> </span><span class="type-name">McpGoldenSuite</span><span>:
+  </span><span class="keyword">override</span><span> </span><span class="keyword">def</span><span> </span><span class="declaration-name">goldenFileName</span><span> = </span><span class="string-literal">&quot;my-server.json&quot;</span><span>
+
+  </span><span class="keyword">def</span><span> </span><span class="declaration-name">server</span><span>: </span><span class="type-name">IO</span><span>[</span><span class="type-name">Server</span><span>[</span><span class="type-name">IO</span><span>]] =
+    </span><span class="type-name">ServerBuilder</span><span>[</span><span class="type-name">IO</span><span>](</span><span class="string-literal">&quot;my-server&quot;</span><span>, </span><span class="string-literal">&quot;1.0.0&quot;</span><span>).</span><span class="identifier">build</span></code></pre>
         <p>See <a href="../testing/golden-testing.html">Testing → Golden testing</a> for the full guide.</p>
 
         

@@ -140,6 +140,10 @@
     <li class="level2 nav-leaf"><a href="../getting-started/prompts.html">Prompts</a></li>
     <li class="level2 nav-leaf"><a href="../getting-started/json-schema-derivation.html">JSON Schema derivation</a></li>
     <li class="level2 nav-leaf"><a href="../getting-started/server-construction.html">Server construction</a></li>
+    <li class="level1 nav-header">Clients</li>
+    <li class="level2 nav-leaf"><a href="../clients/">Clients</a></li>
+    <li class="level2 nav-leaf"><a href="../clients/client-construction.html">Client construction</a></li>
+    <li class="level2 nav-leaf"><a href="../clients/client-handlers.html">Client handlers</a></li>
     <li class="level1 nav-header">Modules</li>
     <li class="level2 nav-leaf"><a href="../modules/">Modules</a></li>
     <li class="level2 nav-leaf"><a href="../modules/core.html">core</a></li>
@@ -163,6 +167,8 @@
     <li class="level2 nav-leaf"><a href="chat.html">Chat MCP server</a></li>
     <li class="level2 nav-leaf"><a href="shared-notebook.html">Shared Notebook MCP server</a></li>
     <li class="level2 nav-leaf"><a href="rpg-character-creator.html">RPG Character Creator</a></li>
+    <li class="level2 nav-leaf"><a href="cli-client.html">CLI client (mcp-client)</a></li>
+    <li class="level2 nav-leaf"><a href="harness.html">LLM harness</a></li>
   </ul>
 
 </nav>
@@ -174,6 +180,8 @@
   <p class="header"><a href="#">Examples</a></p>
 
   <ul class="nav-list">
+    <li class="level1 nav-leaf"><a href="#servers">Servers</a></li>
+    <li class="level1 nav-leaf"><a href="#clients">Clients</a></li>
   </ul>
 
   <p class="footer"></p>
@@ -183,9 +191,11 @@
       <main class="content">
 
         <h1 id="examples" class="title"><a class="md-link" href="index.md" title="View this page as raw Markdown">[md]</a>Examples</h1>
-        <p>The project ships six example MCP servers, each demonstrating a different
-        transport, platform, or server feature. Each has its own page below — pick the
-        one closest to what you&#39;re building.</p>
+        <p>The project ships eight runnable examples — six servers covering every
+        transport and feature, plus two clients. Pick the page closest to what you&#39;re
+        building.</p>
+        
+        <h2 id="servers" class="section"><a class="anchor-link left" href="#servers"><i class="icofont-laika link">&#xef71;</i></a>Servers</h2>
         <table>
           <thead>
             <tr>
@@ -238,6 +248,32 @@
               <td>JVM</td>
               <td>1974</td>
               <td>Multi-step elicitation wizard</td>
+            </tr>
+          </tbody>
+        </table>
+        
+        <h2 id="clients" class="section"><a class="anchor-link left" href="#clients"><i class="icofont-laika link">&#xef71;</i></a>Clients</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Example</th>
+              <th>Transport</th>
+              <th>Platform</th>
+              <th>Highlights</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><a href="cli-client.html">CLI client</a></td>
+              <td>Stdio + HTTP</td>
+              <td>JVM</td>
+              <td>Tiny REPL over either transport — list and invoke tools, resources, prompts</td>
+            </tr>
+            <tr>
+              <td><a href="harness.html">LLM harness</a></td>
+              <td>Stdio + HTTP</td>
+              <td>JVM / Native</td>
+              <td>Multi-server agent driving an OpenAI-compatible chat endpoint; sampling, elicitation, streaming, slash commands</td>
             </tr>
           </tbody>
         </table>

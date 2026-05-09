@@ -140,6 +140,10 @@
     <li class="level2 nav-leaf"><a href="../getting-started/prompts.html">Prompts</a></li>
     <li class="level2 nav-leaf"><a href="../getting-started/json-schema-derivation.html">JSON Schema derivation</a></li>
     <li class="level2 nav-leaf"><a href="../getting-started/server-construction.html">Server construction</a></li>
+    <li class="level1 nav-header">Clients</li>
+    <li class="level2 nav-leaf"><a href="../clients/">Clients</a></li>
+    <li class="level2 nav-leaf"><a href="../clients/client-construction.html">Client construction</a></li>
+    <li class="level2 nav-leaf"><a href="../clients/client-handlers.html">Client handlers</a></li>
     <li class="level1 nav-header">Modules</li>
     <li class="level2 nav-leaf"><a href="index.html">Modules</a></li>
     <li class="level2 nav-leaf"><a href="core.html">core</a></li>
@@ -163,6 +167,8 @@
     <li class="level2 nav-leaf"><a href="../examples/chat.html">Chat MCP server</a></li>
     <li class="level2 nav-leaf"><a href="../examples/shared-notebook.html">Shared Notebook MCP server</a></li>
     <li class="level2 nav-leaf"><a href="../examples/rpg-character-creator.html">RPG Character Creator</a></li>
+    <li class="level2 nav-leaf"><a href="../examples/cli-client.html">CLI client (mcp-client)</a></li>
+    <li class="level2 nav-leaf"><a href="../examples/harness.html">LLM harness</a></li>
   </ul>
 
 </nav>
@@ -192,9 +198,15 @@
         styled with <a href="https://bulma.io/">Bulma</a>, bundled into static assets by Parcel.
         You don&#39;t add it as a dependency directly — instead, the <a href="http4s.html">http4s</a>
         module bundles the pre-built assets and serves them via <code>.withExplorer(...)</code>
-        on your <code>McpHttp.basic</code> / <code>McpHttp.streaming</code> builder.</p>
-        <p>See <a href="http4s.html#embedded-explorer-ui">http4s → Embedded Explorer UI</a> for how
-        to enable it on your server.</p>
+        on your <code>McpHttp.basic</code> / <code>McpHttp.streaming</code> builder:</p>
+        <pre class="keep-together pdf epub"><code class="nohighlight"><span class="keyword">import</span><span> </span><span class="identifier">cats</span><span>.</span><span class="identifier">effect</span><span>.</span><span class="type-name">IO</span><span>
+</span><span class="keyword">import</span><span> </span><span class="identifier">net</span><span>.</span><span class="identifier">andimiller</span><span>.</span><span class="identifier">mcp</span><span>.</span><span class="identifier">http4s</span><span>.</span><span class="type-name">McpHttp</span><span>
+
+</span><span class="keyword">val</span><span> </span><span class="identifier">builder</span><span> =
+  </span><span class="type-name">McpHttp</span><span>.</span><span class="identifier">streaming</span><span>[</span><span class="type-name">IO</span><span>]
+    .</span><span class="identifier">withExplorer</span><span>(</span><span class="identifier">redirectToRoot</span><span> = </span><span class="boolean-literal">true</span><span>) </span><span class="comment">// serves at /explorer; redirects / there too</span></code></pre>
+        <p>See <a href="http4s.html#embedded-explorer-ui">http4s → Embedded Explorer UI</a> for the
+        asset-rebuild workflow.</p>
 
         
 <hr class="footer-rule"/>
