@@ -136,7 +136,7 @@ object OpenApiOperation:
       .getOrElse(operationId)
 
     OpenApiOperation(
-      definition = ToolDefinition(operationId, desc, input, Some(output)),
+      definition = ToolDefinition(operationId, Some(desc), input, Some(output)),
       pathPattern = pathPattern,
       method = method,
       resolvedOperation = resolvedOp

@@ -24,7 +24,7 @@ import net.andimiller.mcp.core.server.*
 case class Greet(name: String)    derives JsonSchema, Decoder
 case class Greeting(text: String) derives JsonSchema, Encoder.AsObject
 
-val greetTool: Tool.Resolved[IO] =
+val greetTool: Tool[IO, Unit] =
   tool.name("greet").in[Greet].out[Greeting]
     .run(req => IO.pure(Greeting(s"Hello, ${req.name}!")))
 

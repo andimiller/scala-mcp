@@ -6,6 +6,7 @@ import net.andimiller.mcp.core.protocol.content.Content
 import io.circe.Decoder
 import io.circe.Encoder
 import io.circe.Json
+import io.circe.JsonObject
 
 /** Role in a prompt message */
 enum PromptRole:
@@ -18,7 +19,8 @@ enum PromptRole:
 case class PromptArgument(
     name: String,
     description: Option[String] = None,
-    required: Boolean = false
+    required: Boolean = false,
+    title: Option[String] = None
 ) derives Encoder.AsObject,
       Decoder
 
@@ -26,7 +28,10 @@ case class PromptArgument(
 case class PromptDefinition(
     name: String,
     description: Option[String] = None,
-    arguments: List[PromptArgument] = Nil
+    arguments: List[PromptArgument] = Nil,
+    title: Option[String] = None,
+    icons: Option[List[Icon]] = None,
+    _meta: Option[JsonObject] = None
 ) derives Encoder.AsObject,
       Decoder
 
@@ -60,7 +65,8 @@ case class ListPromptsRequest(
 /** Response listing available prompts */
 case class ListPromptsResponse(
     prompts: List[PromptDefinition],
-    nextCursor: Option[String] = None
+    nextCursor: Option[String] = None,
+    _meta: Option[JsonObject] = None
 ) derives Encoder.AsObject,
       Decoder
 
@@ -74,6 +80,7 @@ case class GetPromptRequest(
 /** Response from getting a prompt */
 case class GetPromptResponse(
     description: Option[String] = None,
-    messages: List[PromptMessage]
+    messages: List[PromptMessage],
+    _meta: Option[JsonObject] = None
 ) derives Encoder.AsObject,
       Decoder

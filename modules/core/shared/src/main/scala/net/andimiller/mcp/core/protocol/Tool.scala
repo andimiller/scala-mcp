@@ -14,9 +14,14 @@ import sttp.apispec.circe.given
 /** Tool definition in MCP protocol */
 case class ToolDefinition(
     name: String,
-    description: String,
+    description: Option[String] = None,
     inputSchema: Json,
-    outputSchema: Option[Json] = None
+    outputSchema: Option[Json] = None,
+    title: Option[String] = None,
+    icons: Option[List[Icon]] = None,
+    annotations: Option[ToolAnnotations] = None,
+    execution: Option[ToolExecution] = None,
+    _meta: Option[JsonObject] = None
 ) derives Encoder.AsObject,
       Decoder
 
@@ -50,7 +55,8 @@ enum ToolResult[+R]:
   case Raw(
       content: List[Content],
       structuredContent: Option[Json] = None,
-      isError: Boolean = false
+      isError: Boolean = false,
+      _meta: Option[JsonObject] = None
   ) extends ToolResult[Nothing]
 
 object ToolResult:
@@ -60,9 +66,9 @@ object ToolResult:
     case Success(v) =>
       val j = enc.encodeObject(v).asJson
       CallToolResponse(List(Content.Text(j.noSpaces)), Some(j), isError = false)
-    case Text(t)      => CallToolResponse(List(Content.Text(t)), None, isError = false)
-    case Error(m)     => CallToolResponse(List(Content.Text(m)), None, isError = true)
-    case Raw(c, s, e) => CallToolResponse(c, s, e)
+    case Text(t)         => CallToolResponse(List(Content.Text(t)), None, isError = false)
+    case Error(m)        => CallToolResponse(List(Content.Text(m)), None, isError = true)
+    case Raw(c, s, e, m) => CallToolResponse(c, s, e, _meta = m)
 
   /** A total `Encoder.AsObject[Nothing]`. The body is unreachable since `Nothing` has no inhabitants; this lets
     * `toWire` and the builders accept handlers whose `R` infers as `Nothing` (i.e. handlers that never return a
@@ -132,14 +138,16 @@ case class ListToolsRequest(
 /** Response listing available tools */
 case class ListToolsResponse(
     tools: List[ToolDefinition],
-    nextCursor: Option[String] = None
+    nextCursor: Option[String] = None,
+    _meta: Option[JsonObject] = None
 ) derives Encoder.AsObject,
       Decoder
 
 /** Request to call a tool */
 case class CallToolRequest(
     name: String,
-    arguments: Json
+    arguments: Json,
+    _meta: Option[JsonObject] = None
 ) derives Encoder.AsObject,
       Decoder
 
@@ -147,6 +155,7 @@ case class CallToolRequest(
 case class CallToolResponse(
     content: List[Content],
     structuredContent: Option[Json] = None,
-    isError: Boolean = false
+    isError: Boolean = false,
+    _meta: Option[JsonObject] = None
 ) derives Encoder.AsObject,
       Decoder

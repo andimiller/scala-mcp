@@ -10,13 +10,13 @@ import munit.CatsEffectSuite
 
 class DefaultServerSuite extends CatsEffectSuite:
 
-  private def textTool(n: String): Tool.Resolved[IO] =
-    new Tool.Resolved[IO]:
-      val name                                          = n
-      val description                                   = ""
-      val inputSchema                                   = Json.obj()
-      val outputSchema                                  = None
-      def handle(arguments: Json): IO[CallToolResponse] =
+  private def textTool(n: String): Tool[IO, Unit] =
+    new Tool[IO, Unit]:
+      val name                                                          = n
+      val description                                                   = ""
+      val inputSchema                                                   = Json.obj()
+      val outputSchema                                                  = None
+      def handle(call: ToolCallContext[IO, Unit]): IO[CallToolResponse] =
         IO.pure(CallToolResponse(List(Content.Text(n)), None, false))
 
   private def directResource(resourceUri: String): McpResource.Resolved[IO] =
@@ -39,11 +39,11 @@ class DefaultServerSuite extends CatsEffectSuite:
         else None
 
   private def server(
-      tools: List[Tool.Resolved[IO]] = Nil,
+      tools: List[Tool[IO, Unit]] = Nil,
       resources: List[McpResource.Resolved[IO]] = Nil,
       templates: List[ResourceTemplate.Resolved[IO]] = Nil,
       prompts: List[Prompt.Resolved[IO]] = Nil
-  ): IO[DefaultServer[IO]] =
+  ): IO[DefaultServer[IO, Unit]] =
     DefaultServer[IO](
       info = Implementation("t", "0"),
       capabilities = ServerCapabilities(),

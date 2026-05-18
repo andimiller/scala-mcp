@@ -27,8 +27,8 @@ class StreamingMcpHttpBuilder[F[_]: Async, Ctx] private[http4s] (
     val mAuthInfo: Option[StreamingMcpHttpBuilder.AuthInfo[F]],
     val mStatefulCreators: Vector[SessionContext[F] => F[Any]],
     val mAuthExtractor: Option[Request[F] => F[Option[Any]]],
-    val mPlainTools: Vector[Tool.Resolved[F]],
-    val mContextToolResolvers: Vector[Any => Tool.Resolved[F]],
+    val mPlainTools: Vector[Tool[F, Ctx]],
+    val mContextTools: Vector[Tool[F, Ctx]],
     val mPlainResources: Vector[McpResource.Resolved[F]],
     val mContextResourceResolvers: Vector[Any => McpResource.Resolved[F]],
     val mPlainResourceTemplates: Vector[ResourceTemplate.Resolved[F]],
@@ -39,7 +39,13 @@ class StreamingMcpHttpBuilder[F[_]: Async, Ctx] private[http4s] (
     val mSessionStore: Option[SessionStore[F]],
     val mSinkFactory: Option[String => Resource[F, NotificationSink[F]]],
     val mSessionRefsFactory: Option[String => SessionRefs[F]],
-    val mSessionStoreFactory: Option[SessionStoreFactory[F]]
+    val mSessionStoreFactory: Option[SessionStoreFactory[F]],
+    val mTitle: Option[String] = None,
+    val mDescription: Option[String] = None,
+    val mIcons: List[Icon] = Nil,
+    val mWebsiteUrl: Option[String] = None,
+    val mExtraRoutes: HttpRoutes[F],
+    val mToolMiddlewares: List[ToolMiddleware[F, Ctx]] = Nil
 ):
 
   private def copy[Ctx2](
@@ -49,8 +55,8 @@ class StreamingMcpHttpBuilder[F[_]: Async, Ctx] private[http4s] (
       mAuthInfo: Option[StreamingMcpHttpBuilder.AuthInfo[F]] = this.mAuthInfo,
       mStatefulCreators: Vector[SessionContext[F] => F[Any]] = this.mStatefulCreators,
       mAuthExtractor: Option[Request[F] => F[Option[Any]]] = this.mAuthExtractor,
-      mPlainTools: Vector[Tool.Resolved[F]] = this.mPlainTools,
-      mContextToolResolvers: Vector[Any => Tool.Resolved[F]] = this.mContextToolResolvers,
+      mPlainTools: Vector[Tool[F, Ctx2]] = this.mPlainTools.asInstanceOf[Vector[Tool[F, Ctx2]]],
+      mContextTools: Vector[Tool[F, Ctx2]] = this.mContextTools.asInstanceOf[Vector[Tool[F, Ctx2]]],
       mPlainResources: Vector[McpResource.Resolved[F]] = this.mPlainResources,
       mContextResourceResolvers: Vector[Any => McpResource.Resolved[F]] = this.mContextResourceResolvers,
       mPlainResourceTemplates: Vector[ResourceTemplate.Resolved[F]] = this.mPlainResourceTemplates,
@@ -62,13 +68,20 @@ class StreamingMcpHttpBuilder[F[_]: Async, Ctx] private[http4s] (
       mSessionStore: Option[SessionStore[F]] = this.mSessionStore,
       mSinkFactory: Option[String => Resource[F, NotificationSink[F]]] = this.mSinkFactory,
       mSessionRefsFactory: Option[String => SessionRefs[F]] = this.mSessionRefsFactory,
-      mSessionStoreFactory: Option[SessionStoreFactory[F]] = this.mSessionStoreFactory
+      mSessionStoreFactory: Option[SessionStoreFactory[F]] = this.mSessionStoreFactory,
+      mTitle: Option[String] = this.mTitle,
+      mDescription: Option[String] = this.mDescription,
+      mIcons: List[Icon] = this.mIcons,
+      mWebsiteUrl: Option[String] = this.mWebsiteUrl,
+      mExtraRoutes: HttpRoutes[F] = this.mExtraRoutes,
+      mToolMiddlewares: List[ToolMiddleware[F, Ctx2]] =
+        this.mToolMiddlewares.asInstanceOf[List[ToolMiddleware[F, Ctx2]]]
   ): StreamingMcpHttpBuilder[F, Ctx2] =
     new StreamingMcpHttpBuilder[F, Ctx2](
-      mName, mVersion, mConfig, mAuthInfo, mStatefulCreators, mAuthExtractor, mPlainTools, mContextToolResolvers,
+      mName, mVersion, mConfig, mAuthInfo, mStatefulCreators, mAuthExtractor, mPlainTools, mContextTools,
       mPlainResources, mContextResourceResolvers, mPlainResourceTemplates, mContextResourceTemplateResolvers,
       mPlainPrompts, mContextPromptResolvers, mCaps, mSessionStore, mSinkFactory, mSessionRefsFactory,
-      mSessionStoreFactory
+      mSessionStoreFactory, mTitle, mDescription, mIcons, mWebsiteUrl, mExtraRoutes, mToolMiddlewares
     )
 
   // ── Config ──────────────────────────────────────────────────────────
@@ -83,6 +96,28 @@ class StreamingMcpHttpBuilder[F[_]: Async, Ctx] private[http4s] (
 
   def withExplorer(redirectToRoot: Boolean = false): StreamingMcpHttpBuilder[F, Ctx] =
     copy(mConfig = mConfig.copy(explorerEnabled = true, rootRedirectToExplorer = redirectToRoot))
+
+  // ── Implementation metadata ────────────────────────────────────────
+
+  def title(t: String): StreamingMcpHttpBuilder[F, Ctx] = copy(mTitle = Some(t))
+
+  def description(d: String): StreamingMcpHttpBuilder[F, Ctx] = copy(mDescription = Some(d))
+
+  def icon(i: Icon): StreamingMcpHttpBuilder[F, Ctx] = copy(mIcons = mIcons :+ i)
+
+  def icons(xs: List[Icon]): StreamingMcpHttpBuilder[F, Ctx] = copy(mIcons = xs)
+
+  def websiteUrl(url: String): StreamingMcpHttpBuilder[F, Ctx] = copy(mWebsiteUrl = Some(url))
+
+  /** Mount additional HTTP routes alongside the MCP routes (e.g. `/icon.svg`, `/favicon.ico`, health checks). Composes
+    * with existing extras via `<+>`, so this can be called multiple times.
+    */
+  def withRoutes(extra: HttpRoutes[F]): StreamingMcpHttpBuilder[F, Ctx] =
+    copy(mExtraRoutes = mExtraRoutes <+> extra)
+
+  /** Append a server-wide tool middleware. Composed around every tool call, OUTSIDE any per-tool middleware. */
+  def withToolMiddleware(mw: ToolMiddleware[F, Ctx]): StreamingMcpHttpBuilder[F, Ctx] =
+    copy(mToolMiddlewares = mToolMiddlewares :+ mw)
 
   // ── Session store / factory configuration ──────────────────────────
 
@@ -123,24 +158,20 @@ class StreamingMcpHttpBuilder[F[_]: Async, Ctx] private[http4s] (
 
   // ── Plain tools ────────────────────────────────────────────────────
 
-  def withTool(tool: Tool.Resolved[F]): StreamingMcpHttpBuilder[F, Ctx] =
+  def withTool(tool: Tool[F, Ctx]): StreamingMcpHttpBuilder[F, Ctx] =
     copy(mPlainTools = mPlainTools :+ tool, mCaps = mCaps.withToolAdded)
 
-  def withTools(tools: Tool.Resolved[F]*): StreamingMcpHttpBuilder[F, Ctx] =
+  def withTools(tools: Tool[F, Ctx]*): StreamingMcpHttpBuilder[F, Ctx] =
     copy(mPlainTools = mPlainTools ++ tools, mCaps = if tools.nonEmpty then mCaps.withToolAdded else mCaps)
 
   // ── Context tools ──────────────────────────────────────────────────
 
-  def withContextualTool[A, R](tool: Tool[F, Ctx, A, R])(using Async[F]): StreamingMcpHttpBuilder[F, Ctx] =
-    withContextualTool(tool, identity)
-
-  def withContextualTool[C, A, R](tool: Tool[F, C, A, R], extract: Ctx => C)(using
-      Async[F]
-  ): StreamingMcpHttpBuilder[F, Ctx] =
-    copy(
-      mContextToolResolvers = mContextToolResolvers :+ ((ctx: Any) => tool.provide(extract(ctx.asInstanceOf[Ctx]))),
-      mCaps = mCaps.withToolAdded
-    )
+  /** Register a tool that wants to read the per-session `Ctx` inside its handler. The tool's `handle` method receives
+    * the same `Ctx` value that's threaded into [[ToolCallContext]] for middleware, so per-tool middleware on a
+    * contextual tool sees the matching session state.
+    */
+  def withContextualTool(tool: Tool[F, Ctx]): StreamingMcpHttpBuilder[F, Ctx] =
+    copy(mContextTools = mContextTools :+ tool, mCaps = mCaps.withToolAdded)
 
   // ── Plain resources ────────────────────────────────────────────────
 
@@ -232,21 +263,31 @@ class StreamingMcpHttpBuilder[F[_]: Async, Ctx] private[http4s] (
   def buildServer: F[Server[F]] =
     ClientChannel.noop[F].flatMap { cc =>
       val ctx = SessionContext("noop", cc, SessionRefs.inMemory[F])
-      createStatefulContext(ctx).flatMap(resolveAll)
+      createStatefulContext(ctx).flatMap(resolveAll(_, None))
     }
 
-  private def resolveAll(ctx: Any): F[Server[F]] =
-    val tools             = mPlainTools ++ mContextToolResolvers.map(_(ctx))
+  private def resolveAll(ctx: Any, sessionId: Option[String]): F[Server[F]] =
+    val tools             = mPlainTools ++ mContextTools
     val resources         = mPlainResources ++ mContextResourceResolvers.map(_(ctx))
     val resourceTemplates = mPlainResourceTemplates ++ mContextResourceTemplateResolvers.map(_(ctx))
     val prompts           = mPlainPrompts ++ mContextPromptResolvers.map(_(ctx))
-    DefaultServer[F](
-      info = Implementation(mName, mVersion),
+    DefaultServer[F, Ctx](
+      info = Implementation(
+        name = mName,
+        version = mVersion,
+        title = mTitle,
+        description = mDescription,
+        icons = Option.when(mIcons.nonEmpty)(mIcons),
+        websiteUrl = mWebsiteUrl
+      ),
       capabilities = mCaps.toServerCapabilities,
+      ctx = ctx.asInstanceOf[Ctx],
       toolHandlers = tools.toList,
       resourceHandlers = resources.toList,
       resourceTemplateHandlers = resourceTemplates.toList,
-      promptHandlers = prompts.toList
+      promptHandlers = prompts.toList,
+      toolMiddlewares = mToolMiddlewares,
+      sessionId = sessionId
     ).widen[Server[F]]
 
   /** Run all registered `.stateful` creators against a single [[SessionContext]] in declaration order, prepending each
@@ -258,13 +299,13 @@ class StreamingMcpHttpBuilder[F[_]: Async, Ctx] private[http4s] (
     }
 
   private[http4s] def newSessionFactory(sessionId: String): SessionContext[F] => F[Server[F]] =
-    ctx => createStatefulContext(ctx).flatMap(resolveAll)
+    ctx => createStatefulContext(ctx).flatMap(resolveAll(_, Some(sessionId)))
 
   private[http4s] def newAuthenticatedSessionFactory(sessionId: String): (Any, SessionContext[F]) => F[Server[F]] =
     (user, ctx) =>
       createStatefulContext(ctx)
         .map(statefulCtx => StreamingMcpHttpBuilder.prependContext(user, statefulCtx))
-        .flatMap(resolveAll)
+        .flatMap(resolveAll(_, Some(sessionId)))
 
   // ── Terminal operations ─────────────────────────────────────────────
 
@@ -333,7 +374,8 @@ object StreamingMcpHttpBuilder:
 
     def serve: Resource[IO, org.http4s.server.Server] =
       builder.routes.flatMap { mcpRoutes =>
-        val app = McpHttp.buildApp(mcpRoutes, builder.mConfig)
+        val combined = mcpRoutes <+> builder.mExtraRoutes
+        val app      = McpHttp.buildApp(combined, builder.mConfig)
         EmberServerBuilder
           .default[IO]
           .withHost(builder.mConfig.host)

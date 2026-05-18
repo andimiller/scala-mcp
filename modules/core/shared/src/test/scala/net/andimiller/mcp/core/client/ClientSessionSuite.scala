@@ -65,7 +65,7 @@ class ClientSessionSuite extends CatsEffectSuite:
         tools = List(
           ToolDefinition(
             name = "echo",
-            description = "Echo back input",
+            description = Some("Echo back input"),
             inputSchema = Json.obj("type" -> "object".asJson)
           )
         )

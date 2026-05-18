@@ -70,11 +70,13 @@ object PromptBridge:
       case PromptRole.User      => "user"
       case PromptRole.Assistant => "assistant"
     val text = pm.content match
-      case Content.Text(t)                => t
-      case Content.Image(_, mimeType)     => s"[image content: $mimeType — not rendered in harness]"
-      case Content.Audio(_, mimeType)     => s"[audio content: $mimeType — not rendered in harness]"
-      case Content.Resource(uri, mt, txt) =>
+      case Content.Text(t, _, _)                   => t
+      case Content.Image(_, mimeType, _, _)        => s"[image content: $mimeType — not rendered in harness]"
+      case Content.Audio(_, mimeType, _, _)        => s"[audio content: $mimeType — not rendered in harness]"
+      case Content.Resource(uri, mt, txt, _, _, _) =>
         txt.getOrElse(s"[resource: $uri${mt.fold("")(m => s" ($m)")}]")
+      case Content.ResourceLink(uri, name, _, _, mt, _, _, _, _) =>
+        s"[resource link: $name → $uri${mt.fold("")(m => s" ($m)")}]"
     OpenAiTypes.ChatMessage(role = role, content = Some(text))
 
   /** Parse `key=value key2=value2` into a JSON-typed argument map for `getPrompt`. Values are passed as strings —

@@ -132,7 +132,7 @@ class OpenApiOperationSuite extends CatsEffectSuite:
       spec      <- parseSpec(petStoreSpec)
       operations = OpenApiOperation.build(spec, List("listPets"))
       op         = operations.find(_.definition.name === "listPets").get
-    yield assertEquals(op.definition.description, "List all pets")
+    yield assertEquals(op.definition.description, Some("List all pets"))
   }
 
   test("getPetById operation has path param as required") {

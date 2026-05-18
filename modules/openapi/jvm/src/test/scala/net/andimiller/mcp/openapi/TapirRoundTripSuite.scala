@@ -79,7 +79,7 @@ class TapirRoundTripSuite extends CatsEffectSuite:
     val ops  = OpenApiOperation.build(spec, List("healthCheck"))
 
     assertEquals(ops.length, 1)
-    assertEquals(ops.head.definition.description, "Health check endpoint")
+    assertEquals(ops.head.definition.description, Some("Health check endpoint"))
   }
 
   test("operation description is used when summary is absent") {
@@ -93,7 +93,7 @@ class TapirRoundTripSuite extends CatsEffectSuite:
     val ops  = OpenApiOperation.build(spec, List("healthCheck"))
 
     assertEquals(ops.length, 1)
-    assertEquals(ops.head.definition.description, "Returns OK if the service is healthy")
+    assertEquals(ops.head.definition.description, Some("Returns OK if the service is healthy"))
   }
 
   test("parameter without description has no description field in schema") {

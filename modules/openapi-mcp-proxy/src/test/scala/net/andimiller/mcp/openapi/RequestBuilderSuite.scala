@@ -161,7 +161,7 @@ class RequestBuilderSuite extends CatsEffectSuite:
       IO.pure(Response[IO](Status.Ok).withEntity(Json.arr(Json.fromInt(1), Json.fromInt(2))))
     })
     RequestBuilder.execute(arrayClient, "https://api.example.com", Method.GET, "/x", op, Json.obj()).map {
-      case ToolResult.Raw(_, Some(structured), _) =>
+      case ToolResult.Raw(_, Some(structured), _, _) =>
         assertEquals(structured, Json.obj("items" -> Json.arr(Json.fromInt(1), Json.fromInt(2))))
       case other => fail(s"expected Raw with structuredContent, got $other")
     }

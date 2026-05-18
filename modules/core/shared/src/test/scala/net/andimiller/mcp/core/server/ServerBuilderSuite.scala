@@ -10,13 +10,13 @@ import munit.CatsEffectSuite
 
 class ServerBuilderSuite extends CatsEffectSuite:
 
-  private def stubTool(n: String): Tool.Resolved[IO] =
-    new Tool.Resolved[IO]:
-      val name                                          = n
-      val description                                   = s"tool $n"
-      val inputSchema                                   = Json.obj()
-      val outputSchema                                  = None
-      def handle(arguments: Json): IO[CallToolResponse] =
+  private def stubTool(n: String): Tool[IO, Unit] =
+    new Tool[IO, Unit]:
+      val name                                                          = n
+      val description                                                   = s"tool $n"
+      val inputSchema                                                   = Json.obj()
+      val outputSchema                                                  = None
+      def handle(call: ToolCallContext[IO, Unit]): IO[CallToolResponse] =
         IO.pure(CallToolResponse(List(Content.Text(n)), None, false))
 
   private def stubResource(suffix: String): McpResource.Resolved[IO] =

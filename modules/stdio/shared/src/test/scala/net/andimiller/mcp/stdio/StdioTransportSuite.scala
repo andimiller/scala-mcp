@@ -47,26 +47,26 @@ class StdioTransportSuite extends CatsEffectSuite:
       c <- Ref.of[IO, Boolean](false)
     yield TestRig(i, o, c)
 
-  private def echoTool: Tool.Resolved[IO] =
-    new Tool.Resolved[IO]:
-      val name                                          = "echo"
-      val description                                   = ""
-      val inputSchema                                   = Json.obj()
-      val outputSchema                                  = None
-      def handle(arguments: Json): IO[CallToolResponse] =
+  private def echoTool: Tool[IO, Unit] =
+    new Tool[IO, Unit]:
+      val name                                                          = "echo"
+      val description                                                   = ""
+      val inputSchema                                                   = Json.obj()
+      val outputSchema                                                  = None
+      def handle(call: ToolCallContext[IO, Unit]): IO[CallToolResponse] =
         IO.pure(CallToolResponse(List(Content.Text("ok")), None, false))
 
-  private def gatedTool(gate: Deferred[IO, Unit]): Tool.Resolved[IO] =
-    new Tool.Resolved[IO]:
-      val name                                          = "slow"
-      val description                                   = ""
-      val inputSchema                                   = Json.obj()
-      val outputSchema                                  = None
-      def handle(arguments: Json): IO[CallToolResponse] =
+  private def gatedTool(gate: Deferred[IO, Unit]): Tool[IO, Unit] =
+    new Tool[IO, Unit]:
+      val name                                                          = "slow"
+      val description                                                   = ""
+      val inputSchema                                                   = Json.obj()
+      val outputSchema                                                  = None
+      def handle(call: ToolCallContext[IO, Unit]): IO[CallToolResponse] =
         gate.get.as(CallToolResponse(List(Content.Text("done")), None, false))
 
   private def buildSession(
-      tools: List[Tool.Resolved[IO]] = Nil,
+      tools: List[Tool[IO, Unit]] = Nil,
       maxConcurrent: Int = 16
   )(use: (TestRig, ClientChannel[IO]) => IO[Unit]): IO[Unit] =
     rig.flatMap { r =>
@@ -150,12 +150,12 @@ class StdioTransportSuite extends CatsEffectSuite:
       gate    <- Deferred[IO, Unit]
       counter <- Ref.of[IO, Int](0)
       maxSeen <- Ref.of[IO, Int](0)
-      tool     = new Tool.Resolved[IO]:
-               val name                                          = "concurrent"
-               val description                                   = ""
-               val inputSchema                                   = Json.obj()
-               val outputSchema                                  = None
-               def handle(arguments: Json): IO[CallToolResponse] =
+      tool     = new Tool[IO, Unit]:
+               val name                                                          = "concurrent"
+               val description                                                   = ""
+               val inputSchema                                                   = Json.obj()
+               val outputSchema                                                  = None
+               def handle(call: ToolCallContext[IO, Unit]): IO[CallToolResponse] =
                  counter.updateAndGet(_ + 1).flatMap(n => maxSeen.update(_.max(n))) *>
                    gate.get *>
                    counter.update(_ - 1) *>

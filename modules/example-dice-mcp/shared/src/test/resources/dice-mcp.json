@@ -13,36 +13,89 @@
     }
   },
   "info" : {
+    "description" : "Roll dice and explore dice notation.",
+    "icons" : [
+      {
+        "mimeType" : "image/svg+xml",
+        "src" : "https://example.invalid/dice/logo.svg"
+      }
+    ],
     "name" : "dice-mcp",
-    "version" : "1.0.0"
+    "title" : "Dice MCP",
+    "version" : "1.0.0",
+    "websiteUrl" : "https://example.invalid/dice"
   },
   "prompts" : [
     {
+      "_meta" : {
+        "com.example.dice/category" : "education"
+      },
       "arguments" : [
       ],
       "description" : "Explain dice notation syntax",
-      "name" : "explain_notation"
+      "icons" : [
+        {
+          "mimeType" : "image/svg+xml",
+          "src" : "https://example.invalid/dice/prompt.svg"
+        }
+      ],
+      "name" : "explain_notation",
+      "title" : "Explain dice notation"
     }
   ],
   "resourceTemplates" : [
   ],
   "resources" : [
     {
+      "_meta" : {
+        "com.example.dice/rendered" : "markdown"
+      },
       "description" : "Standard dice notation syntax and examples",
+      "icons" : [
+        {
+          "mimeType" : "image/svg+xml",
+          "src" : "https://example.invalid/dice/rules.svg"
+        }
+      ],
       "mimeType" : "text/markdown",
       "name" : "Dice Notation Rules",
+      "size" : 900,
+      "title" : "Dice notation rules",
       "uri" : "dice://rules/standard"
     },
     {
+      "annotations" : {
+        "priority" : 0.5
+      },
       "description" : "Recent dice roll results",
       "mimeType" : "text/plain",
       "name" : "Roll History",
+      "title" : "Roll history",
       "uri" : "dice://history"
     }
   ],
   "tools" : [
     {
+      "_meta" : {
+        "com.example.dice/category" : "tabletop"
+      },
+      "annotations" : {
+        "destructiveHint" : false,
+        "idempotentHint" : false,
+        "openWorldHint" : true,
+        "readOnlyHint" : true
+      },
       "description" : "Roll dice using standard notation (e.g., '1d6', '2d20 + 5', '3d4 - 2')",
+      "icons" : [
+        {
+          "mimeType" : "image/png",
+          "sizes" : [
+            "48x48",
+            "any"
+          ],
+          "src" : "https://example.invalid/dice/icon.png"
+        }
+      ],
       "inputSchema" : {
         "additionalProperties" : false,
         "properties" : {
@@ -111,7 +164,29 @@
       }
     },
     {
+      "_meta" : {
+        "com.example.dice/category" : "tabletop"
+      },
+      "annotations" : {
+        "destructiveHint" : false,
+        "idempotentHint" : false,
+        "openWorldHint" : true,
+        "readOnlyHint" : false
+      },
       "description" : "Build a dice expression interactively: choose dice + counts, then roll the lot",
+      "execution" : {
+        "taskSupport" : "optional"
+      },
+      "icons" : [
+        {
+          "mimeType" : "image/png",
+          "sizes" : [
+            "48x48",
+            "any"
+          ],
+          "src" : "https://example.invalid/dice/icon.png"
+        }
+      ],
       "inputSchema" : {
         "additionalProperties" : false,
         "type" : "object"

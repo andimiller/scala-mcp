@@ -18,7 +18,7 @@ import net.andimiller.mcp.core.protocol.PromptMessage
 case class Req(value: String)  derives JsonSchema, Decoder, Encoder.AsObject
 case class Resp(value: String) derives JsonSchema, Decoder, Encoder.AsObject
 
-val myTool: Tool.Resolved[IO] =
+val myTool: Tool[IO, Unit] =
   tool.name("greet").in[Req].out[Resp]
     .run(req => IO.pure(Resp(s"Hello, ${req.value}!")))
 

@@ -181,12 +181,14 @@ object McpCliClient
       resp.structuredContent.traverse_(s => Console[IO].println(s"  structured: ${s.spaces2}"))
 
   private def renderContent(c: Content): String = c match
-    case Content.Text(text)              => s"text: $text"
-    case Content.Image(_, mimeType)      => s"image ($mimeType)"
-    case Content.Audio(_, mimeType)      => s"audio ($mimeType)"
-    case Content.Resource(uri, mt, text) =>
+    case Content.Text(text, _, _)                 => s"text: $text"
+    case Content.Image(_, mimeType, _, _)         => s"image ($mimeType)"
+    case Content.Audio(_, mimeType, _, _)         => s"audio ($mimeType)"
+    case Content.Resource(uri, mt, text, _, _, _) =>
       val body = text.getOrElse("(blob)")
       s"resource $uri${mt.map(t => s" [$t]").getOrElse("")}: $body"
+    case Content.ResourceLink(uri, name, _, _, mt, _, _, _, _) =>
+      s"resource link $name → $uri${mt.map(t => s" [$t]").getOrElse("")}"
 
   // ── resources ─────────────────────────────────────────────────────
 

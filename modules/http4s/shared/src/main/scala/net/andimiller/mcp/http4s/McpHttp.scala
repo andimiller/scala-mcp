@@ -30,20 +30,42 @@ object McpHttp:
 
   // ── Builder entry points ──────────────────────────────────────────
 
-  def basic[F[_]: Async]: BasicMcpHttpBuilder[F] =
-    new BasicMcpHttpBuilder[F](
-      mName = "", mVersion = "", mConfig = McpHttpConfig(), mTools = Vector.empty, mResources = Vector.empty,
-      mResourceTemplates = Vector.empty, mPrompts = Vector.empty, mCaps = CapabilityTracker.empty
+  def basic[F[_]: Async]: BasicMcpHttpBuilder[F, Unit] =
+    new BasicMcpHttpBuilder[F, Unit](
+      mName = "",
+      mVersion = "",
+      mConfig = McpHttpConfig(),
+      mCtx = (),
+      mTools = Vector.empty,
+      mResources = Vector.empty,
+      mResourceTemplates = Vector.empty,
+      mPrompts = Vector.empty,
+      mCaps = CapabilityTracker.empty,
+      mExtraRoutes = HttpRoutes.empty[F]
     )
 
   def streaming[F[_]: Async]: StreamingMcpHttpBuilder[F, Unit] =
     new StreamingMcpHttpBuilder[F, Unit](
-      mName = "", mVersion = "", mConfig = McpHttpConfig(), mAuthInfo = None, mStatefulCreators = Vector.empty,
-      mAuthExtractor = None, mPlainTools = Vector.empty, mContextToolResolvers = Vector.empty,
-      mPlainResources = Vector.empty, mContextResourceResolvers = Vector.empty, mPlainResourceTemplates = Vector.empty,
-      mContextResourceTemplateResolvers = Vector.empty, mPlainPrompts = Vector.empty,
-      mContextPromptResolvers = Vector.empty, mCaps = CapabilityTracker.empty, mSessionStore = None,
-      mSinkFactory = None, mSessionRefsFactory = None, mSessionStoreFactory = None
+      mName = "",
+      mVersion = "",
+      mConfig = McpHttpConfig(),
+      mAuthInfo = None,
+      mStatefulCreators = Vector.empty,
+      mAuthExtractor = None,
+      mPlainTools = Vector.empty,
+      mContextTools = Vector.empty,
+      mPlainResources = Vector.empty,
+      mContextResourceResolvers = Vector.empty,
+      mPlainResourceTemplates = Vector.empty,
+      mContextResourceTemplateResolvers = Vector.empty,
+      mPlainPrompts = Vector.empty,
+      mContextPromptResolvers = Vector.empty,
+      mCaps = CapabilityTracker.empty,
+      mSessionStore = None,
+      mSinkFactory = None,
+      mSessionRefsFactory = None,
+      mSessionStoreFactory = None,
+      mExtraRoutes = HttpRoutes.empty[F]
     )
 
   // ── Simple HTTP transport (no sessions, no SSE) ──────────────────

@@ -29,26 +29,26 @@ class StreamableHttpTransportSuite extends CatsEffectSuite:
 
   private val mcpSessionId = ci"Mcp-Session-Id"
 
-  private def echoTool: Tool.Resolved[IO] =
-    new Tool.Resolved[IO]:
-      val name                                          = "echo"
-      val description                                   = ""
-      val inputSchema                                   = Json.obj()
-      val outputSchema                                  = None
-      def handle(arguments: Json): IO[CallToolResponse] =
+  private def echoTool: Tool[IO, Unit] =
+    new Tool[IO, Unit]:
+      val name                                                          = "echo"
+      val description                                                   = ""
+      val inputSchema                                                   = Json.obj()
+      val outputSchema                                                  = None
+      def handle(call: ToolCallContext[IO, Unit]): IO[CallToolResponse] =
         IO.pure(CallToolResponse(List(Content.Text("ok")), None, false))
 
-  private def gatedTool(gate: Deferred[IO, Unit]): Tool.Resolved[IO] =
-    new Tool.Resolved[IO]:
-      val name                                          = "slow"
-      val description                                   = ""
-      val inputSchema                                   = Json.obj()
-      val outputSchema                                  = None
-      def handle(arguments: Json): IO[CallToolResponse] =
+  private def gatedTool(gate: Deferred[IO, Unit]): Tool[IO, Unit] =
+    new Tool[IO, Unit]:
+      val name                                                          = "slow"
+      val description                                                   = ""
+      val inputSchema                                                   = Json.obj()
+      val outputSchema                                                  = None
+      def handle(call: ToolCallContext[IO, Unit]): IO[CallToolResponse] =
         gate.get.as(CallToolResponse(List(Content.Text("done")), None, false))
 
   private def buildServer(
-      tools: List[Tool.Resolved[IO]] = List(echoTool)
+      tools: List[Tool[IO, Unit]] = List(echoTool)
   ): (String, SessionContext[IO]) => IO[Server[IO]] =
     (_, _) =>
       DefaultServer[IO](

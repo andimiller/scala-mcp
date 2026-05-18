@@ -24,7 +24,7 @@ import net.andimiller.mcp.core.server.*
 
 case class Echo(message: String) derives Schema, Decoder, Encoder.AsObject
 
-val echoTool: Tool.Resolved[IO] =
+val echoTool: Tool[IO, Unit] =
   tool.name("echo").in[Echo].out[Echo]
     .run(req => IO.pure(req))
 ```

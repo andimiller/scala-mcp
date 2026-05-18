@@ -16,7 +16,7 @@ ThisBuild / scalaVersion := "3.3.4"
 
 lazy val commonSettings = Seq(
   organization := "net.andimiller.mcp",
-  version      := "0.10.0"
+  version      := "0.11.0"
 )
 
 // scoverage instrumentation produces JVM-only bytecode, so coverage must be disabled on every
@@ -62,6 +62,7 @@ lazy val core = crossProject(JVMPlatform, JSPlatform, NativePlatform)
       "com.softwaremill.sttp.apispec" %%% "apispec-model"     % "0.11.10",
       "com.softwaremill.sttp.apispec" %%% "jsonschema-circe"  % "0.11.10",
       "com.lihaoyi"                   %%% "sourcecode"        % "0.4.2",
+      "org.scodec"                    %%% "scodec-core"       % "2.3.3",
       "org.scalameta"                 %%% "munit"             % "1.0.0" % Test,
       "org.typelevel"                 %%% "munit-cats-effect" % "2.2.0" % Test
     )
@@ -179,7 +180,18 @@ lazy val examplePomodoro = project
     publish / skip       := true,
     libraryDependencies ++= Seq(
       "ch.qos.logback" % "logback-classic" % "1.5.6"
-    )
+    ),
+    assembly / mainClass                  := Some("net.andimiller.mcp.examples.pomodoro.PomodoroMcpServer"),
+    assembly / assemblyJarName            := "pomodoro-mcp",
+    assembly / assemblyPrependShellScript := Some(sbtassembly.AssemblyPlugin.defaultShellScript),
+    assembly / assemblyMergeStrategy      := {
+      case PathList("META-INF", "versions", _, "module-info.class") => MergeStrategy.discard
+      case PathList("META-INF", "io.netty.versions.properties")     => MergeStrategy.first
+      case x if x.endsWith("module-info.class")                     => MergeStrategy.discard
+      case x                                                        =>
+        val oldStrategy = (assembly / assemblyMergeStrategy).value
+        oldStrategy(x)
+    }
   )
   .dependsOn(core.jvm, http4s.jvm, redis, goldenMunit.jvm % Test)
 
@@ -327,6 +339,22 @@ lazy val redis = project
     )
   )
   .dependsOn(core.jvm, http4s.jvm)
+
+lazy val trace4cats = project
+  .in(file("modules/trace4cats"))
+  .settings(commonSettings)
+  .settings(publishSettings)
+  .settings(
+    name                 := "mcp-trace4cats",
+    libraryDependencies ++= Seq(
+      "io.janstenpickle" %% "trace4cats-core"    % "0.14.7",
+      "io.janstenpickle" %% "trace4cats-iolocal" % "0.14.7" % Test,
+      "io.janstenpickle" %% "trace4cats-testkit" % "0.14.7" % Test,
+      "org.scalameta"    %% "munit"              % "1.0.0"  % Test,
+      "org.typelevel"    %% "munit-cats-effect"  % "2.2.0"  % Test
+    )
+  )
+  .dependsOn(core.jvm)
 
 lazy val tapir = project
   .in(file("modules/tapir"))
@@ -503,7 +531,7 @@ lazy val docs = project
     tlSite := Def.sequential(mdoc.toTask(""), laikaSite, generateLlmsArtifacts).value
   )
   .dependsOn(
-    core.jvm, stdio.jvm, http4s.jvm, openapi.jvm, goldenMunit.jvm, tapir, redis
+    core.jvm, stdio.jvm, http4s.jvm, openapi.jvm, goldenMunit.jvm, tapir, redis, trace4cats
   )
 
 lazy val root = project
@@ -515,7 +543,8 @@ lazy val root = project
   )
   .aggregate(
     core.jvm, core.js, core.native, stdio.jvm, stdio.js, stdio.native, exampleDice.jvm, exampleDice.js,
-    exampleDice.native, http4s.jvm, http4s.js, http4s.native, redis, tapir, examplePomodoro, exampleChat, exampleClient,
-    exampleHarness.jvm, exampleHarness.native, exampleDns, exampleNotebook, exampleRpgCharacterCreator, explorer,
-    goldenMunit.jvm, goldenMunit.js, goldenMunit.native, openapi.jvm, openapi.js, openapi.native, openapiMcpProxy
+    exampleDice.native, http4s.jvm, http4s.js, http4s.native, redis, trace4cats, tapir, examplePomodoro, exampleChat,
+    exampleClient, exampleHarness.jvm, exampleHarness.native, exampleDns, exampleNotebook, exampleRpgCharacterCreator,
+    explorer, goldenMunit.jvm, goldenMunit.js, goldenMunit.native, openapi.jvm, openapi.js, openapi.native,
+    openapiMcpProxy
   )

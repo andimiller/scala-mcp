@@ -17,6 +17,7 @@ import net.andimiller.mcp.core.server.DefaultServer
 import net.andimiller.mcp.core.server.ServerSession
 import net.andimiller.mcp.core.server.ServerSessionConfig
 import net.andimiller.mcp.core.server.Tool
+import net.andimiller.mcp.core.server.ToolCallContext
 import net.andimiller.mcp.core.transport.MessageChannel
 
 import fs2.Chunk
@@ -80,13 +81,13 @@ class StdioMcpClientSuite extends CatsEffectSuite:
       (channel, drain)
     }
 
-  private def echoTool: Tool.Resolved[IO] = new Tool.Resolved[IO]:
-    val name                                          = "echo"
-    val description                                   = "echo input"
-    val inputSchema                                   = Json.obj("type" -> "object".asJson)
-    val outputSchema                                  = None
-    def handle(arguments: Json): IO[CallToolResponse] =
-      IO.pure(CallToolResponse(List(Content.Text(s"echo:${arguments.noSpaces}")), None, isError = false))
+  private def echoTool: Tool[IO, Unit] = new Tool[IO, Unit]:
+    val name                                                          = "echo"
+    val description                                                   = "echo input"
+    val inputSchema                                                   = Json.obj("type" -> "object".asJson)
+    val outputSchema                                                  = None
+    def handle(call: ToolCallContext[IO, Unit]): IO[CallToolResponse] =
+      IO.pure(CallToolResponse(List(Content.Text(s"echo:${call.request.arguments.noSpaces}")), None, isError = false))
 
   /** Wire up:
     *   - server side runs a real `ServerSession` reading from `serverIn` (= bytes the client wrote) and writing to

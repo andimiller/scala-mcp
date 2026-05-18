@@ -5,6 +5,7 @@ import net.andimiller.mcp.core.schema.JsonSchema
 
 import io.circe.Encoder
 import io.circe.Json
+import io.circe.JsonObject
 import io.circe.syntax.*
 import munit.FunSuite
 
@@ -56,4 +57,14 @@ class ToolResultSuite extends FunSuite:
 
   test("OutputSchema[Nothing] produces no schema") {
     assertEquals(summon[OutputSchema[Nothing]].asJson, None)
+  }
+
+  test("Raw._meta threads through toWire into CallToolResponse._meta") {
+    val meta                = JsonObject("io.modelcontextprotocol/audit" -> "high".asJson)
+    val raw: ToolResult.Raw = ToolResult.Raw(
+      content = List(Content.Text("body")),
+      _meta = Some(meta)
+    )
+    val wire = ToolResult.toWire[Nothing](raw)
+    assertEquals(wire._meta, Some(meta))
   }

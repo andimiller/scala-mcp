@@ -11,10 +11,11 @@ import tyrian.*
 object Views:
 
   private def contentText(c: Content): String = c match
-    case Content.Text(text)             => text
-    case Content.Image(_, mimeType)     => s"[Image: $mimeType]"
-    case Content.Audio(_, mimeType)     => s"[Audio: $mimeType]"
-    case Content.Resource(uri, _, text) => text.getOrElse(s"[Resource: $uri]")
+    case Content.Text(text, _, _)                             => text
+    case Content.Image(_, mimeType, _, _)                     => s"[Image: $mimeType]"
+    case Content.Audio(_, mimeType, _, _)                     => s"[Audio: $mimeType]"
+    case Content.Resource(uri, _, text, _, _, _)              => text.getOrElse(s"[Resource: $uri]")
+    case Content.ResourceLink(uri, name, _, _, _, _, _, _, _) => s"[ResourceLink: $name → $uri]"
 
   def view(model: Model): Html[Msg] =
     div(`class` := Styles.container)(
@@ -158,7 +159,7 @@ object Views:
     val hasErr = model.toolErrors.contains(n)
     div(
       div(`class` := Styles.detailTitle)(n),
-      div(`class` := Styles.detailDescription)(tool.description),
+      div(`class` := Styles.detailDescription)(tool.description.getOrElse("")),
       div(`class` := Styles.section)(
         div(`class` := Styles.sectionTitle)("Schema"),
         pre(`class` := Styles.resultBox)(tool.inputSchema.spaces2)

@@ -16,8 +16,17 @@
     }
   },
   "info" : {
+    "description" : "Run pomodoro timers over MCP.",
+    "icons" : [
+      {
+        "mimeType" : "image/svg+xml",
+        "src" : "https://pomodoro.andimiller.net/icon.svg"
+      }
+    ],
     "name" : "pomodoro-mcp",
-    "version" : "1.0.0"
+    "title" : "Pomodoro",
+    "version" : "1.0.0",
+    "websiteUrl" : "https://pomodoro.andimiller.net"
   },
   "prompts" : [
     {
@@ -53,13 +62,31 @@
   ],
   "resources" : [
     {
+      "_meta" : {
+        "com.example.pomodoro/category" : "productivity"
+      },
       "description" : "Completed pomodoro session history",
+      "icons" : [
+        {
+          "mimeType" : "image/svg+xml",
+          "src" : "https://pomodoro.andimiller.net/icon.svg"
+        }
+      ],
       "mimeType" : "text/plain",
       "name" : "Session History",
       "uri" : "pomodoro://history"
     },
     {
+      "_meta" : {
+        "com.example.pomodoro/category" : "productivity"
+      },
       "description" : "Current pomodoro timer status (subscribable)",
+      "icons" : [
+        {
+          "mimeType" : "image/svg+xml",
+          "src" : "https://pomodoro.andimiller.net/icon.svg"
+        }
+      ],
       "mimeType" : "text/plain",
       "name" : "Timer Status",
       "uri" : "pomodoro://status"
@@ -67,7 +94,22 @@
   ],
   "tools" : [
     {
+      "_meta" : {
+        "com.example.pomodoro/category" : "productivity"
+      },
+      "annotations" : {
+        "destructiveHint" : false,
+        "idempotentHint" : false,
+        "openWorldHint" : false,
+        "readOnlyHint" : true
+      },
       "description" : "Get the current pomodoro timer status",
+      "icons" : [
+        {
+          "mimeType" : "image/svg+xml",
+          "src" : "https://pomodoro.andimiller.net/icon.svg"
+        }
+      ],
       "inputSchema" : {
         "additionalProperties" : false,
         "type" : "object"
@@ -87,7 +129,22 @@
       }
     },
     {
+      "_meta" : {
+        "com.example.pomodoro/category" : "productivity"
+      },
+      "annotations" : {
+        "destructiveHint" : false,
+        "idempotentHint" : true,
+        "openWorldHint" : false,
+        "readOnlyHint" : false
+      },
       "description" : "Pause the running pomodoro timer",
+      "icons" : [
+        {
+          "mimeType" : "image/svg+xml",
+          "src" : "https://pomodoro.andimiller.net/icon.svg"
+        }
+      ],
       "inputSchema" : {
         "additionalProperties" : false,
         "type" : "object"
@@ -107,7 +164,22 @@
       }
     },
     {
+      "_meta" : {
+        "com.example.pomodoro/category" : "productivity"
+      },
+      "annotations" : {
+        "destructiveHint" : false,
+        "idempotentHint" : true,
+        "openWorldHint" : false,
+        "readOnlyHint" : false
+      },
       "description" : "Resume a paused pomodoro timer",
+      "icons" : [
+        {
+          "mimeType" : "image/svg+xml",
+          "src" : "https://pomodoro.andimiller.net/icon.svg"
+        }
+      ],
       "inputSchema" : {
         "additionalProperties" : false,
         "type" : "object"
@@ -127,7 +199,22 @@
       }
     },
     {
+      "_meta" : {
+        "com.example.pomodoro/category" : "productivity"
+      },
+      "annotations" : {
+        "destructiveHint" : false,
+        "idempotentHint" : true,
+        "openWorldHint" : false,
+        "readOnlyHint" : true
+      },
       "description" : "Sleep for the given number of seconds. Demonstrates MCP cancellation: send notifications/cancelled and the tool's onCancel hook logs how long it actually slept.",
+      "icons" : [
+        {
+          "mimeType" : "image/svg+xml",
+          "src" : "https://pomodoro.andimiller.net/icon.svg"
+        }
+      ],
       "inputSchema" : {
         "additionalProperties" : false,
         "properties" : {
@@ -156,7 +243,22 @@
       }
     },
     {
+      "_meta" : {
+        "com.example.pomodoro/category" : "productivity"
+      },
+      "annotations" : {
+        "destructiveHint" : true,
+        "idempotentHint" : false,
+        "openWorldHint" : false,
+        "readOnlyHint" : false
+      },
       "description" : "Start a new pomodoro timer",
+      "icons" : [
+        {
+          "mimeType" : "image/svg+xml",
+          "src" : "https://pomodoro.andimiller.net/icon.svg"
+        }
+      ],
       "inputSchema" : {
         "additionalProperties" : false,
         "properties" : {
@@ -190,7 +292,22 @@
       }
     },
     {
+      "_meta" : {
+        "com.example.pomodoro/category" : "productivity"
+      },
+      "annotations" : {
+        "destructiveHint" : true,
+        "idempotentHint" : true,
+        "openWorldHint" : false,
+        "readOnlyHint" : false
+      },
       "description" : "Stop/cancel the current pomodoro timer",
+      "icons" : [
+        {
+          "mimeType" : "image/svg+xml",
+          "src" : "https://pomodoro.andimiller.net/icon.svg"
+        }
+      ],
       "inputSchema" : {
         "additionalProperties" : false,
         "type" : "object"

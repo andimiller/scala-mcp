@@ -38,7 +38,7 @@ import net.andimiller.mcp.core.server.*
 case class GreetRequest(name: String) derives JsonSchema, Decoder
 case class GreetResponse(message: String) derives JsonSchema, Encoder.AsObject
 
-val greetTool: Tool.Resolved[IO] =
+val greetTool: Tool[IO, Unit] =
   tool.name("greet")
     .description("Greet someone by name")
     .in[GreetRequest]

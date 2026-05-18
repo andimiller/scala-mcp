@@ -1,0 +1,81 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pomodoro-mcp
+  labels:
+    app: pomodoro-mcp
+spec:
+  # Server keeps per-session state in-memory, so stay at 1 replica
+  # unless you switch to PomodoroMcpServerRedis with a shared backend.
+  replicas: 1
+  selector:
+    matchLabels:
+      app: pomodoro-mcp
+  template:
+    metadata:
+      labels:
+        app: pomodoro-mcp
+    spec:
+      containers:
+        - name: pomodoro-mcp
+          image: docker.io/andimiller/pomodoro:0.4
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 25000
+          livenessProbe:
+            tcpSocket:
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          readinessProbe:
+            tcpSocket:
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: pomodoro-mcp
+  labels:
+    app: pomodoro-mcp
+spec:
+  type: ClusterIP
+  selector:
+    app: pomodoro-mcp
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: pomodoro-mcp
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-production
+spec:
+  ingressClassName: traefik
+  tls:
+    - hosts:
+        - pomodoro.andimiller.net
+      secretName: pomodoro-mcp-tls
+  rules:
+    - host: pomodoro.andimiller.net
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: pomodoro-mcp
+                port:
+                  number: 80

@@ -16,13 +16,13 @@ import munit.CatsEffectSuite
 
 class RequestHandlerCancellationSuite extends CatsEffectSuite:
 
-  private def gatedTool(gate: Deferred[IO, Unit]): Tool.Resolved[IO] =
-    new Tool.Resolved[IO]:
-      val name                                          = "slow"
-      val description                                   = "blocks until gate completes"
-      val inputSchema                                   = Json.obj()
-      val outputSchema                                  = None
-      def handle(arguments: Json): IO[CallToolResponse] =
+  private def gatedTool(gate: Deferred[IO, Unit]): Tool[IO, Unit] =
+    new Tool[IO, Unit]:
+      val name                                                          = "slow"
+      val description                                                   = "blocks until gate completes"
+      val inputSchema                                                   = Json.obj()
+      val outputSchema                                                  = None
+      def handle(call: ToolCallContext[IO, Unit]): IO[CallToolResponse] =
         gate.get.as(CallToolResponse(List(Content.Text("done")), None, false))
 
   private def buildHandler(gate: Deferred[IO, Unit]): IO[RequestHandler[IO]] =

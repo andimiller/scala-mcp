@@ -5,9 +5,11 @@ import scala.concurrent.duration.*
 import cats.effect.*
 import cats.syntax.all.*
 
+import net.andimiller.mcp.core.protocol.Icon
 import net.andimiller.mcp.core.protocol.PromptArgument
 import net.andimiller.mcp.core.protocol.PromptMessage
 import net.andimiller.mcp.core.protocol.ResourceContent
+import net.andimiller.mcp.core.protocol.ToolAnnotations.Hint
 import net.andimiller.mcp.core.schema.JsonSchema
 import net.andimiller.mcp.core.schema.description
 import net.andimiller.mcp.core.server.*
@@ -17,6 +19,11 @@ import net.andimiller.mcp.http4s.StreamingMcpHttpBuilder
 import com.comcast.ip4s.*
 import io.circe.Decoder
 import io.circe.Encoder
+import io.circe.syntax.*
+import org.http4s.HttpRoutes
+import org.http4s.MediaType
+import org.http4s.dsl.io.*
+import org.http4s.headers.`Content-Type`
 
 // ── request / response types ────────────────────────────────────────
 
@@ -44,17 +51,46 @@ case class MessageResponse(message: String) derives Encoder.AsObject, JsonSchema
 
 object PomodoroMcpServer extends IOApp.Simple:
 
+  /** A tiny tomato SVG, served at `/icon.svg` alongside the MCP routes. Some clients fall back to fetching the icon as
+    * an HTTPS resource rather than reading a `data:` URI from `serverInfo.icons`.
+    */
+  private val tomatoSvg: String =
+    """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+      |<circle cx="16" cy="18" r="11" fill="#e63946"/>
+      |<path d="M10 7 Q16 3 22 7 L20 10 Q16 8 12 10 Z" fill="#2a9d8f"/>
+      |<path d="M16 5 L18 2" stroke="#2a9d8f" stroke-width="2" stroke-linecap="round" fill="none"/>
+      |</svg>""".stripMargin
+
+  private val tomatoIcon: Icon = Icon.svg("https://pomodoro.andimiller.net/icon.svg")
+
+  private val iconRoutes: HttpRoutes[IO] = HttpRoutes.of[IO] {
+    case GET -> Root / "icon.svg" | GET -> Root / "favicon.ico" =>
+      Ok(tomatoSvg).map(_.withContentType(`Content-Type`(MediaType.image.`svg+xml`)))
+  }
+
+  private val brand: Metadata = Metadata.empty
+    .icon(tomatoIcon)
+    .meta("com.example.pomodoro/category", "productivity".asJson)
+
   /** Wires all tools, resources, prompts and capabilities onto the given builder. Call `.stateful[PomodoroTimer]`
     * internally so callers only need a `Unit`-context builder.
     */
   def configure(builder: StreamingMcpHttpBuilder[IO, Unit]): StreamingMcpHttpBuilder[IO, PomodoroTimer] =
     builder
+      .title("Pomodoro")
+      .description("Run pomodoro timers over MCP.")
+      .icon(tomatoIcon)
+      .websiteUrl("https://pomodoro.andimiller.net")
+      .withRoutes(iconRoutes)
       .stateful[PomodoroTimer](ctx => PomodoroTimer.create(ctx.sink))
       // ── tools (all need the timer) ──────────────────────────────────
       .withContextualTool(
         contextualTool[PomodoroTimer]
           .name("start_timer")
+          .title("Start timer")
           .description("Start a new pomodoro timer")
+          .annotations(Hint.Destroy, Hint.ClosedWorld)
+          .metadata(brand)
           .in[StartTimerRequest]
           .out[MessageResponse]
           .run((timer, req) => timer.start(req.duration_minutes, req.label).map(MessageResponse(_)))
@@ -62,7 +98,10 @@ object PomodoroMcpServer extends IOApp.Simple:
       .withContextualTool(
         contextualTool[PomodoroTimer]
           .name("pause_timer")
+          .title("Pause timer")
           .description("Pause the running pomodoro timer")
+          .annotations(Hint.Write, Hint.Idempotent, Hint.ClosedWorld)
+          .metadata(brand)
           .in[EmptyRequest]
           .out[MessageResponse]
           .run((timer, _) => timer.pause().map(MessageResponse(_)))
@@ -70,7 +109,10 @@ object PomodoroMcpServer extends IOApp.Simple:
       .withContextualTool(
         contextualTool[PomodoroTimer]
           .name("resume_timer")
+          .title("Resume timer")
           .description("Resume a paused pomodoro timer")
+          .annotations(Hint.Write, Hint.Idempotent, Hint.ClosedWorld)
+          .metadata(brand)
           .in[EmptyRequest]
           .out[MessageResponse]
           .run((timer, _) => timer.resume().map(MessageResponse(_)))
@@ -78,7 +120,10 @@ object PomodoroMcpServer extends IOApp.Simple:
       .withContextualTool(
         contextualTool[PomodoroTimer]
           .name("stop_timer")
+          .title("Stop timer")
           .description("Stop/cancel the current pomodoro timer")
+          .annotations(Hint.Destroy, Hint.Idempotent, Hint.ClosedWorld)
+          .metadata(brand)
           .in[EmptyRequest]
           .out[MessageResponse]
           .run((timer, _) => timer.stop().map(MessageResponse(_)))
@@ -86,7 +131,10 @@ object PomodoroMcpServer extends IOApp.Simple:
       .withContextualTool(
         contextualTool[PomodoroTimer]
           .name("get_status")
+          .title("Get status")
           .description("Get the current pomodoro timer status")
+          .annotations(Hint.Read, Hint.ClosedWorld)
+          .metadata(brand)
           .in[EmptyRequest]
           .out[StatusResponse]
           .run((timer, _) => timer.status.map(StatusResponse(_)))
@@ -94,9 +142,12 @@ object PomodoroMcpServer extends IOApp.Simple:
       .withContextualTool(
         contextualTool[PomodoroTimer]
           .name("sleep_blocking")
+          .title("Sleep (blocking)")
           .description(
             "Sleep for the given number of seconds. Demonstrates MCP cancellation: send notifications/cancelled and the tool's onCancel hook logs how long it actually slept."
           )
+          .annotations(Hint.Read, Hint.Idempotent, Hint.ClosedWorld)
+          .metadata(brand)
           .in[SleepBlockingRequest]
           .out[MessageResponse]
           .run { (timer, req) =>
@@ -119,16 +170,20 @@ object PomodoroMcpServer extends IOApp.Simple:
         contextualResource[PomodoroTimer]
           .uri("pomodoro://status")
           .name("Timer Status")
+          .title("Timer status")
           .description("Current pomodoro timer status (subscribable)")
           .mimeType("text/plain")
+          .metadata(brand)
           .read(timer => timer.status)
       )
       .withContextualResource(
         contextualResource[PomodoroTimer]
           .uri("pomodoro://history")
           .name("Session History")
+          .title("Session history")
           .description("Completed pomodoro session history")
           .mimeType("text/plain")
+          .metadata(brand)
           .read(timer => timer.historyText)
       )
       // ── resource templates (need the timer) ────────────────────────

@@ -16,13 +16,13 @@ import munit.CatsEffectSuite
 
 class RequestHandlerDispatchSuite extends CatsEffectSuite:
 
-  private def textTool: Tool.Resolved[IO] =
-    new Tool.Resolved[IO]:
-      val name                                          = "echo"
-      val description                                   = "echo"
-      val inputSchema                                   = Json.obj()
-      val outputSchema                                  = None
-      def handle(arguments: Json): IO[CallToolResponse] =
+  private def textTool: Tool[IO, Unit] =
+    new Tool[IO, Unit]:
+      val name                                                          = "echo"
+      val description                                                   = "echo"
+      val inputSchema                                                   = Json.obj()
+      val outputSchema                                                  = None
+      def handle(call: ToolCallContext[IO, Unit]): IO[CallToolResponse] =
         IO.pure(CallToolResponse(List(Content.Text("ok")), None, false))
 
   private def staticResource: McpResource.Resolved[IO] =
@@ -43,7 +43,7 @@ class RequestHandlerDispatchSuite extends CatsEffectSuite:
         IO.pure(GetPromptResponse(None, List(PromptMessage.user("hi"))))
 
   private def buildHandlerAnd(
-      tools: List[Tool.Resolved[IO]] = Nil,
+      tools: List[Tool[IO, Unit]] = Nil,
       resources: List[McpResource.Resolved[IO]] = Nil,
       prompts: List[Prompt.Resolved[IO]] = Nil
   ): IO[(RequestHandler[IO], ServerRequester[IO])] =
@@ -60,7 +60,7 @@ class RequestHandlerDispatchSuite extends CatsEffectSuite:
     yield (new RequestHandler[IO](server, requester, cancel), requester)
 
   private def buildHandler(
-      tools: List[Tool.Resolved[IO]] = Nil,
+      tools: List[Tool[IO, Unit]] = Nil,
       resources: List[McpResource.Resolved[IO]] = Nil,
       prompts: List[Prompt.Resolved[IO]] = Nil
   ): IO[RequestHandler[IO]] =

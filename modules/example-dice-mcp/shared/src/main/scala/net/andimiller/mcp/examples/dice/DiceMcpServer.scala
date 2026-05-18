@@ -6,16 +6,20 @@ import cats.effect.Ref
 import cats.effect.std.Random
 import cats.syntax.all.*
 
+import net.andimiller.mcp.core.protocol.Annotations
 import net.andimiller.mcp.core.protocol.ElicitResult
 import net.andimiller.mcp.core.protocol.ElicitationError
-import net.andimiller.mcp.core.protocol.PromptArgument
+import net.andimiller.mcp.core.protocol.Icon
 import net.andimiller.mcp.core.protocol.PromptMessage
+import net.andimiller.mcp.core.protocol.ToolAnnotations.Hint
+import net.andimiller.mcp.core.protocol.ToolExecution
 import net.andimiller.mcp.core.protocol.ToolResult
 import net.andimiller.mcp.core.schema.JsonSchema
 import net.andimiller.mcp.core.schema.description
 import net.andimiller.mcp.core.schema.example
 import net.andimiller.mcp.core.server.ElicitationClient
 import net.andimiller.mcp.core.server.McpResource
+import net.andimiller.mcp.core.server.Metadata
 import net.andimiller.mcp.core.server.Prompt
 import net.andimiller.mcp.core.server.Server
 import net.andimiller.mcp.core.server.ServerBuilder
@@ -25,6 +29,7 @@ import net.andimiller.mcp.stdio.StdioTransport
 import io.circe.Codec
 import io.circe.Decoder
 import io.circe.Encoder
+import io.circe.syntax.*
 import sttp.apispec.Schema
 
 object DiceMcpServer extends IOApp.Simple:
@@ -121,11 +126,22 @@ object DiceMcpServer extends IOApp.Simple:
         JsonSchema
 
   def server(r: DiceResources): IO[Server[IO]] =
+    val diceBrand = Metadata.empty
+      .icon(Icon.png("https://example.invalid/dice/icon.png", sizes = List("48x48", "any")))
+      .meta("com.example.dice/category", "tabletop".asJson)
+
     ServerBuilder[IO]("dice-mcp", "1.0.0")
+      .withTitle("Dice MCP")
+      .withDescription("Roll dice and explore dice notation.")
+      .withIcon(Icon.svg("https://example.invalid/dice/logo.svg"))
+      .withWebsiteUrl("https://example.invalid/dice")
       .withTool(
         tool
           .name("roll_dice")
+          .title("Roll dice")
           .description("Roll dice using standard notation (e.g., '1d6', '2d20 + 5', '3d4 - 2')")
+          .annotations(Hint.Read)
+          .metadata(diceBrand)
           .in[RollDiceRequest]
           .out[RollDiceResponse]
           .run { request =>
@@ -150,7 +166,11 @@ object DiceMcpServer extends IOApp.Simple:
       .withTool(
         tool
           .name("roll_interactive")
+          .title("Roll dice (interactive)")
           .description("Build a dice expression interactively: choose dice + counts, then roll the lot")
+          .annotations(Hint.Write)
+          .execution(ToolExecution.taskOptional)
+          .metadata(diceBrand)
           .in[RollCustomRequest]
           .out[InteractiveRollResult]
           .runResult { _ =>
@@ -201,43 +221,51 @@ object DiceMcpServer extends IOApp.Simple:
           }
       )
       .withResource(
-        McpResource.static[IO](
-          resourceUri = "dice://rules/standard", resourceName = "Dice Notation Rules",
-          resourceDescription = Some("Standard dice notation syntax and examples"),
-          resourceMimeType = Some("text/markdown"),
-          content = """|# Dice Notation
-                       |
-                       |## Basic Syntax
-                       |
-                       |Roll dice using the format `NdS` where:
-                       |- **N** = number of dice to roll
-                       |- **S** = number of sides per die
-                       |
-                       |## Modifiers
-                       |
-                       |Add or subtract a fixed value:
-                       |- `NdS + M` adds M to the total
-                       |- `NdS - M` subtracts M from the total
-                       |
-                       |## Examples
-                       |
-                       || Expression  | Meaning                          |
-                       ||-------------|----------------------------------|
-                       || `1d6`       | Roll one six-sided die           |
-                       || `2d20`      | Roll two twenty-sided dice       |
-                       || `3d8 + 5`   | Roll three eight-sided dice + 5  |
-                       || `1d12 - 2`  | Roll one twelve-sided die - 2    |
-                       || `4d6`       | Roll four six-sided dice         |
-                       |""".stripMargin
-        )
+        McpResource.builder
+          .uri("dice://rules/standard")
+          .name("Dice Notation Rules")
+          .description("Standard dice notation syntax and examples")
+          .mimeType("text/markdown")
+          .title("Dice notation rules")
+          .size(900L)
+          .icon(Icon.svg("https://example.invalid/dice/rules.svg"))
+          .meta("com.example.dice/rendered", "markdown".asJson)
+          .staticContent[IO](
+            """|# Dice Notation
+               |
+               |## Basic Syntax
+               |
+               |Roll dice using the format `NdS` where:
+               |- **N** = number of dice to roll
+               |- **S** = number of sides per die
+               |
+               |## Modifiers
+               |
+               |Add or subtract a fixed value:
+               |- `NdS + M` adds M to the total
+               |- `NdS - M` subtracts M from the total
+               |
+               |## Examples
+               |
+               || Expression  | Meaning                          |
+               ||-------------|----------------------------------|
+               || `1d6`       | Roll one six-sided die           |
+               || `2d20`      | Roll two twenty-sided dice       |
+               || `3d8 + 5`   | Roll three eight-sided dice + 5  |
+               || `1d12 - 2`  | Roll one twelve-sided die - 2    |
+               || `4d6`       | Roll four six-sided dice         |
+               |""".stripMargin
+          )
       )
       .withResource(
-        McpResource.dynamic[IO](
-          resourceUri = "dice://history",
-          resourceName = "Roll History",
-          resourceDescription = Some("Recent dice roll results"),
-          resourceMimeType = Some("text/plain"),
-          reader = () =>
+        McpResource.builder
+          .uri("dice://history")
+          .name("Roll History")
+          .description("Recent dice roll results")
+          .mimeType("text/plain")
+          .title("Roll history")
+          .annotations(Annotations(priority = Some(0.5)))
+          .read[IO] { () =>
             r.rollHistory.get.map { history =>
               if history.isEmpty then "No rolls yet."
               else
@@ -245,28 +273,32 @@ object DiceMcpServer extends IOApp.Simple:
                   s"${i + 1}. ${roll.expression} => ${roll.result} (${roll.breakdown})"
                 }.mkString("\n")
             }
-        )
+          }
       )
       .withPrompt(
-        Prompt.static[IO](
-          promptName = "explain_notation",
-          promptDescription = Some("Explain dice notation syntax"),
-          messages = List(
-            PromptMessage.user("Explain the dice notation syntax supported by this dice roller."),
-            PromptMessage.assistant(
-              """|This dice roller uses standard tabletop RPG dice notation:
-                 |
-                 |**Basic rolls:** `NdS` where N is the number of dice and S is the number of sides.
-                 |For example, `2d6` rolls two six-sided dice and sums the results.
-                 |
-                 |**Modifiers:** You can add `+ M` or `- M` after the roll to add or subtract a fixed value.
-                 |For example, `1d20 + 5` rolls a twenty-sided die and adds 5.
-                 |
-                 |**Common dice:** d4, d6, d8, d10, d12, d20, and d100 are standard, but any number of sides works.
-                 |""".stripMargin
+        Prompt.builder
+          .name("explain_notation")
+          .description("Explain dice notation syntax")
+          .title("Explain dice notation")
+          .icon(Icon.svg("https://example.invalid/dice/prompt.svg"))
+          .meta("com.example.dice/category", "education".asJson)
+          .messages[IO](
+            List(
+              PromptMessage.user("Explain the dice notation syntax supported by this dice roller."),
+              PromptMessage.assistant(
+                """|This dice roller uses standard tabletop RPG dice notation:
+                   |
+                   |**Basic rolls:** `NdS` where N is the number of dice and S is the number of sides.
+                   |For example, `2d6` rolls two six-sided dice and sums the results.
+                   |
+                   |**Modifiers:** You can add `+ M` or `- M` after the roll to add or subtract a fixed value.
+                   |For example, `1d20 + 5` rolls a twenty-sided die and adds 5.
+                   |
+                   |**Common dice:** d4, d6, d8, d10, d12, d20, and d100 are standard, but any number of sides works.
+                   |""".stripMargin
+              )
             )
           )
-        )
       )
       .build
 

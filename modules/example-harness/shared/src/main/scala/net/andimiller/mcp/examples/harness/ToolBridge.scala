@@ -56,7 +56,11 @@ object ToolBridge:
         val realTools = resp.tools.map { td =>
           val ns      = s"$serverName$Sep${td.name}"
           val toolDef = OpenAiTypes.ToolDef(function =
-            OpenAiTypes.FunctionDef(name = ns, description = td.description, parameters = td.inputSchema)
+            OpenAiTypes.FunctionDef(
+              name = ns,
+              description = td.description.getOrElse(""),
+              parameters = td.inputSchema
+            )
           )
           (toolDef, ns -> Route.Tool[F](client, td.name))
         }
@@ -119,7 +123,7 @@ object ToolBridge:
         route match
           case Route.Tool(client, toolName) =>
             client.callTool(toolName, args).map { resp =>
-              val text = resp.content.collect { case Content.Text(t) => t }.mkString("\n")
+              val text = resp.content.collect { case Content.Text(t, _, _) => t }.mkString("\n")
               if resp.isError then s"[tool error]\n$text" else text
             }
           case Route.ListResources(client) =>

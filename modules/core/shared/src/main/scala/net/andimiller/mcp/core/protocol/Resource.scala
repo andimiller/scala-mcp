@@ -2,13 +2,19 @@ package net.andimiller.mcp.core.protocol
 
 import io.circe.Decoder
 import io.circe.Encoder
+import io.circe.JsonObject
 
 /** Resource definition in MCP protocol */
 case class ResourceDefinition(
     uri: String,
     name: String,
     description: Option[String] = None,
-    mimeType: Option[String] = None
+    mimeType: Option[String] = None,
+    title: Option[String] = None,
+    icons: Option[List[Icon]] = None,
+    annotations: Option[Annotations] = None,
+    size: Option[Long] = None,
+    _meta: Option[JsonObject] = None
 ) derives Encoder.AsObject,
       Decoder
 
@@ -17,7 +23,8 @@ case class ResourceContent(
     uri: String,
     mimeType: Option[String] = None,
     text: Option[String] = None,
-    blob: Option[String] = None // Base64-encoded binary data
+    blob: Option[String] = None, // Base64-encoded binary data
+    _meta: Option[JsonObject] = None
 ) derives Encoder.AsObject,
       Decoder
 
@@ -38,7 +45,8 @@ case class ListResourcesRequest(
 /** Response listing available resources */
 case class ListResourcesResponse(
     resources: List[ResourceDefinition],
-    nextCursor: Option[String] = None
+    nextCursor: Option[String] = None,
+    _meta: Option[JsonObject] = None
 ) derives Encoder.AsObject,
       Decoder
 
@@ -50,7 +58,8 @@ case class ReadResourceRequest(
 
 /** Response from reading a resource */
 case class ReadResourceResponse(
-    contents: List[ResourceContent]
+    contents: List[ResourceContent],
+    _meta: Option[JsonObject] = None
 ) derives Encoder.AsObject,
       Decoder
 
@@ -59,7 +68,11 @@ case class ResourceTemplateDefinition(
     uriTemplate: String,
     name: String,
     description: Option[String] = None,
-    mimeType: Option[String] = None
+    mimeType: Option[String] = None,
+    title: Option[String] = None,
+    icons: Option[List[Icon]] = None,
+    annotations: Option[Annotations] = None,
+    _meta: Option[JsonObject] = None
 ) derives Encoder.AsObject,
       Decoder
 
@@ -72,7 +85,8 @@ case class ListResourceTemplatesRequest(
 /** Response listing resource templates */
 case class ListResourceTemplatesResponse(
     resourceTemplates: List[ResourceTemplateDefinition],
-    nextCursor: Option[String] = None
+    nextCursor: Option[String] = None,
+    _meta: Option[JsonObject] = None
 ) derives Encoder.AsObject,
       Decoder
 

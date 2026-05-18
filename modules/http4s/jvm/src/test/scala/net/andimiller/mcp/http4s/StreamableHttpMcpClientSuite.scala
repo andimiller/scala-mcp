@@ -10,6 +10,7 @@ import net.andimiller.mcp.core.protocol.*
 import net.andimiller.mcp.core.protocol.content.Content
 import net.andimiller.mcp.core.server.DefaultServer
 import net.andimiller.mcp.core.server.Tool
+import net.andimiller.mcp.core.server.ToolCallContext
 
 import com.comcast.ip4s.*
 import io.circe.Json
@@ -24,15 +25,15 @@ class StreamableHttpMcpClientSuite extends CatsEffectSuite:
 
   override def munitIOTimeout: FiniteDuration = 30.seconds
 
-  private def echoTool: Tool.Resolved[IO] = new Tool.Resolved[IO]:
-    val name                                          = "echo"
-    val description                                   = "Echo back the args"
-    val inputSchema                                   = Json.obj("type" -> "object".asJson)
-    val outputSchema                                  = None
-    def handle(arguments: Json): IO[CallToolResponse] =
+  private def echoTool: Tool[IO, Unit] = new Tool[IO, Unit]:
+    val name                                                          = "echo"
+    val description                                                   = "Echo back the args"
+    val inputSchema                                                   = Json.obj("type" -> "object".asJson)
+    val outputSchema                                                  = None
+    def handle(call: ToolCallContext[IO, Unit]): IO[CallToolResponse] =
       IO.pure(
         CallToolResponse(
-          content = List(Content.Text(s"echo:${arguments.noSpaces}")),
+          content = List(Content.Text(s"echo:${call.request.arguments.noSpaces}")),
           structuredContent = None,
           isError = false
         )
