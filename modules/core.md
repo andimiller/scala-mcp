@@ -8,7 +8,7 @@ builders (`tool`, `resource`, `prompt`, plus their `contextual*` variants),
 and the JSON Schema derivation machinery. Every other module depends on this.
 
 ```scala
-libraryDependencies += "net.andimiller.mcp" %%% "mcp-core" % "0.10.0"
+libraryDependencies += "net.andimiller.mcp" %%% "mcp-core" % "0.11.0"
 ```
 
 A taste of the surface — typed I/O case classes derive JSON Schema and circe
@@ -24,7 +24,7 @@ import net.andimiller.mcp.core.server.*
 case class Greet(name: String)    derives JsonSchema, Decoder
 case class Greeting(text: String) derives JsonSchema, Encoder.AsObject
 
-val greetTool: Tool.Resolved[IO] =
+val greetTool: Tool[IO, Unit] =
   tool.name("greet").in[Greet].out[Greeting]
     .run(req => IO.pure(Greeting(s"Hello, ${req.name}!")))
 

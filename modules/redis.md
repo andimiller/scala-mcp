@@ -10,7 +10,7 @@ in-memory — the right move for multi-replica deployments and when sessions
 need to survive process restarts.
 
 ```scala
-libraryDependencies += "net.andimiller.mcp" %% "mcp-redis" % "0.10.0"
+libraryDependencies += "net.andimiller.mcp" %% "mcp-redis" % "0.11.0"
 ```
 
 `McpRedis.configure` returns a function that swaps a streaming builder's

@@ -136,6 +136,7 @@
     <li class="level1 nav-header">Getting Started</li>
     <li class="level2 nav-leaf"><a href="../getting-started/quick-start.html">Quick start</a></li>
     <li class="level2 nav-leaf"><a href="../getting-started/tools.html">Tools</a></li>
+    <li class="level2 nav-leaf"><a href="../getting-started/tool-metadata.html">Tool metadata</a></li>
     <li class="level2 nav-leaf"><a href="../getting-started/resources.html">Resources &amp; resource templates</a></li>
     <li class="level2 nav-leaf"><a href="../getting-started/prompts.html">Prompts</a></li>
     <li class="level2 nav-leaf"><a href="../getting-started/json-schema-derivation.html">JSON Schema derivation</a></li>
@@ -151,6 +152,7 @@
     <li class="level2 nav-leaf"><a href="http4s.html">http4s</a></li>
     <li class="level2 active nav-leaf"><a href="#">openapi</a></li>
     <li class="level2 nav-leaf"><a href="redis.html">redis</a></li>
+    <li class="level2 nav-leaf"><a href="trace4cats.html">trace4cats</a></li>
     <li class="level2 nav-leaf"><a href="tapir.html">tapir</a></li>
     <li class="level2 nav-leaf"><a href="golden-munit.html">golden-munit</a></li>
     <li class="level2 nav-leaf"><a href="explorer.html">explorer</a></li>
@@ -194,7 +196,7 @@
         operations into MCP tools. Used by the <a href="../tools/openapi-mcp-proxy.html">OpenAPI MCP Proxy</a>
         CLI but also available directly when you want to embed OpenAPI-driven tool
         generation inside your own server.</p>
-        <pre class="keep-together pdf epub"><code class="nohighlight"><span class="identifier">libraryDependencies</span><span> += </span><span class="string-literal">&quot;net.andimiller.mcp&quot;</span><span> %%% </span><span class="string-literal">&quot;mcp-openapi&quot;</span><span> % </span><span class="string-literal">&quot;0.10.0&quot;</span></code></pre>
+        <pre class="keep-together pdf epub"><code class="nohighlight"><span class="identifier">libraryDependencies</span><span> += </span><span class="string-literal">&quot;net.andimiller.mcp&quot;</span><span> %%% </span><span class="string-literal">&quot;mcp-openapi&quot;</span><span> % </span><span class="string-literal">&quot;0.11.0&quot;</span></code></pre>
         <p>Given a parsed <code>sttp.apispec.openapi.OpenAPI</code>, <code>OpenApiOperation</code> enumerates
         the operations and produces an MCP <code>ToolDefinition</code> per operation —
         input-schema lifted from the operation&#39;s path/query/header parameters and

@@ -8,7 +8,7 @@ unexpectedly.
 ## Adding the dependency
 
 ```scala
-libraryDependencies += "net.andimiller.mcp" %%% "mcp-golden-munit" % "0.10.0" % Test
+libraryDependencies += "net.andimiller.mcp" %%% "mcp-golden-munit" % "0.11.0" % Test
 ```
 
 > **Scala.js note:** Your project must configure

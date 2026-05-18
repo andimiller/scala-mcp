@@ -136,6 +136,7 @@
     <li class="level1 nav-header">Getting Started</li>
     <li class="level2 nav-leaf"><a href="../getting-started/quick-start.html">Quick start</a></li>
     <li class="level2 nav-leaf"><a href="../getting-started/tools.html">Tools</a></li>
+    <li class="level2 nav-leaf"><a href="../getting-started/tool-metadata.html">Tool metadata</a></li>
     <li class="level2 nav-leaf"><a href="../getting-started/resources.html">Resources &amp; resource templates</a></li>
     <li class="level2 nav-leaf"><a href="../getting-started/prompts.html">Prompts</a></li>
     <li class="level2 nav-leaf"><a href="../getting-started/json-schema-derivation.html">JSON Schema derivation</a></li>
@@ -151,6 +152,7 @@
     <li class="level2 nav-leaf"><a href="http4s.html">http4s</a></li>
     <li class="level2 nav-leaf"><a href="openapi.html">openapi</a></li>
     <li class="level2 nav-leaf"><a href="redis.html">redis</a></li>
+    <li class="level2 nav-leaf"><a href="trace4cats.html">trace4cats</a></li>
     <li class="level2 active nav-leaf"><a href="#">tapir</a></li>
     <li class="level2 nav-leaf"><a href="golden-munit.html">golden-munit</a></li>
     <li class="level2 nav-leaf"><a href="explorer.html">explorer</a></li>
@@ -194,7 +196,7 @@
         Drop this in if you already have Tapir-derived schemas elsewhere in your
         application and want to reuse them as MCP tool input/output schemas without
         deriving twice.</p>
-        <pre class="keep-together pdf epub"><code class="nohighlight"><span class="identifier">libraryDependencies</span><span> += </span><span class="string-literal">&quot;net.andimiller.mcp&quot;</span><span> %% </span><span class="string-literal">&quot;mcp-tapir&quot;</span><span> % </span><span class="string-literal">&quot;0.10.0&quot;</span></code></pre>
+        <pre class="keep-together pdf epub"><code class="nohighlight"><span class="identifier">libraryDependencies</span><span> += </span><span class="string-literal">&quot;net.andimiller.mcp&quot;</span><span> %% </span><span class="string-literal">&quot;mcp-tapir&quot;</span><span> % </span><span class="string-literal">&quot;0.11.0&quot;</span></code></pre>
         <p>Importing the bridge brings a <code>given JsonSchema[A]</code> into scope for any
         type that already has a <code>sttp.tapir.Schema[A]</code>. Use it with the <code>tool</code>
         builder exactly like a directly-derived schema:</p>
@@ -206,7 +208,7 @@
 
 </span><span class="keyword">case</span><span> </span><span class="keyword">class</span><span> </span><span class="type-name">Echo</span><span>(</span><span class="identifier">message</span><span>: </span><span class="type-name">String</span><span>) </span><span class="keyword">derives</span><span> </span><span class="type-name">Schema</span><span>, </span><span class="type-name">Decoder</span><span>, </span><span class="type-name">Encoder</span><span>.</span><span class="type-name">AsObject</span><span>
 
-</span><span class="keyword">val</span><span> </span><span class="identifier">echoTool</span><span>: </span><span class="type-name">Tool</span><span>.</span><span class="type-name">Resolved</span><span>[</span><span class="type-name">IO</span><span>] =
+</span><span class="keyword">val</span><span> </span><span class="identifier">echoTool</span><span>: </span><span class="type-name">Tool</span><span>[</span><span class="type-name">IO</span><span>, </span><span class="type-name">Unit</span><span>] =
   </span><span class="identifier">tool</span><span>.</span><span class="identifier">name</span><span>(</span><span class="string-literal">&quot;echo&quot;</span><span>).</span><span class="identifier">in</span><span>[</span><span class="type-name">Echo</span><span>].</span><span class="identifier">out</span><span>[</span><span class="type-name">Echo</span><span>]
     .</span><span class="identifier">run</span><span>(</span><span class="identifier">req</span><span> =&gt; </span><span class="type-name">IO</span><span>.</span><span class="identifier">pure</span><span>(</span><span class="identifier">req</span><span>))</span></code></pre>
 

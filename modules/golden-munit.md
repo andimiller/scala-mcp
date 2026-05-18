@@ -8,7 +8,7 @@ server's tools, resources, resource templates, prompts, and capabilities as a
 JSON golden file and fails the test if the spec changes unexpectedly.
 
 ```scala
-libraryDependencies += "net.andimiller.mcp" %%% "mcp-golden-munit" % "0.10.0" % Test
+libraryDependencies += "net.andimiller.mcp" %%% "mcp-golden-munit" % "0.11.0" % Test
 ```
 
 A test class is a `McpGoldenSuite` that exposes the server you want to

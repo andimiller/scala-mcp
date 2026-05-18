@@ -25,10 +25,10 @@ of April 2026:
 | Sessions (Streamable HTTP)      | ✅        | Most           | `Mcp-Session-Id` + auth-aware sessions             |
 | `MCP-Protocol-Version` header   | ❌        | Universal      | Clients send it; we don't validate                 |
 | Progress (`progressToken`)      | ❌        | Rare           | Few clients emit the token                         |
-| `_meta` on requests/responses   | ❌        | Universal      | Spec-mandated passthrough                          |
-| Sampling                        | ❌        | None           | Capability stub only                               |
-| Roots                           | ❌        | Most           | Type stubs only. opencode lacks it                 |
+| `_meta` on requests/responses   | ✅        | Universal      | Builder API on every type; `ToolMiddleware` exposes request `_meta` to handlers |
+| Sampling                        | 🟡        | None           | Server→client plumbing via `ServerRequester`; no typed `SamplingClient` helper yet |
+| Roots                           | 🟡        | Most           | `ClientHandler` routes `roots/list`; no typed server-side helper. opencode lacks client support |
 | Completion                      | ❌        | None           | No client surfaces it                              |
-| Tasks (experimental)            | ❌        | None           |                                                    |
-| Tool/prompt `list_changed`      | ❌        | Universal      | Required for `listChanged` capability              |
-| 2025-11-25 metadata fields      | ❌        | Some           | `title` / `icons` increasingly rendered; rest unused |
+| Tasks (experimental)            | 🟡        | None           | `ToolExecution.taskSupport` advertised; `tasks/list` / `tasks/cancel` not wired |
+| Tool/prompt `list_changed`      | ✅        | Universal      | Notifications wired via `NotificationSink`         |
+| 2025-11-25 metadata fields      | ✅        | Some           | `title`, `icons`, `annotations`, `execution`, `_meta` on tools; `title`/`icons`/`annotations`/`_meta` on resources; `title`/`icons`/`_meta` on prompts |

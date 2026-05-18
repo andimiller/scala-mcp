@@ -11,6 +11,7 @@ are tiny; HTTP, Redis, and OpenAPI support layer on top.
 | [http4s](http4s.md) | JVM, JS, Native | Streamable HTTP + SSE transport via http4s Ember; bundles the Explorer UI |
 | [openapi](openapi.md) | JVM, JS, Native | OpenAPI 3.x schema model + tool-builder helpers |
 | [redis](redis.md) | JVM | Redis-backed `SessionStore` / `SessionRefs` / `StateRef` / notification sink |
+| [trace4cats](trace4cats.md) | JVM | `ToolMiddleware` that wraps each `tools/call` in a trace4cats span |
 | [tapir](tapir.md) | JVM | Bridge that turns any `sttp.tapir.Schema[A]` into a `JsonSchema[A]` |
 | [golden-munit](golden-munit.md) | JVM, JS, Native | Golden testing framework for MCP server specs (munit) |
 | [explorer](explorer.md) | JS | Browser-based UI for exploring and testing MCP servers (consumed via `http4s`) |

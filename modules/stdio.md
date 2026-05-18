@@ -8,7 +8,7 @@ built with `core` becomes a stdio server by handing it to
 `StdioTransport.run`.
 
 ```scala
-libraryDependencies += "net.andimiller.mcp" %%% "mcp-stdio" % "0.10.0"
+libraryDependencies += "net.andimiller.mcp" %%% "mcp-stdio" % "0.11.0"
 ```
 
 `StdioTransport.run` reads JSON-RPC from stdin, dispatches it to your

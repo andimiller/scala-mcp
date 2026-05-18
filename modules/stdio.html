@@ -136,6 +136,7 @@
     <li class="level1 nav-header">Getting Started</li>
     <li class="level2 nav-leaf"><a href="../getting-started/quick-start.html">Quick start</a></li>
     <li class="level2 nav-leaf"><a href="../getting-started/tools.html">Tools</a></li>
+    <li class="level2 nav-leaf"><a href="../getting-started/tool-metadata.html">Tool metadata</a></li>
     <li class="level2 nav-leaf"><a href="../getting-started/resources.html">Resources &amp; resource templates</a></li>
     <li class="level2 nav-leaf"><a href="../getting-started/prompts.html">Prompts</a></li>
     <li class="level2 nav-leaf"><a href="../getting-started/json-schema-derivation.html">JSON Schema derivation</a></li>
@@ -151,6 +152,7 @@
     <li class="level2 nav-leaf"><a href="http4s.html">http4s</a></li>
     <li class="level2 nav-leaf"><a href="openapi.html">openapi</a></li>
     <li class="level2 nav-leaf"><a href="redis.html">redis</a></li>
+    <li class="level2 nav-leaf"><a href="trace4cats.html">trace4cats</a></li>
     <li class="level2 nav-leaf"><a href="tapir.html">tapir</a></li>
     <li class="level2 nav-leaf"><a href="golden-munit.html">golden-munit</a></li>
     <li class="level2 nav-leaf"><a href="explorer.html">explorer</a></li>
@@ -194,7 +196,7 @@
         expected by Claude Desktop and Claude Code&#39;s local server config. A server
         built with <code>core</code> becomes a stdio server by handing it to
         <code>StdioTransport.run</code>.</p>
-        <pre class="keep-together pdf epub"><code class="nohighlight"><span class="identifier">libraryDependencies</span><span> += </span><span class="string-literal">&quot;net.andimiller.mcp&quot;</span><span> %%% </span><span class="string-literal">&quot;mcp-stdio&quot;</span><span> % </span><span class="string-literal">&quot;0.10.0&quot;</span></code></pre>
+        <pre class="keep-together pdf epub"><code class="nohighlight"><span class="identifier">libraryDependencies</span><span> += </span><span class="string-literal">&quot;net.andimiller.mcp&quot;</span><span> %%% </span><span class="string-literal">&quot;mcp-stdio&quot;</span><span> % </span><span class="string-literal">&quot;0.11.0&quot;</span></code></pre>
         <p><code>StdioTransport.run</code> reads JSON-RPC from stdin, dispatches it to your
         <code>Server[F]</code>, and writes responses back to stdout. The whole serve loop is
         one line:</p>

@@ -10,14 +10,14 @@ and the API surface you get once connected.
 ```scala
 // stdio client (spawn a subprocess MCP server)
 libraryDependencies ++= Seq(
-  "net.andimiller.mcp" %%% "mcp-core"  % "0.10.0",
-  "net.andimiller.mcp" %%% "mcp-stdio" % "0.10.0"
+  "net.andimiller.mcp" %%% "mcp-core"  % "0.11.0",
+  "net.andimiller.mcp" %%% "mcp-stdio" % "0.11.0"
 )
 
 // streamable HTTP client
 libraryDependencies ++= Seq(
-  "net.andimiller.mcp" %%% "mcp-core"   % "0.10.0",
-  "net.andimiller.mcp" %%% "mcp-http4s" % "0.10.0",
+  "net.andimiller.mcp" %%% "mcp-core"   % "0.11.0",
+  "net.andimiller.mcp" %%% "mcp-http4s" % "0.11.0",
   "org.http4s"         %%% "http4s-ember-client" % "0.23.34"
 )
 ```

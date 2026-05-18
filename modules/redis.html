@@ -136,6 +136,7 @@
     <li class="level1 nav-header">Getting Started</li>
     <li class="level2 nav-leaf"><a href="../getting-started/quick-start.html">Quick start</a></li>
     <li class="level2 nav-leaf"><a href="../getting-started/tools.html">Tools</a></li>
+    <li class="level2 nav-leaf"><a href="../getting-started/tool-metadata.html">Tool metadata</a></li>
     <li class="level2 nav-leaf"><a href="../getting-started/resources.html">Resources &amp; resource templates</a></li>
     <li class="level2 nav-leaf"><a href="../getting-started/prompts.html">Prompts</a></li>
     <li class="level2 nav-leaf"><a href="../getting-started/json-schema-derivation.html">JSON Schema derivation</a></li>
@@ -151,6 +152,7 @@
     <li class="level2 nav-leaf"><a href="http4s.html">http4s</a></li>
     <li class="level2 nav-leaf"><a href="openapi.html">openapi</a></li>
     <li class="level2 active nav-leaf"><a href="#">redis</a></li>
+    <li class="level2 nav-leaf"><a href="trace4cats.html">trace4cats</a></li>
     <li class="level2 nav-leaf"><a href="tapir.html">tapir</a></li>
     <li class="level2 nav-leaf"><a href="golden-munit.html">golden-munit</a></li>
     <li class="level2 nav-leaf"><a href="explorer.html">explorer</a></li>
@@ -196,7 +198,7 @@
         <code>McpRedis.configure(...)</code> so each session&#39;s state lives in Redis instead of
         in-memory — the right move for multi-replica deployments and when sessions
         need to survive process restarts.</p>
-        <pre class="keep-together pdf epub"><code class="nohighlight"><span class="identifier">libraryDependencies</span><span> += </span><span class="string-literal">&quot;net.andimiller.mcp&quot;</span><span> %% </span><span class="string-literal">&quot;mcp-redis&quot;</span><span> % </span><span class="string-literal">&quot;0.10.0&quot;</span></code></pre>
+        <pre class="keep-together pdf epub"><code class="nohighlight"><span class="identifier">libraryDependencies</span><span> += </span><span class="string-literal">&quot;net.andimiller.mcp&quot;</span><span> %% </span><span class="string-literal">&quot;mcp-redis&quot;</span><span> % </span><span class="string-literal">&quot;0.11.0&quot;</span></code></pre>
         <p><code>McpRedis.configure</code> returns a function that swaps a streaming builder&#39;s
         in-memory factories for Redis-backed ones — session store, session refs,
         and notification sink. Apply it before any <code>.stateful</code> / <code>.authenticated</code>

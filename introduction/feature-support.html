@@ -136,6 +136,7 @@
     <li class="level1 nav-header">Getting Started</li>
     <li class="level2 nav-leaf"><a href="../getting-started/quick-start.html">Quick start</a></li>
     <li class="level2 nav-leaf"><a href="../getting-started/tools.html">Tools</a></li>
+    <li class="level2 nav-leaf"><a href="../getting-started/tool-metadata.html">Tool metadata</a></li>
     <li class="level2 nav-leaf"><a href="../getting-started/resources.html">Resources &amp; resource templates</a></li>
     <li class="level2 nav-leaf"><a href="../getting-started/prompts.html">Prompts</a></li>
     <li class="level2 nav-leaf"><a href="../getting-started/json-schema-derivation.html">JSON Schema derivation</a></li>
@@ -151,6 +152,7 @@
     <li class="level2 nav-leaf"><a href="../modules/http4s.html">http4s</a></li>
     <li class="level2 nav-leaf"><a href="../modules/openapi.html">openapi</a></li>
     <li class="level2 nav-leaf"><a href="../modules/redis.html">redis</a></li>
+    <li class="level2 nav-leaf"><a href="../modules/trace4cats.html">trace4cats</a></li>
     <li class="level2 nav-leaf"><a href="../modules/tapir.html">tapir</a></li>
     <li class="level2 nav-leaf"><a href="../modules/golden-munit.html">golden-munit</a></li>
     <li class="level2 nav-leaf"><a href="../modules/explorer.html">explorer</a></li>
@@ -284,21 +286,21 @@
             </tr>
             <tr>
               <td><code>_meta</code> on requests/responses</td>
-              <td>❌</td>
+              <td>✅</td>
               <td>Universal</td>
-              <td>Spec-mandated passthrough</td>
+              <td>Builder API on every type; <code>ToolMiddleware</code> exposes request <code>_meta</code> to handlers</td>
             </tr>
             <tr>
               <td>Sampling</td>
-              <td>❌</td>
+              <td>🟡</td>
               <td>None</td>
-              <td>Capability stub only</td>
+              <td>Server→client plumbing via <code>ServerRequester</code>; no typed <code>SamplingClient</code> helper yet</td>
             </tr>
             <tr>
               <td>Roots</td>
-              <td>❌</td>
+              <td>🟡</td>
               <td>Most</td>
-              <td>Type stubs only. opencode lacks it</td>
+              <td><code>ClientHandler</code> routes <code>roots/list</code>; no typed server-side helper. opencode lacks client support</td>
             </tr>
             <tr>
               <td>Completion</td>
@@ -308,21 +310,21 @@
             </tr>
             <tr>
               <td>Tasks (experimental)</td>
-              <td>❌</td>
+              <td>🟡</td>
               <td>None</td>
-              <td></td>
+              <td><code>ToolExecution.taskSupport</code> advertised; <code>tasks/list</code> / <code>tasks/cancel</code> not wired</td>
             </tr>
             <tr>
               <td>Tool/prompt <code>list_changed</code></td>
-              <td>❌</td>
+              <td>✅</td>
               <td>Universal</td>
-              <td>Required for <code>listChanged</code> capability</td>
+              <td>Notifications wired via <code>NotificationSink</code></td>
             </tr>
             <tr>
               <td>2025-11-25 metadata fields</td>
-              <td>❌</td>
+              <td>✅</td>
               <td>Some</td>
-              <td><code>title</code> / <code>icons</code> increasingly rendered; rest unused</td>
+              <td><code>title</code>, <code>icons</code>, <code>annotations</code>, <code>execution</code>, <code>_meta</code> on tools; <code>title</code>/<code>icons</code>/<code>annotations</code>/<code>_meta</code> on resources; <code>title</code>/<code>icons</code>/<code>_meta</code> on prompts</td>
             </tr>
           </tbody>
         </table>

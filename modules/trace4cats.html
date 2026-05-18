@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en">
+  
+  <head>
+  <!--
+    LLM-friendly versions of this documentation:
+      * Plain markdown of this page: replace ".html" with ".md" in the URL above.
+      * Structured index:  https://andimiller.github.io/scala-mcp/llms.txt
+      * Concatenated docs: https://andimiller.github.io/scala-mcp/llms-full.txt
+    See https://llmstxt.org for the convention.
+  -->
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="generator" content="Typelevel Laika + Helium Theme" />
+  <meta name="x-llms-txt" content="https://andimiller.github.io/scala-mcp/llms.txt"/>
+  <meta name="x-llms-full-txt" content="https://andimiller.github.io/scala-mcp/llms-full.txt"/>
+  <title>trace4cats - Scala MCP Library</title>
+  <link rel="alternate" type="text/markdown" href="trace4cats.md" title="Markdown source"/>
+  
+  <meta name="author" content="scala-mcp contributors"/>
+  
+  <meta name="author" content="scala-mcp contributors"/>
+  
+  
+  <meta name="description" content="A Scala 3 library for building Model Context Protocol (MCP) servers. Cross-platform (JVM, JS, Native), built on Cats Effect, with automatic JSON Schema derivation."/>
+  
+  
+  <meta property="og:type" content="website"/>
+  <meta name="twitter:card" content="summary_large_image"/>
+  <meta property="og:title" content="trace4cats"/>
+  <meta name="twitter:title" content="trace4cats"/>
+  
+  <meta property="og:description" content="A Scala 3 library for building Model Context Protocol (MCP) servers. Cross-platform (JVM, JS, Native), built on Cats Effect, with automatic JSON Schema derivation."/>
+  <meta name="twitter:description" content="A Scala 3 library for building Model Context Protocol (MCP) servers. Cross-platform (JVM, JS, Native), built on Cats Effect, with automatic JSON Schema derivation."/>
+  
+  
+  <meta property="og:url" content="https://andimiller.github.io/scala-mcp/"/>
+  <meta property="og:site_name" content="scala-mcp"/>
+  
+  
+  <meta property="og:image" content="https://andimiller.github.io/scala-mcp/images/scala-mcp-og.png"/>
+  <meta name="twitter:image" content="https://andimiller.github.io/scala-mcp/images/scala-mcp-og.png"/>
+  
+  
+  <link rel="icon" sizes="32x32" type="image/png" href="../images/favicon-32.png"/>
+  
+  <link rel="icon" sizes="16x16" type="image/png" href="../images/favicon-16.png"/>
+  
+  <link rel="icon" sizes="180x180" type="image/png" href="../images/favicon-180.png"/>
+  
+  
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+  
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap">
+  
+  <link rel="stylesheet" type="text/css" href="../helium/site/icofont.min.css" />
+    <link rel="stylesheet" type="text/css" href="../helium/site/laika-helium.css" />
+    <link rel="stylesheet" type="text/css" href="../css/scala-mcp.css" />
+  <script src="../helium/site/laika-helium.js"></script>
+  
+  
+  <script> /* for avoiding page load transitions */ </script>
+</head>
+
+
+  <body>
+
+    <header id="top-bar" class="light-default dark-default">
+
+  <div class="row">
+    <a id="nav-icon">
+      <i class="icofont-laika navigationMenu" title="Navigation">&#xefa2;</i>
+    </a>
+    
+    
+  </div>
+
+  <a class="icon-link svg-link" href="../"><span title="scala-mcp"><svg class="svg-icon" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 180" aria-hidden="true">
+  <defs>
+    <linearGradient id="scala-mcp-grad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#AA3DFA"/>
+      <stop offset="100%" stop-color="#3A87D4"/>
+    </linearGradient>
+  </defs>
+  <circle cx="90" cy="90" r="76" fill="none" stroke="currentColor" stroke-width="6"/>
+  <circle cx="90" cy="56" r="11" fill="url(#scala-mcp-grad)"/>
+  <circle cx="60.55" cy="107" r="11" fill="url(#scala-mcp-grad)"/>
+  <circle cx="119.45" cy="107" r="11" fill="url(#scala-mcp-grad)"/>
+</svg></span>scala-mcp</a>
+
+  <div class="row links">
+    
+    <a class="icon-link svg-link" href="https://andimiller.github.io/scala-mcp/api/"><span class="api" title="API"><svg class="svg-icon" width="100%" height="100%" viewBox="0 0 100 100" version="1.1" xmlns="http://www.w3.org/2000/svg" xml:space="preserve" style="fill-rule:evenodd;clip-rule:evenodd;stroke-linejoin:round;stroke-miterlimit:2;">
+  <g class="svg-shape">
+    <path d="M75,47.5c13.246,0 24,10.754 24,24c0,13.246 -10.754,24 -24,24c-13.246,0 -24,-10.754 -24,-24c0,-13.246 10.754,-24 24,-24Zm-50,-0c13.246,-0 24,10.754 24,24c0,13.246 -10.754,24 -24,24c-13.246,-0 -24,-10.754 -24,-24c0,-13.246 10.754,-24 24,-24Zm2.705,16.735l7.239,0l0.622,-4.904l-21.833,0l-0,4.904l7.589,0l0,22.067l6.383,0l-0,-22.067Zm58.076,7.265c-0,-8.757 -3.698,-14.166 -10.781,-14.166c-7.083,-0 -10.781,5.604 -10.781,14.166c0,8.757 3.698,14.166 10.781,14.166c7.083,0 10.781,-5.604 10.781,-14.166Zm-6.539,0c0,6.538 -1.128,9.496 -4.242,9.496c-2.997,0 -4.242,-2.88 -4.242,-9.496c-0,-6.616 1.206,-9.496 4.242,-9.496c3.036,-0 4.242,2.88 4.242,9.496Zm-29.242,-67c13.246,0 24,10.754 24,24c0,13.246 -10.754,24 -24,24c-13.246,0 -24,-10.754 -24,-24c0,-13.246 10.754,-24 24,-24Zm0.512,9.834c-7.122,-0 -12.609,5.098 -12.609,14.127c-0,9.263 5.215,14.205 12.532,14.205c4.164,0 7.083,-1.634 9.068,-3.658l-2.88,-3.697c-1.518,1.206 -3.153,2.413 -5.838,2.413c-3.697,-0 -6.266,-2.763 -6.266,-9.263c-0,-6.616 2.724,-9.379 6.149,-9.379c2.102,-0 3.892,0.778 5.371,1.984l3.113,-3.775c-2.257,-1.868 -4.748,-2.957 -8.64,-2.957Z"/>
+  </g>
+</svg></span></a>
+    
+    <a class="icon-link svg-link" href="https://github.com/andimiller/scala-mcp"><span class="github" title="Source Code"><svg class="svg-icon" width="100%" height="100%" viewBox="0 0 100 100" version="1.1" xmlns="http://www.w3.org/2000/svg" xml:space="preserve" style="fill-rule:evenodd;clip-rule:evenodd;stroke-linejoin:round;stroke-miterlimit:2;">
+  <g class="svg-shape">
+    <path d="M49.995,1c-27.609,-0 -49.995,22.386 -49.995,50.002c-0,22.09 14.325,40.83 34.194,47.444c2.501,0.458 3.413,-1.086 3.413,-2.412c0,-1.185 -0.043,-4.331 -0.067,-8.503c-13.908,3.021 -16.843,-6.704 -16.843,-6.704c-2.274,-5.773 -5.552,-7.311 -5.552,-7.311c-4.54,-3.103 0.344,-3.042 0.344,-3.042c5.018,0.356 7.658,5.154 7.658,5.154c4.46,7.64 11.704,5.433 14.552,4.156c0.454,-3.232 1.744,-5.436 3.174,-6.685c-11.102,-1.262 -22.775,-5.553 -22.775,-24.713c-0,-5.457 1.949,-9.92 5.147,-13.416c-0.516,-1.265 -2.231,-6.348 0.488,-13.233c0,0 4.199,-1.344 13.751,5.126c3.988,-1.108 8.266,-1.663 12.518,-1.682c4.245,0.019 8.523,0.574 12.517,1.682c9.546,-6.47 13.736,-5.126 13.736,-5.126c2.728,6.885 1.013,11.968 0.497,13.233c3.204,3.496 5.141,7.959 5.141,13.416c0,19.209 -11.691,23.436 -22.83,24.673c1.795,1.544 3.394,4.595 3.394,9.26c0,6.682 -0.061,12.076 -0.061,13.715c0,1.338 0.899,2.894 3.438,2.406c19.853,-6.627 34.166,-25.354 34.166,-47.438c-0,-27.616 -22.389,-50.002 -50.005,-50.002"/>
+  </g>
+</svg></span></a>
+    
+    <a class="text-link" href="https://andimiller.github.io/scala-mcp/llms.txt">llms.txt</a>
+    
+  </div>  
+
+</header>
+    
+    <nav id="sidebar">
+
+  <div class="row">
+    
+    <a class="icon-link svg-link" href="https://andimiller.github.io/scala-mcp/api/"><span class="api" title="API"><svg class="svg-icon" width="100%" height="100%" viewBox="0 0 100 100" version="1.1" xmlns="http://www.w3.org/2000/svg" xml:space="preserve" style="fill-rule:evenodd;clip-rule:evenodd;stroke-linejoin:round;stroke-miterlimit:2;">
+  <g class="svg-shape">
+    <path d="M75,47.5c13.246,0 24,10.754 24,24c0,13.246 -10.754,24 -24,24c-13.246,0 -24,-10.754 -24,-24c0,-13.246 10.754,-24 24,-24Zm-50,-0c13.246,-0 24,10.754 24,24c0,13.246 -10.754,24 -24,24c-13.246,-0 -24,-10.754 -24,-24c0,-13.246 10.754,-24 24,-24Zm2.705,16.735l7.239,0l0.622,-4.904l-21.833,0l-0,4.904l7.589,0l0,22.067l6.383,0l-0,-22.067Zm58.076,7.265c-0,-8.757 -3.698,-14.166 -10.781,-14.166c-7.083,-0 -10.781,5.604 -10.781,14.166c0,8.757 3.698,14.166 10.781,14.166c7.083,0 10.781,-5.604 10.781,-14.166Zm-6.539,0c0,6.538 -1.128,9.496 -4.242,9.496c-2.997,0 -4.242,-2.88 -4.242,-9.496c-0,-6.616 1.206,-9.496 4.242,-9.496c3.036,-0 4.242,2.88 4.242,9.496Zm-29.242,-67c13.246,0 24,10.754 24,24c0,13.246 -10.754,24 -24,24c-13.246,0 -24,-10.754 -24,-24c0,-13.246 10.754,-24 24,-24Zm0.512,9.834c-7.122,-0 -12.609,5.098 -12.609,14.127c-0,9.263 5.215,14.205 12.532,14.205c4.164,0 7.083,-1.634 9.068,-3.658l-2.88,-3.697c-1.518,1.206 -3.153,2.413 -5.838,2.413c-3.697,-0 -6.266,-2.763 -6.266,-9.263c-0,-6.616 2.724,-9.379 6.149,-9.379c2.102,-0 3.892,0.778 5.371,1.984l3.113,-3.775c-2.257,-1.868 -4.748,-2.957 -8.64,-2.957Z"/>
+  </g>
+</svg></span></a>
+    
+    <a class="icon-link svg-link" href="https://github.com/andimiller/scala-mcp"><span class="github" title="Source Code"><svg class="svg-icon" width="100%" height="100%" viewBox="0 0 100 100" version="1.1" xmlns="http://www.w3.org/2000/svg" xml:space="preserve" style="fill-rule:evenodd;clip-rule:evenodd;stroke-linejoin:round;stroke-miterlimit:2;">
+  <g class="svg-shape">
+    <path d="M49.995,1c-27.609,-0 -49.995,22.386 -49.995,50.002c-0,22.09 14.325,40.83 34.194,47.444c2.501,0.458 3.413,-1.086 3.413,-2.412c0,-1.185 -0.043,-4.331 -0.067,-8.503c-13.908,3.021 -16.843,-6.704 -16.843,-6.704c-2.274,-5.773 -5.552,-7.311 -5.552,-7.311c-4.54,-3.103 0.344,-3.042 0.344,-3.042c5.018,0.356 7.658,5.154 7.658,5.154c4.46,7.64 11.704,5.433 14.552,4.156c0.454,-3.232 1.744,-5.436 3.174,-6.685c-11.102,-1.262 -22.775,-5.553 -22.775,-24.713c-0,-5.457 1.949,-9.92 5.147,-13.416c-0.516,-1.265 -2.231,-6.348 0.488,-13.233c0,0 4.199,-1.344 13.751,5.126c3.988,-1.108 8.266,-1.663 12.518,-1.682c4.245,0.019 8.523,0.574 12.517,1.682c9.546,-6.47 13.736,-5.126 13.736,-5.126c2.728,6.885 1.013,11.968 0.497,13.233c3.204,3.496 5.141,7.959 5.141,13.416c0,19.209 -11.691,23.436 -22.83,24.673c1.795,1.544 3.394,4.595 3.394,9.26c0,6.682 -0.061,12.076 -0.061,13.715c0,1.338 0.899,2.894 3.438,2.406c19.853,-6.627 34.166,-25.354 34.166,-47.438c-0,-27.616 -22.389,-50.002 -50.005,-50.002"/>
+  </g>
+</svg></span></a>
+    
+    <a class="text-link" href="https://andimiller.github.io/scala-mcp/llms.txt">llms.txt</a>
+    
+  </div>
+
+  <ul class="nav-list">
+    <li class="level1 nav-leaf"><a href="../">Scala MCP Library</a></li>
+    <li class="level1 nav-header">Introduction</li>
+    <li class="level2 nav-leaf"><a href="../introduction/feature-support.html">MCP feature support</a></li>
+    <li class="level1 nav-header">Getting Started</li>
+    <li class="level2 nav-leaf"><a href="../getting-started/quick-start.html">Quick start</a></li>
+    <li class="level2 nav-leaf"><a href="../getting-started/tools.html">Tools</a></li>
+    <li class="level2 nav-leaf"><a href="../getting-started/tool-metadata.html">Tool metadata</a></li>
+    <li class="level2 nav-leaf"><a href="../getting-started/resources.html">Resources &amp; resource templates</a></li>
+    <li class="level2 nav-leaf"><a href="../getting-started/prompts.html">Prompts</a></li>
+    <li class="level2 nav-leaf"><a href="../getting-started/json-schema-derivation.html">JSON Schema derivation</a></li>
+    <li class="level2 nav-leaf"><a href="../getting-started/server-construction.html">Server construction</a></li>
+    <li class="level1 nav-header">Clients</li>
+    <li class="level2 nav-leaf"><a href="../clients/">Clients</a></li>
+    <li class="level2 nav-leaf"><a href="../clients/client-construction.html">Client construction</a></li>
+    <li class="level2 nav-leaf"><a href="../clients/client-handlers.html">Client handlers</a></li>
+    <li class="level1 nav-header">Modules</li>
+    <li class="level2 nav-leaf"><a href="index.html">Modules</a></li>
+    <li class="level2 nav-leaf"><a href="core.html">core</a></li>
+    <li class="level2 nav-leaf"><a href="stdio.html">stdio</a></li>
+    <li class="level2 nav-leaf"><a href="http4s.html">http4s</a></li>
+    <li class="level2 nav-leaf"><a href="openapi.html">openapi</a></li>
+    <li class="level2 nav-leaf"><a href="redis.html">redis</a></li>
+    <li class="level2 active nav-leaf"><a href="#">trace4cats</a></li>
+    <li class="level2 nav-leaf"><a href="tapir.html">tapir</a></li>
+    <li class="level2 nav-leaf"><a href="golden-munit.html">golden-munit</a></li>
+    <li class="level2 nav-leaf"><a href="explorer.html">explorer</a></li>
+    <li class="level1 nav-header">Tools</li>
+    <li class="level2 nav-leaf"><a href="../tools/">Tools</a></li>
+    <li class="level2 nav-leaf"><a href="../tools/openapi-mcp-proxy.html">OpenAPI MCP Proxy</a></li>
+    <li class="level1 nav-header">Testing</li>
+    <li class="level2 nav-leaf"><a href="../testing/golden-testing.html">Golden testing</a></li>
+    <li class="level1 nav-header">Examples</li>
+    <li class="level2 nav-leaf"><a href="../examples/">Examples</a></li>
+    <li class="level2 nav-leaf"><a href="../examples/dice.html">Dice MCP server</a></li>
+    <li class="level2 nav-leaf"><a href="../examples/pomodoro.html">Pomodoro MCP server</a></li>
+    <li class="level2 nav-leaf"><a href="../examples/dns.html">DNS MCP server</a></li>
+    <li class="level2 nav-leaf"><a href="../examples/chat.html">Chat MCP server</a></li>
+    <li class="level2 nav-leaf"><a href="../examples/shared-notebook.html">Shared Notebook MCP server</a></li>
+    <li class="level2 nav-leaf"><a href="../examples/rpg-character-creator.html">RPG Character Creator</a></li>
+    <li class="level2 nav-leaf"><a href="../examples/cli-client.html">CLI client (mcp-client)</a></li>
+    <li class="level2 nav-leaf"><a href="../examples/harness.html">LLM harness</a></li>
+  </ul>
+
+</nav>
+
+    <div id="container">
+
+      
+<nav id="page-nav">
+  <p class="header"><a href="#">trace4cats</a></p>
+
+  <ul class="nav-list">
+    <li class="level1 nav-leaf"><a href="#built-in-span-shape">Built-in span shape</a></li>
+    <li class="level1 nav-leaf"><a href="#wiring-it-up">Wiring it up</a></li>
+    <li class="level1 nav-leaf"><a href="#adding-custom-attributes">Adding custom attributes</a></li>
+    <li class="level1 nav-leaf"><a href="#composition">Composition</a></li>
+    <li class="level1 nav-node"><a href="#continuing-an-upstream-trace">Continuing an upstream trace</a></li>
+    <li class="level2 nav-leaf"><a href="#which-one-to-pick">Which one to pick?</a></li>
+  </ul>
+
+  <p class="footer"></p>
+</nav>
+
+
+      <main class="content">
+
+        <h1 id="trace4cats" class="title"><a class="md-link" href="trace4cats.md" title="View this page as raw Markdown">[md]</a>trace4cats</h1>
+        <p><code>mcp-trace4cats</code> · JVM</p>
+        <p>A <a href="https://github.com/trace4cats/trace4cats">trace4cats</a>-backed
+        <code>ToolMiddleware</code> that wraps every <code>tools/call</code> in a span. Drop it onto a
+        server builder, plug in whatever <code>Trace[F]</code> instance your app already
+        uses, and tool calls show up in your tracing backend with built-in
+        attributes plus anything else you care to extract from the request.</p>
+        <pre class="keep-together pdf epub"><code class="nohighlight"><span class="identifier">libraryDependencies</span><span> += </span><span class="string-literal">&quot;net.andimiller.mcp&quot;</span><span> %% </span><span class="string-literal">&quot;mcp-trace4cats&quot;</span><span> % </span><span class="string-literal">&quot;0.11.0&quot;</span></code></pre>
+        <p>The module depends on <code>trace4cats-core</code> only — exporters, samplers, and
+        the choice of <code>Trace[F]</code> instance stay yours.</p>
+        
+        <h2 id="built-in-span-shape" class="section"><a class="anchor-link left" href="#built-in-span-shape"><i class="icofont-laika link">&#xef71;</i></a>Built-in span shape</h2>
+        <p>For each call, the middleware emits a span shaped like:</p>
+        <table>
+          <thead>
+            <tr>
+              <th>field</th>
+              <th>value</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>name</td>
+              <td><code>mcp.tools.call ${request.name}</code></td>
+            </tr>
+            <tr>
+              <td><code>mcp.tool.name</code></td>
+              <td>the tool&#39;s name (string)</td>
+            </tr>
+            <tr>
+              <td><code>mcp.tool.is_error</code></td>
+              <td>response&#39;s <code>isError</code> flag (boolean)</td>
+            </tr>
+            <tr>
+              <td>status</td>
+              <td><code>SpanStatus.Ok</code> on success, <code>SpanStatus.Internal(...)</code> if <code>response.isError</code></td>
+            </tr>
+          </tbody>
+        </table>
+        
+        <h2 id="wiring-it-up" class="section"><a class="anchor-link left" href="#wiring-it-up"><i class="icofont-laika link">&#xef71;</i></a>Wiring it up</h2>
+        <p>The no-arg overload wraps tool calls with just the built-in attributes:</p>
+        <pre class="keep-together pdf epub"><code class="nohighlight"><span class="keyword">import</span><span> </span><span class="identifier">cats</span><span>.</span><span class="identifier">effect</span><span>.</span><span class="type-name">IO</span><span>
+</span><span class="keyword">import</span><span> </span><span class="identifier">net</span><span>.</span><span class="identifier">andimiller</span><span>.</span><span class="identifier">mcp</span><span>.</span><span class="identifier">core</span><span>.</span><span class="identifier">server</span><span>.</span><span class="type-name">ServerBuilder</span><span>
+</span><span class="keyword">import</span><span> </span><span class="identifier">net</span><span>.</span><span class="identifier">andimiller</span><span>.</span><span class="identifier">mcp</span><span>.</span><span class="identifier">trace4cats</span><span>.</span><span class="type-name">TraceToolMiddleware</span><span>
+</span><span class="keyword">import</span><span> </span><span class="identifier">trace4cats</span><span>.</span><span class="type-name">Trace</span><span>
+
+</span><span class="keyword">def</span><span> </span><span class="declaration-name">wireUp</span><span>(</span><span class="keyword">using</span><span> </span><span class="type-name">Trace</span><span>[</span><span class="type-name">IO</span><span>]) =
+  </span><span class="type-name">ServerBuilder</span><span>[</span><span class="type-name">IO</span><span>](</span><span class="string-literal">&quot;my-server&quot;</span><span>, </span><span class="string-literal">&quot;1.0.0&quot;</span><span>)
+    .</span><span class="identifier">withToolMiddleware</span><span>(</span><span class="type-name">TraceToolMiddleware</span><span>[</span><span class="type-name">IO</span><span>, </span><span class="type-name">Unit</span><span>])
+    .</span><span class="identifier">build</span></code></pre>
+        <p><code>TraceToolMiddleware[IO, Unit]</code> requires a <code>Trace[IO]</code> in scope. Use
+        whichever trace4cats integration you prefer — <code>trace4cats-iolocal</code>, a
+        Kleisli instance, or anything else that satisfies the typeclass. The
+        second type parameter is the server&#39;s <code>Ctx</code> (<code>Unit</code> for the
+        non-contextual <code>ServerBuilder</code> / <code>McpHttp.basic</code>; the per-session type
+        for <code>McpHttp.streaming</code>).</p>
+        
+        <h2 id="adding-custom-attributes" class="section"><a class="anchor-link left" href="#adding-custom-attributes"><i class="icofont-laika link">&#xef71;</i></a>Adding custom attributes</h2>
+        <p>The extractor overload takes an effectful function from
+        <code>ToolCallContext[F, Ctx]</code> to a <code>Map[String, AttributeValue]</code> of
+        additional attributes. Returned attributes are recorded INSIDE the span
+        and BEFORE the handler runs, so they&#39;re captured even if the handler
+        errors. The context gives you the request, the session id (when
+        available), the per-session <code>Ctx</code>, and the resolved tool — so
+        extractors can reach <code>ctx.request._meta</code>, <code>ctx.sessionId</code>, <code>ctx.ctx</code>, or
+        <code>ctx.resolved.annotations</code>:</p>
+        <pre><code class="nohighlight"><span class="keyword">import</span><span> </span><span class="identifier">cats</span><span>.</span><span class="identifier">effect</span><span>.</span><span class="type-name">IO</span><span>
+</span><span class="keyword">import</span><span> </span><span class="identifier">net</span><span>.</span><span class="identifier">andimiller</span><span>.</span><span class="identifier">mcp</span><span>.</span><span class="identifier">core</span><span>.</span><span class="identifier">server</span><span>.{</span><span class="type-name">ServerBuilder</span><span>, </span><span class="type-name">ToolCallContext</span><span>}
+</span><span class="keyword">import</span><span> </span><span class="identifier">net</span><span>.</span><span class="identifier">andimiller</span><span>.</span><span class="identifier">mcp</span><span>.</span><span class="identifier">trace4cats</span><span>.</span><span class="type-name">TraceToolMiddleware</span><span>
+</span><span class="keyword">import</span><span> </span><span class="identifier">trace4cats</span><span>.</span><span class="type-name">AttributeValue</span><span>
+</span><span class="keyword">import</span><span> </span><span class="identifier">trace4cats</span><span>.</span><span class="type-name">Trace</span><span>
+
+</span><span class="keyword">def</span><span> </span><span class="declaration-name">extractor</span><span>(</span><span class="identifier">ctx</span><span>: </span><span class="type-name">ToolCallContext</span><span>[</span><span class="type-name">IO</span><span>, </span><span class="type-name">Unit</span><span>]): </span><span class="type-name">IO</span><span>[</span><span class="type-name">Map</span><span>[</span><span class="type-name">String</span><span>, </span><span class="type-name">AttributeValue</span><span>]] =
+  </span><span class="type-name">IO</span><span>.</span><span class="identifier">pure</span><span> {
+    </span><span class="keyword">val</span><span> </span><span class="identifier">user</span><span> = </span><span class="identifier">ctx</span><span>.</span><span class="identifier">request</span><span>.</span><span class="identifier">arguments</span><span>.</span><span class="identifier">hcursor</span><span>.</span><span class="identifier">get</span><span>[</span><span class="type-name">String</span><span>](</span><span class="string-literal">&quot;user&quot;</span><span>).</span><span class="identifier">toOption</span><span>
+    </span><span class="identifier">user</span><span>.</span><span class="identifier">map</span><span>(</span><span class="identifier">u</span><span> =&gt; </span><span class="type-name">Map</span><span>(</span><span class="string-literal">&quot;mcp.tool.user&quot;</span><span> -&gt; </span><span class="type-name">AttributeValue</span><span>.</span><span class="type-name">StringValue</span><span>(</span><span class="identifier">u</span><span>))).</span><span class="identifier">getOrElse</span><span>(</span><span class="type-name">Map</span><span>.</span><span class="identifier">empty</span><span>)
+  }
+
+</span><span class="keyword">def</span><span> </span><span class="declaration-name">wireUp</span><span>(</span><span class="keyword">using</span><span> </span><span class="type-name">Trace</span><span>[</span><span class="type-name">IO</span><span>]) =
+  </span><span class="type-name">ServerBuilder</span><span>[</span><span class="type-name">IO</span><span>](</span><span class="string-literal">&quot;my-server&quot;</span><span>, </span><span class="string-literal">&quot;1.0.0&quot;</span><span>)
+    .</span><span class="identifier">withToolMiddleware</span><span>(</span><span class="type-name">TraceToolMiddleware</span><span>[</span><span class="type-name">IO</span><span>, </span><span class="type-name">Unit</span><span>](</span><span class="identifier">extractor</span><span>))
+    .</span><span class="identifier">build</span></code></pre>
+        <p>Built-in attributes the middleware adds for you:</p>
+        <table>
+          <thead>
+            <tr>
+              <th>Key</th>
+              <th>When</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>mcp.tool.name</code></td>
+              <td>always</td>
+            </tr>
+            <tr>
+              <td><code>mcp.session.id</code></td>
+              <td>when <code>ctx.sessionId</code> is <code>Some</code> (streaming HTTP)</td>
+            </tr>
+            <tr>
+              <td><code>mcp.tool.is_error</code></td>
+              <td>after the handler runs</td>
+            </tr>
+          </tbody>
+        </table>
+        
+        <h2 id="composition" class="section"><a class="anchor-link left" href="#composition"><i class="icofont-laika link">&#xef71;</i></a>Composition</h2>
+        <p>Server-wide middleware (<code>.withToolMiddleware</code>) wraps per-tool middleware
+        (<code>.withMiddleware</code> on <code>Tool[F, Ctx]</code>) which wraps the handler. First
+        registered = outermost within each level. So stacking the tracing
+        middleware server-wide alongside a per-tool rate-limiter gets you:</p>
+        <pre><code>request →  TraceToolMiddleware  →  rateLimit (per-tool)  →  handler
+response ←  TraceToolMiddleware  ←  rateLimit             ←  handler</code></pre>
+        <p>The span fires around everything — the rate-limiter&#39;s latency is part
+        of the span just like the handler&#39;s. See
+        <a href="../getting-started/tool-metadata.html#middleware-reading-and-decorating-_meta">tool metadata</a>
+        for the broader middleware story.</p>
+        
+        <h2 id="continuing-an-upstream-trace" class="section"><a class="anchor-link left" href="#continuing-an-upstream-trace"><i class="icofont-laika link">&#xef71;</i></a>Continuing an upstream trace</h2>
+        <p><code>TraceToolMiddleware</code> always opens a child of the ambient <code>Trace[F]</code>
+        context — it doesn&#39;t read inbound trace context from the request. When
+        your caller has its own trace running and passes a <code>traceparent</code> in
+        <code>request._meta</code>, you want to <em>continue</em> that trace so the cross-system
+        view stitches together. That&#39;s what <strong><code>EntrypointTraceToolMiddleware</code></strong>
+        is for. It&#39;s a separate middleware in the same module.</p>
+        <p>The shape:</p>
+        <pre><code class="nohighlight"><span class="keyword">import</span><span> </span><span class="identifier">cats</span><span>.</span><span class="identifier">effect</span><span>.</span><span class="type-name">IO</span><span>
+</span><span class="keyword">import</span><span> </span><span class="identifier">net</span><span>.</span><span class="identifier">andimiller</span><span>.</span><span class="identifier">mcp</span><span>.</span><span class="identifier">core</span><span>.</span><span class="identifier">server</span><span>.</span><span class="type-name">ServerBuilder</span><span>
+</span><span class="keyword">import</span><span> </span><span class="identifier">net</span><span>.</span><span class="identifier">andimiller</span><span>.</span><span class="identifier">mcp</span><span>.</span><span class="identifier">trace4cats</span><span>.</span><span class="type-name">EntrypointTraceToolMiddleware</span><span>
+</span><span class="keyword">import</span><span> </span><span class="identifier">net</span><span>.</span><span class="identifier">andimiller</span><span>.</span><span class="identifier">mcp</span><span>.</span><span class="identifier">trace4cats</span><span>.</span><span class="type-name">TraceMetaExtractor</span><span>
+</span><span class="keyword">import</span><span> </span><span class="identifier">trace4cats</span><span>.</span><span class="type-name">EntryPoint</span><span>
+</span><span class="keyword">import</span><span> </span><span class="identifier">trace4cats</span><span>.</span><span class="type-name">Span</span><span>
+</span><span class="keyword">import</span><span> </span><span class="identifier">trace4cats</span><span>.</span><span class="identifier">context</span><span>.</span><span class="type-name">Local</span><span>
+
+</span><span class="keyword">def</span><span> </span><span class="declaration-name">wireUp</span><span>(</span><span class="identifier">ep</span><span>: </span><span class="type-name">EntryPoint</span><span>[</span><span class="type-name">IO</span><span>], </span><span class="identifier">local</span><span>: </span><span class="type-name">Local</span><span>[</span><span class="type-name">IO</span><span>, </span><span class="type-name">Span</span><span>[</span><span class="type-name">IO</span><span>]]) =
+  </span><span class="type-name">ServerBuilder</span><span>[</span><span class="type-name">IO</span><span>](</span><span class="string-literal">&quot;my-server&quot;</span><span>, </span><span class="string-literal">&quot;1.0.0&quot;</span><span>)
+    .</span><span class="identifier">withToolMiddleware</span><span>(
+      </span><span class="type-name">EntrypointTraceToolMiddleware</span><span>[</span><span class="type-name">IO</span><span>, </span><span class="type-name">Unit</span><span>](</span><span class="identifier">ep</span><span>, </span><span class="identifier">local</span><span>, </span><span class="type-name">TraceMetaExtractor</span><span>.</span><span class="identifier">w3c</span><span>[</span><span class="type-name">IO</span><span>, </span><span class="type-name">Unit</span><span>])
+    )
+    .</span><span class="identifier">build</span></code></pre>
+        <p>Building the <code>Local[IO, Span[IO]]</code> is a one-liner with the
+        <code>trace4cats-iolocal</code> module:</p>
+        <pre class="keep-together pdf epub"><code class="nohighlight"><span class="keyword">import</span><span> </span><span class="identifier">cats</span><span>.</span><span class="identifier">effect</span><span>.</span><span class="type-name">IOLocal</span><span>
+</span><span class="keyword">import</span><span> </span><span class="identifier">trace4cats</span><span>.</span><span class="identifier">iolocal</span><span>.</span><span class="identifier">ioLocalProvide</span><span>
+
+</span><span class="type-name">IOLocal</span><span>[</span><span class="type-name">Span</span><span>[</span><span class="type-name">IO</span><span>]](</span><span class="identifier">rootSpan</span><span>).</span><span class="identifier">map</span><span>(</span><span class="identifier">ioLocalProvide</span><span>(</span><span class="identifier">_</span><span>))</span></code></pre>
+        <p>Three dependencies:</p>
+        <ol class="arabic">
+          <li><strong><code>EntryPoint[F]</code></strong> — your app-level boundary primitive (constructed
+          once from your <code>SpanSampler</code> + <code>SpanCompleter</code>, exactly like every
+          other trace4cats integration).</li>
+          <li><strong><code>Local[F, Span[F]]</code></strong> — usually built from an <code>IOLocal[Span[IO]]</code>
+          via <code>ioLocalProvide</code>. Any downstream code using <code>Trace[F]</code> (e.g.
+          <code>ioLocalTrace(local)</code>) will see the new span as the ambient context.</li>
+          <li><strong><code>headers: ToolCallContext[F, Ctx] =&gt; F[TraceHeaders]</code></strong> — pulls the
+          propagation headers out of the request. The included
+          <code>TraceMetaExtractor.w3c[F, Ctx]</code> pulls W3C <code>traceparent</code> and
+          <code>tracestate</code> from <code>ctx.request._meta</code>. Return <code>TraceHeaders.empty</code> to
+          force a fresh root.</li>
+        </ol>
+        <p>Optionally a fourth: the same <code>extractor: ToolCallContext[F, Ctx] =&gt;
+F[Map[String, AttributeValue]]</code> shape as the simpler middleware, for
+        custom attributes.</p>
+        
+        <h3 id="which-one-to-pick" class="section"><a class="anchor-link left" href="#which-one-to-pick"><i class="icofont-laika link">&#xef71;</i></a>Which one to pick?</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Scenario</th>
+              <th>Use</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Single-process server, internal tool calls, you just want spans recorded</td>
+              <td><code>TraceToolMiddleware</code></td>
+            </tr>
+            <tr>
+              <td>Cross-service traces — caller has its own trace running and sends propagation headers via <code>_meta</code></td>
+              <td><code>EntrypointTraceToolMiddleware</code></td>
+            </tr>
+          </tbody>
+        </table>
+        <p>The propagation middleware is strictly more capable but takes a few
+        more dependencies at the wiring site. If you&#39;re not sure whether
+        callers will propagate, you can start with <code>EntrypointTraceToolMiddleware</code>
+        — absent any inbound context, it falls back to a fresh root span just
+        like <code>TraceToolMiddleware</code> would.</p>
+
+        
+<hr class="footer-rule"/>
+<footer>
+  Site generated by <a href="https://typelevel.org/Laika/">Laika</a> with the Helium theme.
+</footer>
+
+
+      </main>
+
+    </div>
+
+  </body>
+
+</html>

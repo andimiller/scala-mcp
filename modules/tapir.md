@@ -8,7 +8,7 @@ application and want to reuse them as MCP tool input/output schemas without
 deriving twice.
 
 ```scala
-libraryDependencies += "net.andimiller.mcp" %% "mcp-tapir" % "0.10.0"
+libraryDependencies += "net.andimiller.mcp" %% "mcp-tapir" % "0.11.0"
 ```
 
 Importing the bridge brings a `given JsonSchema[A]` into scope for any
@@ -24,7 +24,7 @@ import net.andimiller.mcp.core.server.*
 
 case class Echo(message: String) derives Schema, Decoder, Encoder.AsObject
 
-val echoTool: Tool.Resolved[IO] =
+val echoTool: Tool[IO, Unit] =
   tool.name("echo").in[Echo].out[Echo]
     .run(req => IO.pure(req))
 ```

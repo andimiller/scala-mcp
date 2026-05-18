@@ -136,6 +136,7 @@
     <li class="level1 nav-header">Getting Started</li>
     <li class="level2 active nav-leaf"><a href="#">Quick start</a></li>
     <li class="level2 nav-leaf"><a href="tools.html">Tools</a></li>
+    <li class="level2 nav-leaf"><a href="tool-metadata.html">Tool metadata</a></li>
     <li class="level2 nav-leaf"><a href="resources.html">Resources &amp; resource templates</a></li>
     <li class="level2 nav-leaf"><a href="prompts.html">Prompts</a></li>
     <li class="level2 nav-leaf"><a href="json-schema-derivation.html">JSON Schema derivation</a></li>
@@ -151,6 +152,7 @@
     <li class="level2 nav-leaf"><a href="../modules/http4s.html">http4s</a></li>
     <li class="level2 nav-leaf"><a href="../modules/openapi.html">openapi</a></li>
     <li class="level2 nav-leaf"><a href="../modules/redis.html">redis</a></li>
+    <li class="level2 nav-leaf"><a href="../modules/trace4cats.html">trace4cats</a></li>
     <li class="level2 nav-leaf"><a href="../modules/tapir.html">tapir</a></li>
     <li class="level2 nav-leaf"><a href="../modules/golden-munit.html">golden-munit</a></li>
     <li class="level2 nav-leaf"><a href="../modules/explorer.html">explorer</a></li>
@@ -201,18 +203,18 @@
         <h2 id="adding-the-dependency" class="section"><a class="anchor-link left" href="#adding-the-dependency"><i class="icofont-laika link">&#xef71;</i></a>Adding the dependency</h2>
         <pre><code class="nohighlight"><span class="comment">// For stdio-based servers
 </span><span class="identifier">libraryDependencies</span><span> ++= </span><span class="type-name">Seq</span><span>(
-  </span><span class="string-literal">&quot;net.andimiller.mcp&quot;</span><span> %%% </span><span class="string-literal">&quot;mcp-core&quot;</span><span>  % </span><span class="string-literal">&quot;0.10.0&quot;</span><span>,
-  </span><span class="string-literal">&quot;net.andimiller.mcp&quot;</span><span> %%% </span><span class="string-literal">&quot;mcp-stdio&quot;</span><span> % </span><span class="string-literal">&quot;0.10.0&quot;</span><span>
+  </span><span class="string-literal">&quot;net.andimiller.mcp&quot;</span><span> %%% </span><span class="string-literal">&quot;mcp-core&quot;</span><span>  % </span><span class="string-literal">&quot;0.11.0&quot;</span><span>,
+  </span><span class="string-literal">&quot;net.andimiller.mcp&quot;</span><span> %%% </span><span class="string-literal">&quot;mcp-stdio&quot;</span><span> % </span><span class="string-literal">&quot;0.11.0&quot;</span><span>
 )
 
 </span><span class="comment">// For HTTP-based servers
 </span><span class="identifier">libraryDependencies</span><span> ++= </span><span class="type-name">Seq</span><span>(
-  </span><span class="string-literal">&quot;net.andimiller.mcp&quot;</span><span> %%% </span><span class="string-literal">&quot;mcp-core&quot;</span><span>   % </span><span class="string-literal">&quot;0.10.0&quot;</span><span>,
-  </span><span class="string-literal">&quot;net.andimiller.mcp&quot;</span><span> %%% </span><span class="string-literal">&quot;mcp-http4s&quot;</span><span> % </span><span class="string-literal">&quot;0.10.0&quot;</span><span>
+  </span><span class="string-literal">&quot;net.andimiller.mcp&quot;</span><span> %%% </span><span class="string-literal">&quot;mcp-core&quot;</span><span>   % </span><span class="string-literal">&quot;0.11.0&quot;</span><span>,
+  </span><span class="string-literal">&quot;net.andimiller.mcp&quot;</span><span> %%% </span><span class="string-literal">&quot;mcp-http4s&quot;</span><span> % </span><span class="string-literal">&quot;0.11.0&quot;</span><span>
 )
 
 </span><span class="comment">// Optional: Redis-backed session/state for stateful HTTP servers
-</span><span class="identifier">libraryDependencies</span><span> += </span><span class="string-literal">&quot;net.andimiller.mcp&quot;</span><span> %% </span><span class="string-literal">&quot;mcp-redis&quot;</span><span> % </span><span class="string-literal">&quot;0.10.0&quot;</span></code></pre>
+</span><span class="identifier">libraryDependencies</span><span> += </span><span class="string-literal">&quot;net.andimiller.mcp&quot;</span><span> %% </span><span class="string-literal">&quot;mcp-redis&quot;</span><span> % </span><span class="string-literal">&quot;0.11.0&quot;</span></code></pre>
         
         <h2 id="defining-a-tool" class="section"><a class="anchor-link left" href="#defining-a-tool"><i class="icofont-laika link">&#xef71;</i></a>Defining a tool</h2>
         <p>A tool needs typed request/response case classes — <code>derives JsonSchema</code> plus a
@@ -226,7 +228,7 @@
 </span><span class="keyword">case</span><span> </span><span class="keyword">class</span><span> </span><span class="type-name">GreetRequest</span><span>(</span><span class="identifier">name</span><span>: </span><span class="type-name">String</span><span>) </span><span class="keyword">derives</span><span> </span><span class="type-name">JsonSchema</span><span>, </span><span class="type-name">Decoder</span><span>
 </span><span class="keyword">case</span><span> </span><span class="keyword">class</span><span> </span><span class="type-name">GreetResponse</span><span>(</span><span class="identifier">message</span><span>: </span><span class="type-name">String</span><span>) </span><span class="keyword">derives</span><span> </span><span class="type-name">JsonSchema</span><span>, </span><span class="type-name">Encoder</span><span>.</span><span class="type-name">AsObject</span><span>
 
-</span><span class="keyword">val</span><span> </span><span class="identifier">greetTool</span><span>: </span><span class="type-name">Tool</span><span>.</span><span class="type-name">Resolved</span><span>[</span><span class="type-name">IO</span><span>] =
+</span><span class="keyword">val</span><span> </span><span class="identifier">greetTool</span><span>: </span><span class="type-name">Tool</span><span>[</span><span class="type-name">IO</span><span>, </span><span class="type-name">Unit</span><span>] =
   </span><span class="identifier">tool</span><span>.</span><span class="identifier">name</span><span>(</span><span class="string-literal">&quot;greet&quot;</span><span>)
     .</span><span class="identifier">description</span><span>(</span><span class="string-literal">&quot;Greet someone by name&quot;</span><span>)
     .</span><span class="identifier">in</span><span>[</span><span class="type-name">GreetRequest</span><span>]
