@@ -72,8 +72,9 @@ object PomodoroMcpServer extends IOApp.Simple:
     .icon(tomatoIcon)
     .meta("com.example.pomodoro/category", "productivity".asJson)
 
-  /** Wires all tools, resources, prompts and capabilities onto the given builder. Call `.stateful[PomodoroTimer]`
-    * internally so callers only need a `Unit`-context builder.
+  /** Wires all tools, resources, prompts and capabilities onto the given builder. Calls `.context[PomodoroTimer]`
+    * internally — the `PomodoroTimer` instance encapsulates its own `Ref`-based mutation, so it's a read-only
+    * per-session dependency from the framework's perspective.
     */
   def configure(builder: StreamingMcpHttpBuilder[IO, Unit]): StreamingMcpHttpBuilder[IO, PomodoroTimer] =
     builder
@@ -82,7 +83,7 @@ object PomodoroMcpServer extends IOApp.Simple:
       .icon(tomatoIcon)
       .websiteUrl("https://pomodoro.andimiller.net")
       .withRoutes(iconRoutes)
-      .stateful[PomodoroTimer](ctx => PomodoroTimer.create(ctx.sink))
+      .context[PomodoroTimer](ctx => PomodoroTimer.create(ctx.sink))
       // ── tools (all need the timer) ──────────────────────────────────
       .withContextualTool(
         contextualTool[PomodoroTimer]

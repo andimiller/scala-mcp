@@ -23,7 +23,7 @@ class SessionStoreSuite extends CatsEffectSuite:
       requester <- ServerRequester.noop[IO]
       handler    = new RequestHandler[IO](server, requester, cancel)
       subs      <- Ref.of[IO, Set[String]](Set.empty)
-    yield McpSession(id, handler, cc, subs)
+    yield McpSession(id, handler, cc, subs, IO.unit)
 
   test("SessionStore.inMemory: put / get / remove round-trip") {
     for

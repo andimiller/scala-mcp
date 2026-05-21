@@ -102,7 +102,7 @@ object ChatMcpServer extends IOApp.Simple:
                     .port(port"27000")
                     .withExplorer(redirectToRoot = true)
                 )
-                  .stateful[ChatSession](ctx => ChatSession.create(ctx.sink, ctx.refs, service))
+                  .context[ChatSession](ctx => ChatSession.create(ctx.sink, ctx.refs, service))
                   // ── tools ────────────────────────────────────────────────────
                   .withContextualTool(
                     contextualTool[ChatSession]

@@ -49,7 +49,7 @@ class StreamableHttpMcpClientSuite extends CatsEffectSuite:
                       toolHandlers = List(echoTool)
                     )
                   )
-        routes      <- StreamableHttpTransport.routes[IO]((_, _) => IO.pure(server))
+        routes      <- StreamableHttpTransport.routes[IO]((_, _) => IO.pure((server, IO.unit)))
         emberServer <- EmberServerBuilder
                          .default[IO]
                          .withHost(host"127.0.0.1")
@@ -93,7 +93,7 @@ class StreamableHttpMcpClientSuite extends CatsEffectSuite:
                     capabilities = ServerCapabilities.empty
                   )
                 )
-      routes <- StreamableHttpTransport.routes[IO]((_, _) => IO.pure(server))
+      routes <- StreamableHttpTransport.routes[IO]((_, _) => IO.pure((server, IO.unit)))
       es     <- EmberServerBuilder
               .default[IO]
               .withHost(host"127.0.0.1")

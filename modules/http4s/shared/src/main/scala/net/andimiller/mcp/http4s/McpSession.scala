@@ -9,10 +9,14 @@ import net.andimiller.mcp.core.server.RequestHandler
   *
   * Each session has its own request handler, client channel (notifications + server-initiated requests), and
   * subscription set.
+  *
+  * `cleanup` is invoked when the session is removed (DELETE /mcp, or out-of-band store eviction). Use it to cancel
+  * background fibers spawned for this session — e.g. the dynamic-tool visibility watcher.
   */
 case class McpSession[F[_]](
     id: String,
     handler: RequestHandler[F],
     clientChannel: ClientChannel[F],
-    subscriptions: Ref[F, Set[String]]
+    subscriptions: Ref[F, Set[String]],
+    cleanup: F[Unit]
 )

@@ -38,6 +38,9 @@ object RedisNotificationSink:
         def resourceListChanged: F[Unit] =
           notify("notifications/resources/list_changed", Json.obj())
 
+        def toolListChanged: F[Unit] =
+          notify("notifications/tools/list_changed", Json.obj())
+
         def log(level: String, logger: String, data: Json): F[Unit] =
           notify(
             "notifications/message",

@@ -1,6 +1,7 @@
 package net.andimiller.mcp.core.server
 
 import cats.effect.IO
+import cats.effect.kernel.Ref
 
 import net.andimiller.mcp.core.protocol.*
 import net.andimiller.mcp.core.protocol.content.Content
@@ -120,3 +121,60 @@ class DefaultServerSuite extends CatsEffectSuite:
       case Left(_)  => ()
       case Right(_) => fail("expected error for unknown prompt")
   }
+
+  // ── Visibility ──────────────────────────────────────────────────────────
+
+  /** Build a tool whose visibility is dictated by `vis`. Handler is a no-op text response so the visibility behaviour
+    * — not the handler — is what we're exercising.
+    */
+  private def visTool(n: String, vis: Option[Unit => IO[Boolean]] = None): Tool[IO, Unit] =
+    new Tool[IO, Unit]:
+      val name                                                          = n
+      val description                                                   = ""
+      val inputSchema                                                   = Json.obj()
+      val outputSchema                                                  = None
+      override val visible                                              = vis
+      def handle(call: ToolCallContext[IO, Unit]): IO[CallToolResponse] =
+        IO.pure(CallToolResponse(List(Content.Text(n)), None, false))
+
+  test("listTools omits tools whose visibility predicate returns false") {
+    for
+      s   <- server(tools =
+               List(
+                 visTool("always"),
+                 visTool("hidden", Some(_ => IO.pure(false))),
+                 visTool("shown", Some(_ => IO.pure(true)))
+               )
+             )
+      out <- s.listTools(ListToolsRequest())
+    yield assertEquals(out.tools.map(_.name).sorted, List("always", "shown"))
+  }
+
+  test("listTools threads effects through the visibility predicate") {
+    for
+      ref <- Ref.of[IO, Int](0)
+      tool = visTool("counted", Some(_ => ref.updateAndGet(_ + 1).map(_ > 0)))
+      s   <- server(tools = List(tool))
+      _   <- s.listTools(ListToolsRequest())
+      _   <- s.listTools(ListToolsRequest())
+      n   <- ref.get
+    yield assertEquals(n, 2)
+  }
+
+  test("callTool rejects an invisible tool the same way it rejects an unknown one") {
+    for
+      s         <- server(tools = List(visTool("secret", Some(_ => IO.pure(false)))))
+      hiddenErr <- s.callTool(CallToolRequest("secret", Json.obj())).attempt
+      missErr   <- s.callTool(CallToolRequest("missing", Json.obj())).attempt
+    yield
+      assert(hiddenErr.isLeft && hiddenErr.left.toOption.get.getMessage.contains("secret"))
+      assert(missErr.isLeft && missErr.left.toOption.get.getMessage.contains("missing"))
+  }
+
+  test("callTool invokes the tool when its visibility predicate returns true") {
+    for
+      s   <- server(tools = List(visTool("open", Some(_ => IO.pure(true)))))
+      out <- s.callTool(CallToolRequest("open", Json.obj()))
+    yield assertEquals(out.content, List(Content.Text("open")))
+  }
+

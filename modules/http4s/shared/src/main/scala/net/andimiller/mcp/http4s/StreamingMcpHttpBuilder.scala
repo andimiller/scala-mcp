@@ -6,6 +6,7 @@ import cats.effect.kernel.Async
 import cats.effect.kernel.Ref
 import cats.effect.kernel.Resource
 import cats.effect.std.UUIDGen
+import cats.effect.syntax.all.*
 import cats.syntax.all.*
 
 import net.andimiller.mcp.core.protocol.*
@@ -13,8 +14,16 @@ import net.andimiller.mcp.core.server.*
 import net.andimiller.mcp.core.state.SessionRefs
 
 import com.comcast.ip4s.*
+import fs2.Stream
+import fs2.concurrent.SignallingRef
 import org.http4s.*
 import org.http4s.ember.server.EmberServerBuilder
+
+/** Per-session slot creator. Yields the typed-erased slot value plus an optional change stream — `None` for read-only
+  * `.context[C]` slots, `Some(ref.discrete.void)` for mutable `.state[S]` slots (whose `SignallingRef` powers
+  * `tools/list_changed` notifications when visibility predicates depend on them).
+  */
+private type SlotCreator[F[_]] = SessionContext[F] => F[(Any, Option[Stream[F, Unit]])]
 
 type Append[A, B] = B match
   case Unit => A
@@ -25,7 +34,7 @@ class StreamingMcpHttpBuilder[F[_]: Async, Ctx] private[http4s] (
     val mVersion: String,
     val mConfig: McpHttpConfig,
     val mAuthInfo: Option[StreamingMcpHttpBuilder.AuthInfo[F]],
-    val mStatefulCreators: Vector[SessionContext[F] => F[Any]],
+    val mSlotCreators: Vector[SlotCreator[F]],
     val mAuthExtractor: Option[Request[F] => F[Option[Any]]],
     val mPlainTools: Vector[Tool[F, Ctx]],
     val mContextTools: Vector[Tool[F, Ctx]],
@@ -53,7 +62,7 @@ class StreamingMcpHttpBuilder[F[_]: Async, Ctx] private[http4s] (
       mVersion: String = this.mVersion,
       mConfig: McpHttpConfig = this.mConfig,
       mAuthInfo: Option[StreamingMcpHttpBuilder.AuthInfo[F]] = this.mAuthInfo,
-      mStatefulCreators: Vector[SessionContext[F] => F[Any]] = this.mStatefulCreators,
+      mSlotCreators: Vector[SlotCreator[F]] = this.mSlotCreators,
       mAuthExtractor: Option[Request[F] => F[Option[Any]]] = this.mAuthExtractor,
       mPlainTools: Vector[Tool[F, Ctx2]] = this.mPlainTools.asInstanceOf[Vector[Tool[F, Ctx2]]],
       mContextTools: Vector[Tool[F, Ctx2]] = this.mContextTools.asInstanceOf[Vector[Tool[F, Ctx2]]],
@@ -78,7 +87,7 @@ class StreamingMcpHttpBuilder[F[_]: Async, Ctx] private[http4s] (
         this.mToolMiddlewares.asInstanceOf[List[ToolMiddleware[F, Ctx2]]]
   ): StreamingMcpHttpBuilder[F, Ctx2] =
     new StreamingMcpHttpBuilder[F, Ctx2](
-      mName, mVersion, mConfig, mAuthInfo, mStatefulCreators, mAuthExtractor, mPlainTools, mContextTools,
+      mName, mVersion, mConfig, mAuthInfo, mSlotCreators, mAuthExtractor, mPlainTools, mContextTools,
       mPlainResources, mContextResourceResolvers, mPlainResourceTemplates, mContextResourceTemplateResolvers,
       mPlainPrompts, mContextPromptResolvers, mCaps, mSessionStore, mSinkFactory, mSessionRefsFactory,
       mSessionStoreFactory, mTitle, mDescription, mIcons, mWebsiteUrl, mExtraRoutes, mToolMiddlewares
@@ -135,17 +144,32 @@ class StreamingMcpHttpBuilder[F[_]: Async, Ctx] private[http4s] (
 
   // ── Context accumulation ──────────────────────────────────────────
 
-  /** Register a per-session state creator. The creator receives a [[SessionContext]] — a bundle of `id`, `channel`
-    * (notifications + server-initiated requests), and `refs` (per-session named refs). Use the conveniences `ctx.sink`
-    * and `ctx.requester` for the common cases, or reach for `ctx.channel` directly to grab the full bidirectional
-    * channel.
+  /** Register a read-only per-session value. The creator receives a [[SessionContext]] (id, channel, refs,
+    * elicitation). Useful for per-session dependencies that don't change during the session — tracers, DB handles,
+    * derived configuration.
     *
-    * Multiple `.stateful` calls accumulate in declaration order and produce a tuple-shaped context type via
-    * `Append[S, Ctx]`.
+    * Multiple `.context` / `.state` calls accumulate in declaration order, prepending each new slot to the front of the
+    * tuple-shaped context type via `Append[C, Ctx]`.
     */
-  def stateful[S](create: SessionContext[F] => F[S]): StreamingMcpHttpBuilder[F, Append[S, Ctx]] =
-    val widened: SessionContext[F] => F[Any] = ctx => create(ctx).map(_.asInstanceOf[Any])
-    copy[Append[S, Ctx]](mStatefulCreators = mStatefulCreators :+ widened)
+  def context[C](create: SessionContext[F] => F[C]): StreamingMcpHttpBuilder[F, Append[C, Ctx]] =
+    val widened: SlotCreator[F] = ctx => create(ctx).map(value => (value.asInstanceOf[Any], None))
+    copy[Append[C, Ctx]](mSlotCreators = mSlotCreators :+ widened)
+
+  /** Register mutable per-session state. The framework wraps the initial value in a [[fs2.concurrent.SignallingRef]]
+    * and exposes that ref to handlers as the corresponding Ctx slot — handlers call `.get` / `.update` / `.modify` on
+    * it directly.
+    *
+    * When tool visibility predicates depend on `.state` slots, the framework subscribes to the ref's `discrete` stream
+    * per session, recomputes the visible tool set on every change, and emits `notifications/tools/list_changed` when
+    * the set differs. The `tools/listChanged` server capability is enabled automatically.
+    */
+  def state[S](initial: SessionContext[F] => F[S]): StreamingMcpHttpBuilder[F, Append[SignallingRef[F, S], Ctx]] =
+    val widened: SlotCreator[F] = ctx =>
+      initial(ctx).flatMap(s => SignallingRef.of[F, Any](s).map(ref => (ref.asInstanceOf[Any], Some(ref.discrete.void))))
+    copy[Append[SignallingRef[F, S], Ctx]](
+      mSlotCreators = mSlotCreators :+ widened,
+      mCaps = mCaps.withToolNotifications
+    )
 
   def authenticated[U: Eq](
       extract: Request[F] => F[Option[U]],
@@ -258,12 +282,21 @@ class StreamingMcpHttpBuilder[F[_]: Async, Ctx] private[http4s] (
 
   /** Build a standalone Server[F] using a no-op client channel and in-memory session refs. Useful for golden testing
     * where only catalog queries (listTools, etc.) are needed — tools that issue server-initiated requests will get
-    * [[ServerRequester]]'s "not configured" response if exercised against this server.
+    * [[ServerRequester]]'s "not configured" response if exercised against this server. The visibility-watcher fiber is
+    * not spawned (no real client to notify); visibility predicates still run on each `listTools` / `callTool` call.
     */
-  def buildServer: F[Server[F]] =
+  def buildServer: F[Server[F]] = buildServerWith(_ => Async[F].unit)
+
+  /** Like [[buildServer]] but lets the caller seed the per-session Ctx before the server is exposed. Use it in golden
+    * tests to snapshot multiple visibility scenarios — e.g. set a `SignallingRef` to a non-empty value so dynamic tools
+    * gated by its content appear in the captured `tools/list`.
+    */
+  def buildServerWith(prep: Ctx => F[Unit]): F[Server[F]] =
     ClientChannel.noop[F].flatMap { cc =>
       val ctx = SessionContext("noop", cc, SessionRefs.inMemory[F])
-      createStatefulContext(ctx).flatMap(resolveAll(_, None))
+      buildSlots(ctx).flatMap { case (statefulCtx, _) =>
+        prep(statefulCtx.asInstanceOf[Ctx]) >> resolveAll(statefulCtx, None)
+      }
     }
 
   private def resolveAll(ctx: Any, sessionId: Option[String]): F[Server[F]] =
@@ -290,22 +323,82 @@ class StreamingMcpHttpBuilder[F[_]: Async, Ctx] private[http4s] (
       sessionId = sessionId
     ).widen[Server[F]]
 
-  /** Run all registered `.stateful` creators against a single [[SessionContext]] in declaration order, prepending each
-    * result onto the accumulated context tuple.
+  /** Run all registered slot creators against a single [[SessionContext]] in declaration order, prepending each result
+    * onto the accumulated context tuple. Also surfaces the discrete change streams for `.state` slots so the
+    * visibility-watcher fiber can subscribe to them.
     */
-  private def createStatefulContext(ctx: SessionContext[F]): F[Any] =
-    mStatefulCreators.foldLeft(Async[F].pure(()): F[Any]) { (ctxF, creator) =>
-      ctxF.flatMap(acc => creator(ctx).map(value => StreamingMcpHttpBuilder.prependContext(value, acc)))
+  private def buildSlots(ctx: SessionContext[F]): F[(Any, List[Stream[F, Unit]])] =
+    mSlotCreators.foldLeft(Async[F].pure(((), List.empty[Stream[F, Unit]]): (Any, List[Stream[F, Unit]]))) {
+      (accF, creator) =>
+        accF.flatMap { case (ctxAcc, streamsAcc) =>
+          creator(ctx).map { case (value, streamOpt) =>
+            val newCtx     = StreamingMcpHttpBuilder.prependContext(value, ctxAcc)
+            val newStreams = streamOpt.fold(streamsAcc)(_ :: streamsAcc)
+            (newCtx, newStreams)
+          }
+        }
     }
 
-  private[http4s] def newSessionFactory(sessionId: String): SessionContext[F] => F[Server[F]] =
-    ctx => createStatefulContext(ctx).flatMap(resolveAll(_, Some(sessionId)))
+  /** Compute the set of currently-visible tool names against the supplied (already-built) Ctx. Used by the
+    * visibility-watcher fiber to decide whether to emit `notifications/tools/list_changed`.
+    */
+  private def computeVisibleNames(ctx: Any): F[Set[String]] =
+    val all = (mPlainTools ++ mContextTools).toList
+    all
+      .filterA { t =>
+        t.visible.fold(Async[F].pure(true))(p => p.asInstanceOf[Any => F[Boolean]](ctx))
+      }
+      .map(_.iterator.map(_.name).toSet)
 
-  private[http4s] def newAuthenticatedSessionFactory(sessionId: String): (Any, SessionContext[F]) => F[Server[F]] =
+  /** Spawn the per-session visibility-watcher fiber. Returns the cleanup action to cancel it. No-op if no `.state`
+    * slots were registered (and hence no change streams to subscribe to).
+    */
+  private def spawnVisibilityWatcher(
+      ctx: Any,
+      sink: NotificationSink[F],
+      streams: List[Stream[F, Unit]]
+  ): F[F[Unit]] =
+    if streams.isEmpty then Async[F].pure(Async[F].unit)
+    else
+      val merged = streams.reduceLeft(_.merge(_))
+      for
+        initial <- computeVisibleNames(ctx)
+        lastSet <- Ref.of[F, Set[String]](initial)
+        fiber   <- merged
+                     .evalMap { _ =>
+                       computeVisibleNames(ctx).flatMap { current =>
+                         lastSet.getAndSet(current).flatMap { previous =>
+                           if previous != current then sink.toolListChanged else Async[F].unit
+                         }
+                       }
+                     }
+                     .compile
+                     .drain
+                     .start
+      yield fiber.cancel
+
+  private[http4s] def newSessionFactory(
+      sessionId: String
+  ): SessionContext[F] => F[(Server[F], F[Unit])] =
+    ctx =>
+      buildSlots(ctx).flatMap { case (statefulCtx, changeStreams) =>
+        for
+          server  <- resolveAll(statefulCtx, Some(sessionId))
+          cleanup <- spawnVisibilityWatcher(statefulCtx, ctx.channel.sink, changeStreams)
+        yield (server, cleanup)
+      }
+
+  private[http4s] def newAuthenticatedSessionFactory(
+      sessionId: String
+  ): (Any, SessionContext[F]) => F[(Server[F], F[Unit])] =
     (user, ctx) =>
-      createStatefulContext(ctx)
-        .map(statefulCtx => StreamingMcpHttpBuilder.prependContext(user, statefulCtx))
-        .flatMap(resolveAll(_, Some(sessionId)))
+      buildSlots(ctx).flatMap { case (statefulCtx, changeStreams) =>
+        val fullCtx = StreamingMcpHttpBuilder.prependContext(user, statefulCtx)
+        for
+          server  <- resolveAll(fullCtx, Some(sessionId))
+          cleanup <- spawnVisibilityWatcher(fullCtx, ctx.channel.sink, changeStreams)
+        yield (server, cleanup)
+      }
 
   // ── Terminal operations ─────────────────────────────────────────────
 
@@ -324,7 +417,7 @@ class StreamingMcpHttpBuilder[F[_]: Async, Ctx] private[http4s] (
             Resource.pure[F, AuthenticatedSessionStore[F, Any]](store)
           case _ => Resource.eval(AuthenticatedSessionStore.inMemory[F, Any])
         storeR.flatMap { store =>
-          val serverF: (String, Any, SessionContext[F]) => F[Server[F]] =
+          val serverF: (String, Any, SessionContext[F]) => F[StreamableHttpTransport.ServerFactoryOutput[F]] =
             (id, user, ctx) => newAuthenticatedSessionFactory(id)(user, ctx)
           StreamableHttpTransport.authenticatedRoutes[F, Any](
             extractReq,
@@ -340,20 +433,21 @@ class StreamingMcpHttpBuilder[F[_]: Async, Ctx] private[http4s] (
           case Some(factory) =>
             val reconstruct: String => F[McpSession[F]] = (id: String) =>
               for
-                sinkPair      <- sinkFactory(id).allocated
-                (sink, _)      = sinkPair
-                ccPair        <- ClientChannel.fromSink[F](sink).allocated
-                (cc, _)        = ccPair
-                ctx            = SessionContext(id, cc, refsFactory(id))
-                server        <- newSessionFactory(id)(ctx)
-                handler        = new RequestHandler[F](server, cc.requester, cc.cancellation)
-                subscriptions <- Ref.of[F, Set[String]](Set.empty)
-              yield McpSession(id, handler, cc, subscriptions)
+                sinkPair             <- sinkFactory(id).allocated
+                (sink, _)             = sinkPair
+                ccPair               <- ClientChannel.fromSink[F](sink).allocated
+                (cc, _)               = ccPair
+                ctx                   = SessionContext(id, cc, refsFactory(id))
+                factoryOut           <- newSessionFactory(id)(ctx)
+                (server, cleanup)     = factoryOut
+                handler               = new RequestHandler[F](server, cc.requester, cc.cancellation)
+                subscriptions        <- Ref.of[F, Set[String]](Set.empty)
+              yield McpSession(id, handler, cc, subscriptions, cleanup)
             Resource.eval(factory.create(reconstruct))
           case None =>
             mSessionStore.fold(Resource.eval(SessionStore.inMemory[F]))(Resource.pure(_))
         storeR.flatMap { store =>
-          val serverF: (String, SessionContext[F]) => F[Server[F]] =
+          val serverF: (String, SessionContext[F]) => F[StreamableHttpTransport.ServerFactoryOutput[F]] =
             (id, ctx) => newSessionFactory(id)(ctx)
           StreamableHttpTransport.routes(serverF, sinkFactory, refsFactory, store)
         }

@@ -50,7 +50,7 @@ object McpHttp:
       mVersion = "",
       mConfig = McpHttpConfig(),
       mAuthInfo = None,
-      mStatefulCreators = Vector.empty,
+      mSlotCreators = Vector.empty,
       mAuthExtractor = None,
       mPlainTools = Vector.empty,
       mContextTools = Vector.empty,
@@ -99,7 +99,7 @@ object McpHttp:
   def streamableRoutes[F[_]: Async: UUIDGen](
       newSession: SessionContext[F] => F[McpServer[F]]
   ): Resource[F, HttpRoutes[F]] =
-    StreamableHttpTransport.routes[F]((_, ctx) => newSession(ctx))
+    StreamableHttpTransport.routes[F]((_, ctx) => newSession(ctx).map((_, Async[F].unit)))
 
   def authenticatedStreamableRoutes[F[_]: Async: UUIDGen, U: Eq](
       authenticate: Request[F] => F[Option[U]],
@@ -108,7 +108,7 @@ object McpHttp:
   ): Resource[F, HttpRoutes[F]] =
     StreamableHttpTransport.authenticatedRoutes[F, U](
       authenticate,
-      (_, user, ctx) => newSession(user, ctx),
+      (_, user, ctx) => newSession(user, ctx).map((_, Async[F].unit)),
       onUnauthorized
     )
 
@@ -131,7 +131,7 @@ object McpHttp:
       newSession: SessionContext[IO] => IO[McpServer[IO]],
       config: McpHttpConfig = McpHttpConfig()
   ): Resource[IO, org.http4s.server.Server] =
-    StreamableHttpTransport.routes[IO]((_, ctx) => newSession(ctx)).flatMap { mcpRoutes =>
+    StreamableHttpTransport.routes[IO]((_, ctx) => newSession(ctx).map((_, IO.unit))).flatMap { mcpRoutes =>
       val app = buildApp(mcpRoutes, config)
       EmberServerBuilder
         .default[IO]
@@ -150,7 +150,7 @@ object McpHttp:
     StreamableHttpTransport
       .authenticatedRoutes[IO, U](
         authenticate,
-        (_, user, ctx) => newSession(user, ctx),
+        (_, user, ctx) => newSession(user, ctx).map((_, IO.unit)),
         IO(onUnauthorized)
       )
       .flatMap { mcpRoutes =>

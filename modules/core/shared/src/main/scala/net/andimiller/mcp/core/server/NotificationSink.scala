@@ -28,6 +28,9 @@ trait NotificationSink[F[_]]:
   /** Notify that the resource list itself has changed */
   def resourceListChanged: F[Unit]
 
+  /** Notify that the tool list itself has changed (e.g. dynamic visibility recomputed). */
+  def toolListChanged: F[Unit]
+
   /** Send a log message notification */
   def log(level: String, logger: String, data: Json): F[Unit]
 
@@ -54,6 +57,9 @@ object NotificationSink:
       def resourceListChanged: F[Unit] =
         notify("notifications/resources/list_changed", Json.obj())
 
+      def toolListChanged: F[Unit] =
+        notify("notifications/tools/list_changed", Json.obj())
+
       def log(level: String, logger: String, data: Json): F[Unit] =
         notify(
           "notifications/message",
@@ -73,5 +79,6 @@ object NotificationSink:
       def notify(method: String, params: Json): F[Unit]           = Applicative[F].unit
       def resourceUpdated(uri: String): F[Unit]                   = Applicative[F].unit
       def resourceListChanged: F[Unit]                            = Applicative[F].unit
+      def toolListChanged: F[Unit]                                = Applicative[F].unit
       def log(level: String, logger: String, data: Json): F[Unit] = Applicative[F].unit
       def subscribe: Stream[F, Message]                           = Stream.empty

@@ -3,7 +3,6 @@ package net.andimiller.mcp.examples.rpg
 import cats.data.EitherT
 import cats.effect.IO
 import cats.effect.IOApp
-import cats.effect.Ref
 import cats.syntax.all.*
 
 import net.andimiller.enumerive.circe.LabelCodec
@@ -19,20 +18,26 @@ import net.andimiller.mcp.http4s.McpHttp
 import net.andimiller.mcp.http4s.StreamingMcpHttpBuilder
 
 import com.comcast.ip4s.*
+import fs2.concurrent.SignallingRef
 import io.circe.Codec
 import io.circe.Decoder
 import io.circe.Encoder
 import sttp.apispec.Schema
 
-/** Loosely D&D 5e–themed character creator demonstrating multi-step elicitation over HTTP.
+/** Loosely D&D 5e–themed character creator demonstrating two contrasting paths to the same goal — and the dynamic-tool
+  * visibility feature that powers them.
   *
-  * The wizard runs entirely inside one `create_character` tool invocation:
-  *   1. Pick a race (9 options).
-  *   2. Pick a class (12 options).
-  *   3. Pick a starting weapon — the enum is generated dynamically from the chosen class.
-  *   4. Name the character.
+  *   - **Elicitation wizard** (`create_character_wizard`): single tool call; the server pulls four elicitations
+  *     from the client in sequence (race → class → weapon → name). Always visible.
+  *   - **Step-by-step submit tools**: four tools — `submit_race`, `submit_class`, `submit_weapon`, `submit_name` —
+  *     that advance a per-session `CreationPhase` state machine. Exactly one of them is visible at a time, gated by
+  *     the current phase. `submit_name` commits the character to history and resets the draft to `Idle`, making
+  *     `submit_race` visible again so you can roll another.
+  *   - `list_characters` is always available.
+  *   - `clear_history` is visible only when the per-session history is non-empty.
   *
-  * A separate `list_characters` tool reads the per-session history.
+  * All dynamic visibility is driven by a `SignallingRef`-backed `.state` slot and `.visibleWhenF` predicates; the
+  * framework emits `notifications/tools/list_changed` whenever the visible set changes.
   */
 object RpgCharacterCreatorMcpServer extends IOApp.Simple:
 
@@ -127,46 +132,235 @@ object RpgCharacterCreatorMcpServer extends IOApp.Simple:
 
   // ── Per-session state ──────────────────────────────────────────────
 
-  case class CreatorState(
-      history: Ref[IO, List[Character]],
-      elicitation: ElicitationClient[IO]
-  )
+  /** State machine for the step-by-step submit_* flow. The visibility predicate of each submit tool inspects this to
+    * decide whether it should appear in `tools/list`.
+    */
+  enum CreationPhase:
+
+    case Idle
+    case AfterRace(race: Race)
+    case AfterClass(race: Race, klass: CharClass)
+    case AfterWeapon(race: Race, klass: CharClass, weapon: String)
+
+  /** Plain data — mutation is owned by the framework-provided `SignallingRef` wrapping this value. */
+  case class CreatorState(history: List[Character], draft: CreationPhase)
 
   object CreatorState:
 
-    def create(elicitation: ElicitationClient[IO]): IO[CreatorState] =
-      Ref.of[IO, List[Character]](Nil).map(CreatorState(_, elicitation))
+    val empty: CreatorState = CreatorState(Nil, CreationPhase.Idle)
+
+  case class ClearHistoryRequest() derives JsonSchema, Decoder
+
+  case class ClearHistoryResponse(cleared: Int) derives JsonSchema, Encoder.AsObject
+
+  // ── Submit-tool request/response shapes ────────────────────────────
+
+  case class SubmitRaceRequest(
+      @description("The race to commit to the current draft character")
+      race: Race
+  ) derives JsonSchema,
+        Decoder
+
+  case class SubmitClassRequest(
+      @description("The class to commit to the current draft character")
+      `class`: CharClass
+  ) derives JsonSchema,
+        Decoder
+
+  case class SubmitWeaponRequest(
+      @description("Starting weapon — must be one of the options available for the chosen class")
+      weapon: String
+  ) derives JsonSchema,
+        Decoder
+
+  case class SubmitNameRequest(
+      @description("Character name — submitting this commits the draft to history")
+      @example("Eldrin Moonshadow")
+      name: String
+  ) derives JsonSchema,
+        Decoder
+
+  case class SubmitResponse(
+      @description("Human-readable confirmation, including what to do next")
+      message: String
+  ) derives JsonSchema,
+        Encoder.AsObject
+
+  /** The Ctx tuple after `.state` + `.context` declarations below. State is at position 0, elicitation at position 1. */
+  type Ctx = (SignallingRef[IO, CreatorState], ElicitationClient[IO])
 
   // ── Builder configuration ──────────────────────────────────────────
 
-  def configure(builder: StreamingMcpHttpBuilder[IO, Unit]): StreamingMcpHttpBuilder[IO, CreatorState] =
+  def configure(builder: StreamingMcpHttpBuilder[IO, Unit]): StreamingMcpHttpBuilder[IO, Ctx] =
     builder
-      .stateful[CreatorState](ctx => CreatorState.create(ctx.elicitation))
+      .context[ElicitationClient[IO]](ctx => IO.pure(ctx.elicitation))
+      .state[CreatorState](_ => IO.pure(CreatorState.empty))
       .withContextualTool(
-        contextualTool[CreatorState]
-          .name("create_character")
-          .description("Build a D&D-flavoured character interactively (race → class → weapon → name)")
+        contextualTool[Ctx]
+          .name("create_character_wizard")
+          .description(
+            "Build a character in a single tool call via elicitation (race → class → weapon → name). " +
+              "Requires a client that supports `elicitation/create`. For step-by-step creation without elicitation, " +
+              "use the submit_race / submit_class / submit_weapon / submit_name tools as they appear."
+          )
           .in[CreateCharacterRequest]
           .out[Character]
-          .runResult { (state, _) =>
-            createWizard(state)
+          .runResult { case ((state, elic), _) =>
+            createWizard(state, elic)
           }
       )
       .withContextualTool(
-        contextualTool[CreatorState]
+        contextualTool[Ctx]
+          .name("submit_race")
+          .description("Start a new draft character by submitting a race. Visible only when no draft is in progress.")
+          .in[SubmitRaceRequest]
+          .out[SubmitResponse]
+          .visibleWhenF { case (state, _) =>
+            state.get.map {
+              _.draft match
+                case CreationPhase.Idle => true
+                case _                  => false
+            }
+          }
+          .run { case ((state, _), req) =>
+            state.modify { s =>
+              (
+                s.copy(draft = CreationPhase.AfterRace(req.race)),
+                SubmitResponse(s"Race set to ${req.race}. Next: submit_class.")
+              )
+            }
+          }
+      )
+      .withContextualTool(
+        contextualTool[Ctx]
+          .name("submit_class")
+          .description("Submit a class for the in-progress draft. Visible only after a race has been submitted.")
+          .in[SubmitClassRequest]
+          .out[SubmitResponse]
+          .visibleWhenF { case (state, _) =>
+            state.get.map {
+              _.draft match
+                case _: CreationPhase.AfterRace => true
+                case _                          => false
+            }
+          }
+          .runResult { case ((state, _), req) =>
+            state.modify { s =>
+              s.draft match
+                case CreationPhase.AfterRace(race) =>
+                  val valid = CharClass.weaponsFor(req.`class`).mkString(", ")
+                  (
+                    s.copy(draft = CreationPhase.AfterClass(race, req.`class`)),
+                    ToolResult.Success(
+                      SubmitResponse(
+                        s"Class set to ${req.`class`}. Next: submit_weapon. Valid weapons: $valid."
+                      )
+                    )
+                  )
+                case other                         =>
+                  (s, ToolResult.Error(s"Cannot submit class: draft phase is $other; expected AfterRace."))
+            }
+          }
+      )
+      .withContextualTool(
+        contextualTool[Ctx]
+          .name("submit_weapon")
+          .description(
+            "Submit a starting weapon for the in-progress draft. Visible only after a class has been submitted. " +
+              "Valid choices depend on the class; an invalid weapon returns an error listing the options."
+          )
+          .in[SubmitWeaponRequest]
+          .out[SubmitResponse]
+          .visibleWhenF { case (state, _) =>
+            state.get.map {
+              _.draft match
+                case _: CreationPhase.AfterClass => true
+                case _                           => false
+            }
+          }
+          .runResult { case ((state, _), req) =>
+            state.modify { s =>
+              s.draft match
+                case CreationPhase.AfterClass(race, klass) =>
+                  val valid = CharClass.weaponsFor(klass)
+                  if !valid.contains(req.weapon) then
+                    (
+                      s,
+                      ToolResult.Error(
+                        s"Invalid weapon '${req.weapon}' for $klass. Valid: ${valid.mkString(", ")}."
+                      )
+                    )
+                  else
+                    (
+                      s.copy(draft = CreationPhase.AfterWeapon(race, klass, req.weapon)),
+                      ToolResult.Success(
+                        SubmitResponse(s"Weapon set to ${req.weapon}. Next: submit_name to finalize.")
+                      )
+                    )
+                case other                                 =>
+                  (s, ToolResult.Error(s"Cannot submit weapon: draft phase is $other; expected AfterClass."))
+            }
+          }
+      )
+      .withContextualTool(
+        contextualTool[Ctx]
+          .name("submit_name")
+          .description(
+            "Submit a name to finalize the in-progress draft. Commits the character to history and resets the draft " +
+              "so a new one can be started. Visible only after a weapon has been submitted."
+          )
+          .in[SubmitNameRequest]
+          .out[SubmitResponse]
+          .visibleWhenF { case (state, _) =>
+            state.get.map {
+              _.draft match
+                case _: CreationPhase.AfterWeapon => true
+                case _                            => false
+            }
+          }
+          .runResult { case ((state, _), req) =>
+            state.modify { s =>
+              s.draft match
+                case CreationPhase.AfterWeapon(race, klass, weapon) =>
+                  val character = Character(req.name, race, klass, weapon)
+                  (
+                    s.copy(history = character :: s.history, draft = CreationPhase.Idle),
+                    ToolResult.Success(
+                      SubmitResponse(
+                        s"Character created: ${req.name} the $race $klass with $weapon. Draft cleared; submit_race available again."
+                      )
+                    )
+                  )
+                case other                                          =>
+                  (s, ToolResult.Error(s"Cannot submit name: draft phase is $other; expected AfterWeapon."))
+            }
+          }
+      )
+      .withContextualTool(
+        contextualTool[Ctx]
           .name("list_characters")
           .description("List all characters created in this session")
           .in[ListCharactersRequest]
           .out[CharacterList]
-          .run((state, _) => state.history.get.map(CharacterList(_)))
+          .run { case ((state, _), _) => state.get.map(s => CharacterList(s.history)) }
+      )
+      .withContextualTool(
+        contextualTool[Ctx]
+          .name("clear_history")
+          .description("Forget every character created in this session")
+          .in[ClearHistoryRequest]
+          .out[ClearHistoryResponse]
+          .visibleWhenF { case (state, _) => state.get.map(_.history.nonEmpty) }
+          .run { case ((state, _), _) =>
+            state.modify(s => (CreatorState.empty.copy(draft = s.draft), ClearHistoryResponse(s.history.size)))
+          }
       )
 
   /** The wizard itself. Each elicitation step folds the three possible outcomes (accept, decline, cancel) plus errors
     * into an `Either[ToolResult[Character], A]`. We thread those through `EitherT` so the for-comprehension stays flat
     * — short-circuit on the first decline / cancel / error is automatic.
     */
-  def createWizard(state: CreatorState): IO[ToolResult[Character]] =
-    val elic                             = state.elicitation
+  def createWizard(state: SignallingRef[IO, CreatorState], elic: ElicitationClient[IO]): IO[ToolResult[Character]] =
     val cancelled: ToolResult[Character] = ToolResult.Text("Character creation cancelled")
 
     type Step[A] = EitherT[IO, ToolResult[Character], A]
@@ -191,7 +385,9 @@ object RpgCharacterCreatorMcpServer extends IOApp.Simple:
         }
         name     <- ask(elic.requestForm[NameForm](message = "Give your character a name"))
         character = Character(name = name.name, race = race.race, `class` = klass.`class`, weapon = weapon.weapon)
-        _        <- EitherT.liftF[IO, ToolResult[Character], Unit](state.history.update(character :: _))
+        _        <- EitherT.liftF[IO, ToolResult[Character], Unit](
+                      state.update(s => s.copy(history = character :: s.history))
+                    )
       yield character
 
     flow.fold[ToolResult[Character]](identity, ToolResult.Success(_))

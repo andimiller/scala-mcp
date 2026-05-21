@@ -49,13 +49,13 @@ class StreamableHttpTransportSuite extends CatsEffectSuite:
 
   private def buildServer(
       tools: List[Tool[IO, Unit]] = List(echoTool)
-  ): (String, SessionContext[IO]) => IO[Server[IO]] =
+  ): (String, SessionContext[IO]) => IO[(Server[IO], IO[Unit])] =
     (_, _) =>
       DefaultServer[IO](
         info = Implementation("t", "0"),
         capabilities = ServerCapabilities(),
         toolHandlers = tools
-      ).widen[Server[IO]]
+      ).widen[Server[IO]].map((_, IO.unit))
 
   private def postJson(routes: HttpRoutes[IO], body: Json, sessionId: Option[String] = None): IO[Response[IO]] =
     val base = Request[IO](Method.POST, uri"/mcp")

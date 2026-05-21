@@ -42,6 +42,12 @@ trait Tool[F[_], Ctx]:
     */
   def middleware: List[ToolMiddleware[F, Ctx]] = Nil
 
+  /** Optional visibility predicate. `None` means the tool is always visible. When `Some(p)`, the tool appears in
+    * `tools/list` only when `p(ctx)` evaluates to `true`, and `tools/call` for it is rejected as "not found" when it
+    * does not. Evaluated per session against the server's `Ctx`.
+    */
+  def visible: Option[Ctx => F[Boolean]] = None
+
   def handle(call: ToolCallContext[F, Ctx]): F[CallToolResponse]
 
   /** Append a middleware to the [[middleware]] list. Returns a new `Tool[F, Ctx]` that delegates to this one but
@@ -60,6 +66,7 @@ trait Tool[F[_], Ctx]:
       override val execution                                         = self.execution
       override val meta                                              = self.meta
       override val middleware                                        = self.middleware :+ mw
+      override val visible                                           = self.visible
       def handle(call: ToolCallContext[F, Ctx]): F[CallToolResponse] = self.handle(call)
 
 object Tool:
@@ -90,6 +97,18 @@ object Tool:
 
 object ToolBuilder:
 
+  /** Internal sum used to capture a tool's visibility rule on the builder before `F` is known. Materialised into a
+    * concrete `Ctx => F[Boolean]` by `fromBuilder` once the handler picks an `F`.
+    */
+  private[server] sealed trait VisibilityRule[Ctx]
+  private[server] object VisibilityRule:
+    final case class Always[Ctx]()                 extends VisibilityRule[Ctx]
+    final case class Pure[Ctx](p: Ctx => Boolean)  extends VisibilityRule[Ctx]
+    /** Effectful predicate stored type-erased — the user's `F[Boolean]` is the same `F` chosen at `.run` time, so the
+      * cast in `fromBuilder` is safe under that consistency.
+      */
+    final case class Effectful[Ctx](p: Ctx => Any) extends VisibilityRule[Ctx]
+
   final class Empty[Ctx]:
 
     def name(n: String): WithIn[Ctx, Unit, Nothing] =
@@ -102,7 +121,8 @@ object ToolBuilder:
       private[ToolBuilder] val icons: List[Icon] = Nil,
       private[ToolBuilder] val annotations: Option[ToolAnnotations] = None,
       private[ToolBuilder] val execution: Option[ToolExecution] = None,
-      private[ToolBuilder] val meta: Option[JsonObject] = None
+      private[ToolBuilder] val meta: Option[JsonObject] = None,
+      private[ToolBuilder] val visibility: VisibilityRule[Ctx] = VisibilityRule.Always[Ctx]()
   )(using val in: InputSchema[In], val out: OutputSchema[Out]):
 
     private def copy(
@@ -112,23 +132,38 @@ object ToolBuilder:
         icons: List[Icon] = this.icons,
         annotations: Option[ToolAnnotations] = this.annotations,
         execution: Option[ToolExecution] = this.execution,
-        meta: Option[JsonObject] = this.meta
+        meta: Option[JsonObject] = this.meta,
+        visibility: VisibilityRule[Ctx] = this.visibility
     ): WithIn[Ctx, In, Out] =
-      new WithIn[Ctx, In, Out](name, description, title, icons, annotations, execution, meta)
+      new WithIn[Ctx, In, Out](name, description, title, icons, annotations, execution, meta, visibility)
 
     def description(d: String): WithIn[Ctx, In, Out] =
       copy(description = d)
 
     def in[A](using InputSchema[A]): WithIn[Ctx, A, Out] =
-      new WithIn[Ctx, A, Out](name, description, title, icons, annotations, execution, meta)
+      new WithIn[Ctx, A, Out](name, description, title, icons, annotations, execution, meta, visibility)
 
     /** Override the output schema with the schema derived from `R`. */
     def out[A: OutputSchema]: WithIn[Ctx, In, A] =
-      new WithIn[Ctx, In, A](name, description, title, icons, annotations, execution, meta)
+      new WithIn[Ctx, In, A](name, description, title, icons, annotations, execution, meta, visibility)
 
-    /** Promote a `Ctx = Unit` builder into one parameterised on a custom `Ctx`. */
+    /** Promote a `Ctx = Unit` builder into one parameterised on a custom `Ctx`. Drops any visibility rule — a `Ctx = Unit`
+      * rule isn't meaningful against a non-Unit Ctx — so re-declare visibility on the new builder if you need it.
+      */
     def contextual[A]: WithIn[A, In, Out] =
       new WithIn[A, In, Out](name, description, title, icons, annotations, execution, meta)
+
+    /** Restrict the tool's visibility with a pure predicate against the server's `Ctx`. The tool appears in
+      * `tools/list` and accepts `tools/call` only when `p(ctx) == true`. Replaces any previously-set visibility rule.
+      */
+    def visibleWhen(p: Ctx => Boolean): WithIn[Ctx, In, Out] =
+      copy(visibility = VisibilityRule.Pure(p))
+
+    /** Restrict the tool's visibility with an effectful predicate. The `F` is inferred from the predicate's return type
+      * and must match the `F` selected at `.run` / `.runResult` time. Replaces any previously-set visibility rule.
+      */
+    def visibleWhenF[F[_]](p: Ctx => F[Boolean]): WithIn[Ctx, In, Out] =
+      copy(visibility = VisibilityRule.Effectful(ctx => p(ctx).asInstanceOf[Any]))
 
     def title(t: String): WithIn[Ctx, In, Out] = copy(title = Some(t))
 
@@ -197,6 +232,10 @@ object ToolBuilder:
   ): Tool[F, Ctx] =
     given InputSchema[In]   = b.in
     given OutputSchema[Out] = b.out
+    val materialisedVisible: Option[Ctx => F[Boolean]] = b.visibility match
+      case VisibilityRule.Always()     => None
+      case VisibilityRule.Pure(p)      => Some(ctx => Async[F].pure(p(ctx)))
+      case VisibilityRule.Effectful(p) => Some(ctx => p(ctx).asInstanceOf[F[Boolean]])
     new Tool[F, Ctx]:
       val name                                                       = b.name
       val description                                                = b.description
@@ -207,6 +246,7 @@ object ToolBuilder:
       override val annotations                                       = b.annotations
       override val execution                                         = b.execution
       override val meta                                              = b.meta
+      override val visible                                           = materialisedVisible
       def handle(call: ToolCallContext[F, Ctx]): F[CallToolResponse] =
         summon[InputSchema[In]].decode(call.request.arguments) match
           case Right(a)  => handler(call.ctx, a).map(ToolResult.toWire(_))

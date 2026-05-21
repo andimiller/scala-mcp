@@ -27,31 +27,38 @@ class DefaultServer[F[_]: Async, Ctx](
 ) extends Server[F]:
 
   override def listTools(request: ListToolsRequest): F[ListToolsResponse] =
-    val tools = toolHandlers.values.map { tool =>
-      ToolDefinition(
-        name = tool.name,
-        description = Some(tool.description),
-        inputSchema = tool.inputSchema,
-        outputSchema = tool.outputSchema,
-        title = tool.title,
-        icons = Option.when(tool.icons.nonEmpty)(tool.icons),
-        annotations = tool.annotations,
-        execution = tool.execution,
-        _meta = tool.meta
-      )
-    }.toList
-
-    ListToolsResponse(tools = tools, nextCursor = None).pure[F]
+    toolHandlers.values.toList
+      .filterA(t => t.visible.fold(true.pure[F])(_(ctx)))
+      .map { visible =>
+        val tools = visible.map { tool =>
+          ToolDefinition(
+            name = tool.name,
+            description = Some(tool.description),
+            inputSchema = tool.inputSchema,
+            outputSchema = tool.outputSchema,
+            title = tool.title,
+            icons = Option.when(tool.icons.nonEmpty)(tool.icons),
+            annotations = tool.annotations,
+            execution = tool.execution,
+            _meta = tool.meta
+          )
+        }
+        ListToolsResponse(tools = tools, nextCursor = None)
+      }
 
   override def callTool(request: CallToolRequest): F[CallToolResponse] =
     toolHandlers.get(request.name) match
       case Some(tool) =>
-        val callCtx                   = ToolCallContext(request, sessionId, tool, ctx)
-        val base: ToolHandler[F, Ctx] = c => c.resolved.handle(c)
-        val withPerTool               = ToolMiddleware.composeAll(tool.middleware)(base)
-        val composed                  = ToolMiddleware.composeAll(toolMiddlewares)(withPerTool)
-        composed(callCtx)
-      case None => Async[F].raiseError(new Exception(s"Tool not found: ${request.name}"))
+        tool.visible.fold(true.pure[F])(_(ctx)).flatMap {
+          case false => Async[F].raiseError(new Exception(s"Tool not found: ${request.name}"))
+          case true  =>
+            val callCtx                   = ToolCallContext(request, sessionId, tool, ctx)
+            val base: ToolHandler[F, Ctx] = c => c.resolved.handle(c)
+            val withPerTool               = ToolMiddleware.composeAll(tool.middleware)(base)
+            val composed                  = ToolMiddleware.composeAll(toolMiddlewares)(withPerTool)
+            composed(callCtx)
+        }
+      case None       => Async[F].raiseError(new Exception(s"Tool not found: ${request.name}"))
 
   override def listResources(request: ListResourcesRequest): F[ListResourcesResponse] =
     val resources = resourceHandlers.values.map { handler =>

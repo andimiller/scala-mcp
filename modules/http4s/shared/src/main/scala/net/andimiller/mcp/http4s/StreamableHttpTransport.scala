@@ -41,9 +41,15 @@ object StreamableHttpTransport:
 
   private val eventStreamMediaType = new MediaType("text", "event-stream")
 
+  /** Factory output: the [[Server]] plus an `F[Unit]` cleanup action invoked when the session is removed. Use the
+    * cleanup to cancel any background fibers (e.g. the dynamic-tool visibility watcher) that the factory spawned for
+    * the session's lifetime. Return `Async[F].unit` when there's nothing to clean up.
+    */
+  type ServerFactoryOutput[F[_]] = (Server[F], F[Unit])
+
   /** Convenience: build routes with default in-memory sinks, refs, and session store. */
   def routes[F[_]: Async: UUIDGen](
-      serverFactory: (String, SessionContext[F]) => F[Server[F]]
+      serverFactory: (String, SessionContext[F]) => F[ServerFactoryOutput[F]]
   ): Resource[F, HttpRoutes[F]] =
     Resource.eval(SessionStore.inMemory[F]).map { store =>
       buildRoutesFromInit(
@@ -55,7 +61,7 @@ object StreamableHttpTransport:
   /** Build routes with user-supplied per-session factories.
     *
     * @param serverFactory
-    *   receives the new session's id and [[SessionContext]] and produces a `Server[F]`
+    *   receives the new session's id and [[SessionContext]] and produces a `Server[F]` plus a cleanup action
     * @param sinkFactory
     *   builds a [[NotificationSink]] per session id (default: in-memory)
     * @param refsFactory
@@ -64,7 +70,7 @@ object StreamableHttpTransport:
     *   where to persist [[McpSession]]s by id
     */
   def routes[F[_]: Async: UUIDGen](
-      serverFactory: (String, SessionContext[F]) => F[Server[F]],
+      serverFactory: (String, SessionContext[F]) => F[ServerFactoryOutput[F]],
       sinkFactory: String => Resource[F, NotificationSink[F]],
       refsFactory: String => SessionRefs[F],
       store: SessionStore[F]
@@ -76,7 +82,7 @@ object StreamableHttpTransport:
     */
   def authenticatedRoutes[F[_]: Async: UUIDGen, U: Eq](
       authenticate: Request[F] => F[Option[U]],
-      serverFactory: (String, U, SessionContext[F]) => F[Server[F]],
+      serverFactory: (String, U, SessionContext[F]) => F[ServerFactoryOutput[F]],
       onUnauthorized: F[Response[F]],
       sinkFactory: String => Resource[F, NotificationSink[F]],
       refsFactory: String => SessionRefs[F],
@@ -89,7 +95,7 @@ object StreamableHttpTransport:
   /** Convenience: authenticated routes with default in-memory factories and store. */
   def authenticatedRoutes[F[_]: Async: UUIDGen, U: Eq](
       authenticate: Request[F] => F[Option[U]],
-      serverFactory: (String, U, SessionContext[F]) => F[Server[F]],
+      serverFactory: (String, U, SessionContext[F]) => F[ServerFactoryOutput[F]],
       onUnauthorized: F[Response[F]]
   ): Resource[F, HttpRoutes[F]] =
     Resource.eval(AuthenticatedSessionStore.inMemory[F, U]).map { store =>
@@ -123,46 +129,48 @@ object StreamableHttpTransport:
 
   /** Build a session given a SessionContext-aware factory. */
   private def createSessionFromContext[F[_]: Async: UUIDGen](
-      serverFactory: (String, SessionContext[F]) => F[Server[F]],
+      serverFactory: (String, SessionContext[F]) => F[ServerFactoryOutput[F]],
       sinkFactory: String => Resource[F, NotificationSink[F]],
       refsFactory: String => SessionRefs[F],
       store: SessionStore[F]
   ): F[McpSession[F]] =
     for
-      id            <- UUIDGen[F].randomUUID.map(_.toString)
-      sinkPair      <- sinkFactory(id).allocated
-      (sink, _)      = sinkPair
-      ccPair        <- ClientChannel.fromSink[F](sink).allocated
-      (cc, _)        = ccPair
-      ctx            = SessionContext[F](id, cc, refsFactory(id))
-      server        <- serverFactory(id, ctx)
-      handler        = new RequestHandler[F](server, cc.requester, cc.cancellation)
-      subscriptions <- Ref.of[F, Set[String]](Set.empty)
-      session        = McpSession(id, handler, cc, subscriptions)
-      _             <- store.put(session)
+      id                 <- UUIDGen[F].randomUUID.map(_.toString)
+      sinkPair           <- sinkFactory(id).allocated
+      (sink, _)           = sinkPair
+      ccPair             <- ClientChannel.fromSink[F](sink).allocated
+      (cc, _)             = ccPair
+      ctx                 = SessionContext[F](id, cc, refsFactory(id))
+      factoryOut         <- serverFactory(id, ctx)
+      (server, cleanup)   = factoryOut
+      handler             = new RequestHandler[F](server, cc.requester, cc.cancellation)
+      subscriptions      <- Ref.of[F, Set[String]](Set.empty)
+      session             = McpSession(id, handler, cc, subscriptions, cleanup)
+      _                  <- store.put(session)
     yield session
 
   /** Same as [[createSessionFromContext]] but additionally binds the user identity in the authenticated session store. */
   private def createAuthenticatedSession[F[_]: Async: UUIDGen, U](
-      serverFactory: (String, U, SessionContext[F]) => F[Server[F]],
+      serverFactory: (String, U, SessionContext[F]) => F[ServerFactoryOutput[F]],
       sinkFactory: String => Resource[F, NotificationSink[F]],
       refsFactory: String => SessionRefs[F],
       store: AuthenticatedSessionStore[F, U],
       user: U
   ): F[McpSession[F]] =
     for
-      id            <- UUIDGen[F].randomUUID.map(_.toString)
-      sinkPair      <- sinkFactory(id).allocated
-      (sink, _)      = sinkPair
-      ccPair        <- ClientChannel.fromSink[F](sink).allocated
-      (cc, _)        = ccPair
-      ctx            = SessionContext[F](id, cc, refsFactory(id))
-      server        <- serverFactory(id, user, ctx)
-      handler        = new RequestHandler[F](server, cc.requester, cc.cancellation)
-      subscriptions <- Ref.of[F, Set[String]](Set.empty)
-      session        = McpSession(id, handler, cc, subscriptions)
-      _             <- store.put(session)
-      _             <- store.putUser(id, user)
+      id                 <- UUIDGen[F].randomUUID.map(_.toString)
+      sinkPair           <- sinkFactory(id).allocated
+      (sink, _)           = sinkPair
+      ccPair             <- ClientChannel.fromSink[F](sink).allocated
+      (cc, _)             = ccPair
+      ctx                 = SessionContext[F](id, cc, refsFactory(id))
+      factoryOut         <- serverFactory(id, user, ctx)
+      (server, cleanup)   = factoryOut
+      handler             = new RequestHandler[F](server, cc.requester, cc.cancellation)
+      subscriptions      <- Ref.of[F, Set[String]](Set.empty)
+      session             = McpSession(id, handler, cc, subscriptions, cleanup)
+      _                  <- store.put(session)
+      _                  <- store.putUser(id, user)
     yield session
 
   // ── Routes assembly ────────────────────────────────────────────────
@@ -239,7 +247,9 @@ object StreamableHttpTransport:
         getSessionId(req) match
           case None      => BadRequest("Missing Mcp-Session-Id header")
           case Some(sid) =>
-            store.get(sid).flatMap(_.traverse_(_.clientChannel.cancellation.cancelAll)) *>
+            store.get(sid).flatMap(_.traverse_ { s =>
+              s.clientChannel.cancellation.cancelAll *> s.cleanup
+            }) *>
               store.remove(sid) *>
               Ok("Session terminated")
     }
@@ -249,7 +259,7 @@ object StreamableHttpTransport:
     */
   private def buildAuthenticatedRoutes[F[_]: Async: UUIDGen, U: Eq](
       authenticate: Request[F] => F[Option[U]],
-      serverFactory: (String, U, SessionContext[F]) => F[Server[F]],
+      serverFactory: (String, U, SessionContext[F]) => F[ServerFactoryOutput[F]],
       sinkFactory: String => Resource[F, NotificationSink[F]],
       refsFactory: String => SessionRefs[F],
       store: AuthenticatedSessionStore[F, U],
@@ -341,7 +351,9 @@ object StreamableHttpTransport:
               case Some(sid) =>
                 store.getUser(sid).flatMap {
                   case Some(storedUser) if storedUser === user =>
-                    store.get(sid).flatMap(_.traverse_(_.clientChannel.cancellation.cancelAll)) *>
+                    store.get(sid).flatMap(_.traverse_ { s =>
+                      s.clientChannel.cancellation.cancelAll *> s.cleanup
+                    }) *>
                       store.remove(sid) *>
                       Ok("Session terminated")
                   case Some(_) => Forbidden("Credential mismatch")
