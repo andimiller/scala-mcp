@@ -77,6 +77,17 @@ class Notebook[F[_]: Async](
   def noteForUser(noteId: String, viewer: String): F[Option[Note]] =
     notes.get.map(_.get(noteId).filter(n => n.owner === viewer || n.sharedWith.contains(viewer)))
 
+  /** Admin-only: list every note across every user, ignoring ownership and share lists. */
+  def listAllNotes: F[List[NoteSummary]] =
+    notes.get.map(_.values.map(n => NoteSummary(n.id, n.title, n.owner)).toList)
+
+  /** Admin-only: delete a note regardless of who owns it. */
+  def deleteNote(noteId: String): F[Either[String, Unit]] =
+    notes.modify { ns =>
+      if ns.contains(noteId) then (ns - noteId, Right(()))
+      else (ns, Left("Note not found"))
+    }
+
 object Notebook:
 
   def create[F[_]: Async]: F[Notebook[F]] =

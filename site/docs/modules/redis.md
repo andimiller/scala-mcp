@@ -31,7 +31,7 @@ def withRedis(
     redis: RedisCommands[IO, String, String],
     pubSub: PubSubCommands[IO, [x] =>> Stream[IO, x], String, String]
 ) =
-  McpRedis.configure[IO, Unit](redis, pubSub)
+  McpRedis.configure[IO, Unit, Unit](redis, pubSub)
     .apply(McpHttp.streaming[IO].name("my-server").version("1.0.0").port(port"8080"))
     .serve
     .useForever

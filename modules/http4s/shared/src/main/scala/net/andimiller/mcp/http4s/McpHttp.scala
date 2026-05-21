@@ -44,8 +44,8 @@ object McpHttp:
       mExtraRoutes = HttpRoutes.empty[F]
     )
 
-  def streaming[F[_]: Async]: StreamingMcpHttpBuilder[F, Unit] =
-    new StreamingMcpHttpBuilder[F, Unit](
+  def streaming[F[_]: Async]: StreamingMcpHttpBuilder[F, Unit, Unit] =
+    new StreamingMcpHttpBuilder[F, Unit, Unit](
       mName = "",
       mVersion = "",
       mConfig = McpHttpConfig(),

@@ -93,7 +93,7 @@ object ChatMcpServer extends IOApp.Simple:
       redis    <- Redis[IO].fromClient(client, RedisCodec.Utf8)
       pubSub   <- PubSub.mkPubSubConnection[IO, String, String](client, RedisCodec.Utf8)
       service   = ChatService(redis)
-      configure = McpRedis.configure[IO, Unit](redis, pubSub, 1.hour)
+      configure = McpRedis.configure[IO, Unit, Unit](redis, pubSub, 1.hour)
       server   <- configure(
                   McpHttp
                     .streaming[IO]

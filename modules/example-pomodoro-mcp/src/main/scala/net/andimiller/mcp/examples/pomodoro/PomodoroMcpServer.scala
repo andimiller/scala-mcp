@@ -75,7 +75,7 @@ object PomodoroMcpServer extends IOApp.Simple:
   /** Wires all tools, resources, prompts and capabilities onto the given builder. Call `.stateful[PomodoroTimer]`
     * internally so callers only need a `Unit`-context builder.
     */
-  def configure(builder: StreamingMcpHttpBuilder[IO, Unit]): StreamingMcpHttpBuilder[IO, PomodoroTimer] =
+  def configure(builder: StreamingMcpHttpBuilder[IO, Unit, Unit]): StreamingMcpHttpBuilder[IO, Unit, PomodoroTimer] =
     builder
       .title("Pomodoro")
       .description("Run pomodoro timers over MCP.")

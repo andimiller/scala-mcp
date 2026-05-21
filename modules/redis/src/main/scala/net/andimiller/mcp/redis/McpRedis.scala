@@ -37,11 +37,11 @@ object McpRedis:
     * @param ttl
     *   TTL for session keys and state (default: 1 hour)
     */
-  def configure[F[_]: Async, Ctx](
+  def configure[F[_]: Async, A, Ctx](
       redis: RedisCommands[F, String, String],
       pubSub: PubSubCommands[F, [x] =>> Stream[F, x], String, String],
       ttl: FiniteDuration = 1.hour
-  ): StreamingMcpHttpBuilder[F, Ctx] => StreamingMcpHttpBuilder[F, Ctx] =
+  ): StreamingMcpHttpBuilder[F, A, Ctx] => StreamingMcpHttpBuilder[F, A, Ctx] =
     builder =>
       builder
         .withNotificationSinkFactory(id => RedisNotificationSink.create(pubSub, id))

@@ -11,6 +11,7 @@ A Scala 3 library for building [Model Context Protocol (MCP)](https://modelconte
 - **Fluent Builder API** — Easy-to-use builders for constructing servers, tools, resources, and prompts
 - **Effect-Polymorphic** — Built on Cats Effect for composable, functional programming
 - **Zero Boilerplate** — Leverage Scala 3's `derives` syntax for automatic codec derivation
+- **Per-User Tool Visibility** — Gate tools by authenticated user with `.withToolIf` / `.withToolIfF` on the streaming HTTP builder
 
 ## Module Structure
 

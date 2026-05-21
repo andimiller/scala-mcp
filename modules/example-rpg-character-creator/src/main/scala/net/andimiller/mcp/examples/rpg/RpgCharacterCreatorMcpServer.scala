@@ -139,7 +139,7 @@ object RpgCharacterCreatorMcpServer extends IOApp.Simple:
 
   // ── Builder configuration ──────────────────────────────────────────
 
-  def configure(builder: StreamingMcpHttpBuilder[IO, Unit]): StreamingMcpHttpBuilder[IO, CreatorState] =
+  def configure(builder: StreamingMcpHttpBuilder[IO, Unit, Unit]): StreamingMcpHttpBuilder[IO, Unit, CreatorState] =
     builder
       .stateful[CreatorState](ctx => CreatorState.create(ctx.elicitation))
       .withContextualTool(
