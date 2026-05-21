@@ -141,6 +141,7 @@
     <li class="level2 nav-leaf"><a href="../getting-started/prompts.html">Prompts</a></li>
     <li class="level2 nav-leaf"><a href="../getting-started/json-schema-derivation.html">JSON Schema derivation</a></li>
     <li class="level2 nav-leaf"><a href="../getting-started/server-construction.html">Server construction</a></li>
+    <li class="level2 nav-leaf"><a href="../getting-started/per-user-tools.html">Per-user tool visibility</a></li>
     <li class="level1 nav-header">Clients</li>
     <li class="level2 nav-leaf"><a href="../clients/">Clients</a></li>
     <li class="level2 nav-leaf"><a href="../clients/client-construction.html">Client construction</a></li>
@@ -203,7 +204,7 @@
         server builder, plug in whatever <code>Trace[F]</code> instance your app already
         uses, and tool calls show up in your tracing backend with built-in
         attributes plus anything else you care to extract from the request.</p>
-        <pre class="keep-together pdf epub"><code class="nohighlight"><span class="identifier">libraryDependencies</span><span> += </span><span class="string-literal">&quot;net.andimiller.mcp&quot;</span><span> %% </span><span class="string-literal">&quot;mcp-trace4cats&quot;</span><span> % </span><span class="string-literal">&quot;0.11.0&quot;</span></code></pre>
+        <pre class="keep-together pdf epub"><code class="nohighlight"><span class="identifier">libraryDependencies</span><span> += </span><span class="string-literal">&quot;net.andimiller.mcp&quot;</span><span> %% </span><span class="string-literal">&quot;mcp-trace4cats&quot;</span><span> % </span><span class="string-literal">&quot;0.12.0&quot;</span></code></pre>
         <p>The module depends on <code>trace4cats-core</code> only — exporters, samplers, and
         the choice of <code>Trace[F]</code> instance stay yours.</p>
         

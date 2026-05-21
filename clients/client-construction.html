@@ -141,6 +141,7 @@
     <li class="level2 nav-leaf"><a href="../getting-started/prompts.html">Prompts</a></li>
     <li class="level2 nav-leaf"><a href="../getting-started/json-schema-derivation.html">JSON Schema derivation</a></li>
     <li class="level2 nav-leaf"><a href="../getting-started/server-construction.html">Server construction</a></li>
+    <li class="level2 nav-leaf"><a href="../getting-started/per-user-tools.html">Per-user tool visibility</a></li>
     <li class="level1 nav-header">Clients</li>
     <li class="level2 nav-leaf"><a href="index.html">Clients</a></li>
     <li class="level2 active nav-leaf"><a href="#">Client construction</a></li>
@@ -205,14 +206,14 @@
         <h2 id="adding-the-dependency" class="section"><a class="anchor-link left" href="#adding-the-dependency"><i class="icofont-laika link">&#xef71;</i></a>Adding the dependency</h2>
         <pre class="keep-together pdf epub"><code class="nohighlight"><span class="comment">// stdio client (spawn a subprocess MCP server)
 </span><span class="identifier">libraryDependencies</span><span> ++= </span><span class="type-name">Seq</span><span>(
-  </span><span class="string-literal">&quot;net.andimiller.mcp&quot;</span><span> %%% </span><span class="string-literal">&quot;mcp-core&quot;</span><span>  % </span><span class="string-literal">&quot;0.11.0&quot;</span><span>,
-  </span><span class="string-literal">&quot;net.andimiller.mcp&quot;</span><span> %%% </span><span class="string-literal">&quot;mcp-stdio&quot;</span><span> % </span><span class="string-literal">&quot;0.11.0&quot;</span><span>
+  </span><span class="string-literal">&quot;net.andimiller.mcp&quot;</span><span> %%% </span><span class="string-literal">&quot;mcp-core&quot;</span><span>  % </span><span class="string-literal">&quot;0.12.0&quot;</span><span>,
+  </span><span class="string-literal">&quot;net.andimiller.mcp&quot;</span><span> %%% </span><span class="string-literal">&quot;mcp-stdio&quot;</span><span> % </span><span class="string-literal">&quot;0.12.0&quot;</span><span>
 )
 
 </span><span class="comment">// streamable HTTP client
 </span><span class="identifier">libraryDependencies</span><span> ++= </span><span class="type-name">Seq</span><span>(
-  </span><span class="string-literal">&quot;net.andimiller.mcp&quot;</span><span> %%% </span><span class="string-literal">&quot;mcp-core&quot;</span><span>   % </span><span class="string-literal">&quot;0.11.0&quot;</span><span>,
-  </span><span class="string-literal">&quot;net.andimiller.mcp&quot;</span><span> %%% </span><span class="string-literal">&quot;mcp-http4s&quot;</span><span> % </span><span class="string-literal">&quot;0.11.0&quot;</span><span>,
+  </span><span class="string-literal">&quot;net.andimiller.mcp&quot;</span><span> %%% </span><span class="string-literal">&quot;mcp-core&quot;</span><span>   % </span><span class="string-literal">&quot;0.12.0&quot;</span><span>,
+  </span><span class="string-literal">&quot;net.andimiller.mcp&quot;</span><span> %%% </span><span class="string-literal">&quot;mcp-http4s&quot;</span><span> % </span><span class="string-literal">&quot;0.12.0&quot;</span><span>,
   </span><span class="string-literal">&quot;org.http4s&quot;</span><span>         %%% </span><span class="string-literal">&quot;http4s-ember-client&quot;</span><span> % </span><span class="string-literal">&quot;0.23.34&quot;</span><span>
 )</span></code></pre>
         <p>The HTTP client takes any <code>org.http4s.client.Client[F]</code>; ember-client is the

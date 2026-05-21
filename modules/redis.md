@@ -10,7 +10,7 @@ in-memory — the right move for multi-replica deployments and when sessions
 need to survive process restarts.
 
 ```scala
-libraryDependencies += "net.andimiller.mcp" %% "mcp-redis" % "0.11.0"
+libraryDependencies += "net.andimiller.mcp" %% "mcp-redis" % "0.12.0"
 ```
 
 `McpRedis.configure` returns a function that swaps a streaming builder's
@@ -31,7 +31,7 @@ def withRedis(
     redis: RedisCommands[IO, String, String],
     pubSub: PubSubCommands[IO, [x] =>> Stream[IO, x], String, String]
 ) =
-  McpRedis.configure[IO, Unit](redis, pubSub)
+  McpRedis.configure[IO, Unit, Unit](redis, pubSub)
     .apply(McpHttp.streaming[IO].name("my-server").version("1.0.0").port(port"8080"))
     .serve
     .useForever

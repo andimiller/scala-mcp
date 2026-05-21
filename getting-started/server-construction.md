@@ -113,3 +113,39 @@ val streamingServer =
 calls compose into a tuple-shaped context. See [Examples](../examples/index.md) — the
 Shared Notebook server uses `.authenticated` for HTTP Basic auth, and the
 Pomodoro server uses `.stateful` for per-session timers.
+
+## Per-user tool visibility
+
+After `.authenticated[U]`, tools can be gated on the authenticated user
+with `.withToolIf` / `.withContextualToolIf` (and their `F`-suffixed
+overloads for effectful predicates). The predicate is evaluated once per
+session at init time; tools that don't pass are filtered out before
+`tools/list` is answered.
+
+```scala
+import cats.Eq
+import net.andimiller.mcp.http4s.McpHttp
+import org.http4s.{Request, Response, Status}
+
+case class User(name: String, isAdmin: Boolean)
+given Eq[User] = Eq.fromUniversalEquals
+
+McpHttp.streaming[IO]
+  .name("my-server").version("1.0.0")
+  .authenticated[User](
+    extract = (_: Request[IO]) => IO.pure(None),
+    onUnauthorized = Response[IO](Status.Unauthorized)
+  )
+  .withContextualTool(
+    contextualTool[User].name("status").in[Req].out[Resp]
+      .run((user, _) => IO.pure(Resp(s"hi ${user.name}")))
+  )
+  .withContextualToolIf((u: User) => u.isAdmin)(
+    contextualTool[User].name("reset").in[Req].out[Resp]
+      .run((user, _) => IO.pure(Resp(s"reset by ${user.name}")))
+  )
+```
+
+See [Per-user tool visibility](per-user-tools.md) for the full story —
+effectful predicates, hidden-tool semantics, and the compile-time
+`.authenticated[U]` requirement.

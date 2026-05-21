@@ -141,6 +141,7 @@
     <li class="level2 nav-leaf"><a href="../getting-started/prompts.html">Prompts</a></li>
     <li class="level2 nav-leaf"><a href="../getting-started/json-schema-derivation.html">JSON Schema derivation</a></li>
     <li class="level2 nav-leaf"><a href="../getting-started/server-construction.html">Server construction</a></li>
+    <li class="level2 nav-leaf"><a href="../getting-started/per-user-tools.html">Per-user tool visibility</a></li>
     <li class="level1 nav-header">Clients</li>
     <li class="level2 nav-leaf"><a href="../clients/">Clients</a></li>
     <li class="level2 nav-leaf"><a href="../clients/client-construction.html">Client construction</a></li>
@@ -196,7 +197,7 @@
         expected by Claude Desktop and Claude Code&#39;s local server config. A server
         built with <code>core</code> becomes a stdio server by handing it to
         <code>StdioTransport.run</code>.</p>
-        <pre class="keep-together pdf epub"><code class="nohighlight"><span class="identifier">libraryDependencies</span><span> += </span><span class="string-literal">&quot;net.andimiller.mcp&quot;</span><span> %%% </span><span class="string-literal">&quot;mcp-stdio&quot;</span><span> % </span><span class="string-literal">&quot;0.11.0&quot;</span></code></pre>
+        <pre class="keep-together pdf epub"><code class="nohighlight"><span class="identifier">libraryDependencies</span><span> += </span><span class="string-literal">&quot;net.andimiller.mcp&quot;</span><span> %%% </span><span class="string-literal">&quot;mcp-stdio&quot;</span><span> % </span><span class="string-literal">&quot;0.12.0&quot;</span></code></pre>
         <p><code>StdioTransport.run</code> reads JSON-RPC from stdin, dispatches it to your
         <code>Server[F]</code>, and writes responses back to stdout. The whole serve loop is
         one line:</p>

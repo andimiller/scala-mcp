@@ -5,10 +5,10 @@
 Streamable HTTP + SSE transport via http4s Ember. Two builder entry points:
 
 - `McpHttp.basic[IO]` — plain request/response MCP over HTTP
-- `McpHttp.streaming[IO]` — adds session management, resource subscriptions, server-initiated logging, cancellation, and per-session state via `.stateful` / `.authenticated` chains
+- `McpHttp.streaming[IO]` — adds session management, resource subscriptions, server-initiated logging, cancellation, per-session state via `.stateful` / `.authenticated` chains, and [per-user tool visibility](../getting-started/per-user-tools.md) via `.withToolIf`
 
 ```scala
-libraryDependencies += "net.andimiller.mcp" %%% "mcp-http4s" % "0.11.0"
+libraryDependencies += "net.andimiller.mcp" %%% "mcp-http4s" % "0.12.0"
 ```
 
 A minimal HTTP server built on `McpHttp.basic` looks like:

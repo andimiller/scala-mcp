@@ -141,6 +141,7 @@
     <li class="level2 nav-leaf"><a href="../getting-started/prompts.html">Prompts</a></li>
     <li class="level2 nav-leaf"><a href="../getting-started/json-schema-derivation.html">JSON Schema derivation</a></li>
     <li class="level2 nav-leaf"><a href="../getting-started/server-construction.html">Server construction</a></li>
+    <li class="level2 nav-leaf"><a href="../getting-started/per-user-tools.html">Per-user tool visibility</a></li>
     <li class="level1 nav-header">Clients</li>
     <li class="level2 nav-leaf"><a href="../clients/">Clients</a></li>
     <li class="level2 nav-leaf"><a href="../clients/client-construction.html">Client construction</a></li>
@@ -198,7 +199,7 @@
         <code>McpRedis.configure(...)</code> so each session&#39;s state lives in Redis instead of
         in-memory — the right move for multi-replica deployments and when sessions
         need to survive process restarts.</p>
-        <pre class="keep-together pdf epub"><code class="nohighlight"><span class="identifier">libraryDependencies</span><span> += </span><span class="string-literal">&quot;net.andimiller.mcp&quot;</span><span> %% </span><span class="string-literal">&quot;mcp-redis&quot;</span><span> % </span><span class="string-literal">&quot;0.11.0&quot;</span></code></pre>
+        <pre class="keep-together pdf epub"><code class="nohighlight"><span class="identifier">libraryDependencies</span><span> += </span><span class="string-literal">&quot;net.andimiller.mcp&quot;</span><span> %% </span><span class="string-literal">&quot;mcp-redis&quot;</span><span> % </span><span class="string-literal">&quot;0.12.0&quot;</span></code></pre>
         <p><code>McpRedis.configure</code> returns a function that swaps a streaming builder&#39;s
         in-memory factories for Redis-backed ones — session store, session refs,
         and notification sink. Apply it before any <code>.stateful</code> / <code>.authenticated</code>
@@ -215,7 +216,7 @@
     </span><span class="identifier">redis</span><span>: </span><span class="type-name">RedisCommands</span><span>[</span><span class="type-name">IO</span><span>, </span><span class="type-name">String</span><span>, </span><span class="type-name">String</span><span>],
     </span><span class="identifier">pubSub</span><span>: </span><span class="type-name">PubSubCommands</span><span>[</span><span class="type-name">IO</span><span>, [</span><span class="identifier">x</span><span>] =&gt;&gt; </span><span class="type-name">Stream</span><span>[</span><span class="type-name">IO</span><span>, </span><span class="identifier">x</span><span>], </span><span class="type-name">String</span><span>, </span><span class="type-name">String</span><span>]
 ) =
-  </span><span class="type-name">McpRedis</span><span>.</span><span class="identifier">configure</span><span>[</span><span class="type-name">IO</span><span>, </span><span class="type-name">Unit</span><span>](</span><span class="identifier">redis</span><span>, </span><span class="identifier">pubSub</span><span>)
+  </span><span class="type-name">McpRedis</span><span>.</span><span class="identifier">configure</span><span>[</span><span class="type-name">IO</span><span>, </span><span class="type-name">Unit</span><span>, </span><span class="type-name">Unit</span><span>](</span><span class="identifier">redis</span><span>, </span><span class="identifier">pubSub</span><span>)
     .</span><span class="identifier">apply</span><span>(</span><span class="type-name">McpHttp</span><span>.</span><span class="identifier">streaming</span><span>[</span><span class="type-name">IO</span><span>].</span><span class="identifier">name</span><span>(</span><span class="string-literal">&quot;my-server&quot;</span><span>).</span><span class="identifier">version</span><span>(</span><span class="string-literal">&quot;1.0.0&quot;</span><span>).</span><span class="identifier">port</span><span>(</span><span class="string-literal">port&quot;8080&quot;</span><span>))
     .</span><span class="identifier">serve</span><span>
     .</span><span class="identifier">useForever</span></code></pre>

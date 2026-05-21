@@ -9,7 +9,7 @@ uses, and tool calls show up in your tracing backend with built-in
 attributes plus anything else you care to extract from the request.
 
 ```scala
-libraryDependencies += "net.andimiller.mcp" %% "mcp-trace4cats" % "0.11.0"
+libraryDependencies += "net.andimiller.mcp" %% "mcp-trace4cats" % "0.12.0"
 ```
 
 The module depends on `trace4cats-core` only — exporters, samplers, and

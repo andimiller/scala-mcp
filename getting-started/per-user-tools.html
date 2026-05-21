@@ -15,8 +15,8 @@
   <meta name="generator" content="Typelevel Laika + Helium Theme" />
   <meta name="x-llms-txt" content="https://andimiller.github.io/scala-mcp/llms.txt"/>
   <meta name="x-llms-full-txt" content="https://andimiller.github.io/scala-mcp/llms-full.txt"/>
-  <title>Quick start - Scala MCP Library</title>
-  <link rel="alternate" type="text/markdown" href="quick-start.md" title="Markdown source"/>
+  <title>Per-user tool visibility - Scala MCP Library</title>
+  <link rel="alternate" type="text/markdown" href="per-user-tools.md" title="Markdown source"/>
   
   <meta name="author" content="scala-mcp contributors"/>
   
@@ -28,8 +28,8 @@
   
   <meta property="og:type" content="website"/>
   <meta name="twitter:card" content="summary_large_image"/>
-  <meta property="og:title" content="Quick start"/>
-  <meta name="twitter:title" content="Quick start"/>
+  <meta property="og:title" content="Per-user tool visibility"/>
+  <meta name="twitter:title" content="Per-user tool visibility"/>
   
   <meta property="og:description" content="A Scala 3 library for building Model Context Protocol (MCP) servers. Cross-platform (JVM, JS, Native), built on Cats Effect, with automatic JSON Schema derivation."/>
   <meta name="twitter:description" content="A Scala 3 library for building Model Context Protocol (MCP) servers. Cross-platform (JVM, JS, Native), built on Cats Effect, with automatic JSON Schema derivation."/>
@@ -134,14 +134,14 @@
     <li class="level1 nav-header">Introduction</li>
     <li class="level2 nav-leaf"><a href="../introduction/feature-support.html">MCP feature support</a></li>
     <li class="level1 nav-header">Getting Started</li>
-    <li class="level2 active nav-leaf"><a href="#">Quick start</a></li>
+    <li class="level2 nav-leaf"><a href="quick-start.html">Quick start</a></li>
     <li class="level2 nav-leaf"><a href="tools.html">Tools</a></li>
     <li class="level2 nav-leaf"><a href="tool-metadata.html">Tool metadata</a></li>
     <li class="level2 nav-leaf"><a href="resources.html">Resources &amp; resource templates</a></li>
     <li class="level2 nav-leaf"><a href="prompts.html">Prompts</a></li>
     <li class="level2 nav-leaf"><a href="json-schema-derivation.html">JSON Schema derivation</a></li>
     <li class="level2 nav-leaf"><a href="server-construction.html">Server construction</a></li>
-    <li class="level2 nav-leaf"><a href="per-user-tools.html">Per-user tool visibility</a></li>
+    <li class="level2 active nav-leaf"><a href="#">Per-user tool visibility</a></li>
     <li class="level1 nav-header">Clients</li>
     <li class="level2 nav-leaf"><a href="../clients/">Clients</a></li>
     <li class="level2 nav-leaf"><a href="../clients/client-construction.html">Client construction</a></li>
@@ -180,14 +180,14 @@
 
       
 <nav id="page-nav">
-  <p class="header"><a href="#">Quick start</a></p>
+  <p class="header"><a href="#">Per-user tool visibility</a></p>
 
   <ul class="nav-list">
-    <li class="level1 nav-leaf"><a href="#adding-the-dependency">Adding the dependency</a></li>
-    <li class="level1 nav-leaf"><a href="#defining-a-tool">Defining a tool</a></li>
-    <li class="level1 nav-leaf"><a href="#stdio-server">Stdio server</a></li>
-    <li class="level1 nav-leaf"><a href="#http-server">HTTP server</a></li>
-    <li class="level1 nav-leaf"><a href="#where-to-next">Where to next</a></li>
+    <li class="level1 nav-leaf"><a href="#withcontextualtoolif-gate-on-a-pure-predicate"><code>.withContextualToolIf</code> — gate on a pure predicate</a></li>
+    <li class="level1 nav-leaf"><a href="#withcontextualtooliff-gate-on-an-effectful-predicate"><code>.withContextualToolIfF</code> — gate on an effectful predicate</a></li>
+    <li class="level1 nav-leaf"><a href="#non-contextual-variants">Non-contextual variants</a></li>
+    <li class="level1 nav-leaf"><a href="#hidden-tools-and-the-authenticated-u-requirement">Hidden tools and the <code>.authenticated[U]</code> requirement</a></li>
+    <li class="level1 nav-leaf"><a href="#worked-example">Worked example</a></li>
   </ul>
 
   <p class="footer"></p>
@@ -196,90 +196,92 @@
 
       <main class="content">
 
-        <h1 id="quick-start" class="title"><a class="md-link" href="quick-start.md" title="View this page as raw Markdown">[md]</a>Quick start</h1>
-        <p>This page walks you from an empty sbt project to a runnable MCP server. The
-        same tool is wired to two transports below — pick stdio for subprocess-based
-        clients (Claude Desktop, Claude Code) or HTTP for a networked server.</p>
-        
-        <h2 id="adding-the-dependency" class="section"><a class="anchor-link left" href="#adding-the-dependency"><i class="icofont-laika link">&#xef71;</i></a>Adding the dependency</h2>
-        <pre><code class="nohighlight"><span class="comment">// For stdio-based servers
-</span><span class="identifier">libraryDependencies</span><span> ++= </span><span class="type-name">Seq</span><span>(
-  </span><span class="string-literal">&quot;net.andimiller.mcp&quot;</span><span> %%% </span><span class="string-literal">&quot;mcp-core&quot;</span><span>  % </span><span class="string-literal">&quot;0.12.0&quot;</span><span>,
-  </span><span class="string-literal">&quot;net.andimiller.mcp&quot;</span><span> %%% </span><span class="string-literal">&quot;mcp-stdio&quot;</span><span> % </span><span class="string-literal">&quot;0.12.0&quot;</span><span>
-)
-
-</span><span class="comment">// For HTTP-based servers
-</span><span class="identifier">libraryDependencies</span><span> ++= </span><span class="type-name">Seq</span><span>(
-  </span><span class="string-literal">&quot;net.andimiller.mcp&quot;</span><span> %%% </span><span class="string-literal">&quot;mcp-core&quot;</span><span>   % </span><span class="string-literal">&quot;0.12.0&quot;</span><span>,
-  </span><span class="string-literal">&quot;net.andimiller.mcp&quot;</span><span> %%% </span><span class="string-literal">&quot;mcp-http4s&quot;</span><span> % </span><span class="string-literal">&quot;0.12.0&quot;</span><span>
-)
-
-</span><span class="comment">// Optional: Redis-backed session/state for stateful HTTP servers
-</span><span class="identifier">libraryDependencies</span><span> += </span><span class="string-literal">&quot;net.andimiller.mcp&quot;</span><span> %% </span><span class="string-literal">&quot;mcp-redis&quot;</span><span> % </span><span class="string-literal">&quot;0.12.0&quot;</span></code></pre>
-        
-        <h2 id="defining-a-tool" class="section"><a class="anchor-link left" href="#defining-a-tool"><i class="icofont-laika link">&#xef71;</i></a>Defining a tool</h2>
-        <p>A tool needs typed request/response case classes — <code>derives JsonSchema</code> plus a
-        circe codec for each. The fluent <code>tool</code> builder gives the schemas + handler
-        to the server:</p>
-        <pre><code class="nohighlight"><span class="keyword">import</span><span> </span><span class="identifier">cats</span><span>.</span><span class="identifier">effect</span><span>.</span><span class="type-name">IO</span><span>
+        <h1 id="per-user-tool-visibility" class="title"><a class="md-link" href="per-user-tools.md" title="View this page as raw Markdown">[md]</a>Per-user tool visibility</h1>
+        <p>When a <code>StreamingMcpHttpBuilder</code> is <code>.authenticated[U]</code>, the initial set of
+        tools advertised to each session can be filtered by the authenticated user.
+        <code>.withToolIf</code> / <code>.withToolIfF</code> and their contextual counterparts gate a
+        tool&#39;s registration on a predicate over <code>U</code> — admins see one surface,
+        regular users see another, and tools that get filtered out behave exactly
+        like tools that don&#39;t exist.</p>
+        <p>This is the <em>initial</em> tool set per session, decided at session init. It is
+        not <code>tools/list_changed</code> mid-session — MCP client support for that is too
+        patchy today.</p>
+        <pre><code class="nohighlight"><span class="keyword">import</span><span> </span><span class="identifier">cats</span><span>.</span><span class="type-name">Eq</span><span>
+</span><span class="keyword">import</span><span> </span><span class="identifier">cats</span><span>.</span><span class="identifier">effect</span><span>.</span><span class="type-name">IO</span><span>
 </span><span class="keyword">import</span><span> </span><span class="identifier">io</span><span>.</span><span class="identifier">circe</span><span>.{</span><span class="type-name">Decoder</span><span>, </span><span class="type-name">Encoder</span><span>}
 </span><span class="keyword">import</span><span> </span><span class="identifier">net</span><span>.</span><span class="identifier">andimiller</span><span>.</span><span class="identifier">mcp</span><span>.</span><span class="identifier">core</span><span>.</span><span class="identifier">schema</span><span>.</span><span class="type-name">JsonSchema</span><span>
 </span><span class="keyword">import</span><span> </span><span class="identifier">net</span><span>.</span><span class="identifier">andimiller</span><span>.</span><span class="identifier">mcp</span><span>.</span><span class="identifier">core</span><span>.</span><span class="identifier">server</span><span>.*
-
-</span><span class="keyword">case</span><span> </span><span class="keyword">class</span><span> </span><span class="type-name">GreetRequest</span><span>(</span><span class="identifier">name</span><span>: </span><span class="type-name">String</span><span>) </span><span class="keyword">derives</span><span> </span><span class="type-name">JsonSchema</span><span>, </span><span class="type-name">Decoder</span><span>
-</span><span class="keyword">case</span><span> </span><span class="keyword">class</span><span> </span><span class="type-name">GreetResponse</span><span>(</span><span class="identifier">message</span><span>: </span><span class="type-name">String</span><span>) </span><span class="keyword">derives</span><span> </span><span class="type-name">JsonSchema</span><span>, </span><span class="type-name">Encoder</span><span>.</span><span class="type-name">AsObject</span><span>
-
-</span><span class="keyword">val</span><span> </span><span class="identifier">greetTool</span><span>: </span><span class="type-name">Tool</span><span>[</span><span class="type-name">IO</span><span>, </span><span class="type-name">Unit</span><span>] =
-  </span><span class="identifier">tool</span><span>.</span><span class="identifier">name</span><span>(</span><span class="string-literal">&quot;greet&quot;</span><span>)
-    .</span><span class="identifier">description</span><span>(</span><span class="string-literal">&quot;Greet someone by name&quot;</span><span>)
-    .</span><span class="identifier">in</span><span>[</span><span class="type-name">GreetRequest</span><span>]
-    .</span><span class="identifier">out</span><span>[</span><span class="type-name">GreetResponse</span><span>]
-    .</span><span class="identifier">run</span><span>(</span><span class="identifier">req</span><span> =&gt; </span><span class="type-name">IO</span><span>.</span><span class="identifier">pure</span><span>(</span><span class="type-name">GreetResponse</span><span>(</span><span class="string-literal">s&quot;Hello, </span><span class="substitution">${req.name}</span><span class="string-literal">!&quot;</span><span>)))</span></code></pre>
-        
-        <h2 id="stdio-server" class="section"><a class="anchor-link left" href="#stdio-server"><i class="icofont-laika link">&#xef71;</i></a>Stdio server</h2>
-        <p>A <code>Server[IO]</code> built with <code>ServerBuilder</code> becomes a stdio server by handing
-        it to <code>StdioTransport.run</code>. This is what Claude Desktop / Claude Code expect
-        for local MCP servers:</p>
-        <pre class="keep-together pdf epub"><code class="nohighlight"><span class="keyword">import</span><span> </span><span class="identifier">cats</span><span>.</span><span class="identifier">effect</span><span>.{</span><span class="type-name">IO</span><span>, </span><span class="type-name">IOApp</span><span>}
-</span><span class="keyword">import</span><span> </span><span class="identifier">net</span><span>.</span><span class="identifier">andimiller</span><span>.</span><span class="identifier">mcp</span><span>.</span><span class="identifier">core</span><span>.</span><span class="identifier">server</span><span>.*
-</span><span class="keyword">import</span><span> </span><span class="identifier">net</span><span>.</span><span class="identifier">andimiller</span><span>.</span><span class="identifier">mcp</span><span>.</span><span class="identifier">stdio</span><span>.</span><span class="type-name">StdioTransport</span><span>
-
-</span><span class="keyword">object</span><span> </span><span class="type-name">MyStdioServer</span><span> </span><span class="keyword">extends</span><span> </span><span class="type-name">IOApp</span><span>.</span><span class="type-name">Simple</span><span>:
-  </span><span class="keyword">def</span><span> </span><span class="declaration-name">server</span><span>: </span><span class="type-name">IO</span><span>[</span><span class="type-name">Server</span><span>[</span><span class="type-name">IO</span><span>]] =
-    </span><span class="type-name">ServerBuilder</span><span>[</span><span class="type-name">IO</span><span>](</span><span class="string-literal">&quot;my-server&quot;</span><span>, </span><span class="string-literal">&quot;1.0.0&quot;</span><span>)
-      .</span><span class="identifier">withTool</span><span>(</span><span class="identifier">greetTool</span><span>)
-      .</span><span class="identifier">build</span><span>
-
-  </span><span class="keyword">def</span><span> </span><span class="declaration-name">run</span><span>: </span><span class="type-name">IO</span><span>[</span><span class="type-name">Unit</span><span>] = </span><span class="identifier">server</span><span>.</span><span class="identifier">flatMap</span><span>(</span><span class="type-name">StdioTransport</span><span>.</span><span class="identifier">run</span><span>[</span><span class="type-name">IO</span><span>])</span></code></pre>
-        <p>Run it with <code>sbt run</code> (or <code>nativeLink</code> for a Scala Native binary) and
-        register the resulting command in your client&#39;s MCP config.</p>
-        
-        <h2 id="http-server" class="section"><a class="anchor-link left" href="#http-server"><i class="icofont-laika link">&#xef71;</i></a>HTTP server</h2>
-        <p>Same tool, wired into <code>McpHttp.basic[IO]</code> and served on a port via http4s
-        Ember. This is what you want for networked clients (Cursor&#39;s HTTP transport,
-        remote agents, multi-user setups):</p>
-        <pre class="keep-together pdf epub"><code class="nohighlight"><span class="keyword">import</span><span> </span><span class="identifier">cats</span><span>.</span><span class="identifier">effect</span><span>.{</span><span class="type-name">IO</span><span>, </span><span class="type-name">IOApp</span><span>}
-</span><span class="keyword">import</span><span> </span><span class="identifier">com</span><span>.</span><span class="identifier">comcast</span><span>.</span><span class="identifier">ip4s</span><span>.*
 </span><span class="keyword">import</span><span> </span><span class="identifier">net</span><span>.</span><span class="identifier">andimiller</span><span>.</span><span class="identifier">mcp</span><span>.</span><span class="identifier">http4s</span><span>.</span><span class="type-name">McpHttp</span><span>
+</span><span class="keyword">import</span><span> </span><span class="identifier">org</span><span>.</span><span class="identifier">http4s</span><span>.{</span><span class="type-name">Request</span><span>, </span><span class="type-name">Response</span><span>, </span><span class="type-name">Status</span><span>}
 
-</span><span class="keyword">object</span><span> </span><span class="type-name">MyHttpServer</span><span> </span><span class="keyword">extends</span><span> </span><span class="type-name">IOApp</span><span>.</span><span class="type-name">Simple</span><span>:
-  </span><span class="keyword">def</span><span> </span><span class="declaration-name">run</span><span>: </span><span class="type-name">IO</span><span>[</span><span class="type-name">Unit</span><span>] =
-    </span><span class="type-name">McpHttp</span><span>.</span><span class="identifier">basic</span><span>[</span><span class="type-name">IO</span><span>]
-      .</span><span class="identifier">name</span><span>(</span><span class="string-literal">&quot;my-server&quot;</span><span>).</span><span class="identifier">version</span><span>(</span><span class="string-literal">&quot;1.0.0&quot;</span><span>)
-      .</span><span class="identifier">port</span><span>(</span><span class="string-literal">port&quot;8080&quot;</span><span>)
-      .</span><span class="identifier">withTool</span><span>(</span><span class="identifier">greetTool</span><span>)
-      .</span><span class="identifier">serve</span><span>
-      .</span><span class="identifier">useForever</span></code></pre>
-        <p>Hit it at <code>http://localhost:8080/mcp</code>.</p>
+</span><span class="keyword">case</span><span> </span><span class="keyword">class</span><span> </span><span class="type-name">User</span><span>(</span><span class="identifier">name</span><span>: </span><span class="type-name">String</span><span>, </span><span class="identifier">isAdmin</span><span>: </span><span class="type-name">Boolean</span><span>)
+</span><span class="keyword">object</span><span> </span><span class="type-name">User</span><span>:
+  </span><span class="keyword">given</span><span> </span><span class="type-name">Eq</span><span>[</span><span class="type-name">User</span><span>] = </span><span class="type-name">Eq</span><span>.</span><span class="identifier">fromUniversalEquals</span><span>
+
+</span><span class="keyword">case</span><span> </span><span class="keyword">class</span><span> </span><span class="type-name">Req</span><span>()              </span><span class="keyword">derives</span><span> </span><span class="type-name">JsonSchema</span><span>, </span><span class="type-name">Decoder</span><span>
+</span><span class="keyword">case</span><span> </span><span class="keyword">class</span><span> </span><span class="type-name">Resp</span><span>(</span><span class="identifier">text</span><span>: </span><span class="type-name">String</span><span>) </span><span class="keyword">derives</span><span> </span><span class="type-name">JsonSchema</span><span>, </span><span class="type-name">Decoder</span><span>, </span><span class="type-name">Encoder</span><span>.</span><span class="type-name">AsObject</span><span>
+
+</span><span class="comment">// Any extractor returning F[Option[U]] works — here a stub that always rejects.
+</span><span class="keyword">def</span><span> </span><span class="declaration-name">extract</span><span>(</span><span class="identifier">req</span><span>: </span><span class="type-name">Request</span><span>[</span><span class="type-name">IO</span><span>]): </span><span class="type-name">IO</span><span>[</span><span class="type-name">Option</span><span>[</span><span class="type-name">User</span><span>]] = </span><span class="type-name">IO</span><span>.</span><span class="identifier">pure</span><span>(</span><span class="type-name">None</span><span>)
+</span><span class="keyword">val</span><span> </span><span class="identifier">onUnauthorized</span><span>: </span><span class="type-name">Response</span><span>[</span><span class="type-name">IO</span><span>] = </span><span class="type-name">Response</span><span>[</span><span class="type-name">IO</span><span>](</span><span class="type-name">Status</span><span>.</span><span class="type-name">Unauthorized</span><span>)</span></code></pre>
         
-        <h2 id="where-to-next" class="section"><a class="anchor-link left" href="#where-to-next"><i class="icofont-laika link">&#xef71;</i></a>Where to next</h2>
-        <p>The fluent builders shown above (<code>tool</code>, <code>resource</code>, <code>resourceTemplate</code>,
-        <code>prompt</code>, plus their <code>contextual*</code> variants) are documented in detail in
-        <a href="tools.html">Tools</a>, <a href="resources.html">Resources</a>, and <a href="prompts.html">Prompts</a>.
-        <a href="server-construction.html">Server construction</a> covers the streaming HTTP
-        builder with per-session state, authentication, and the embedded Explorer
-        UI. <a href="../examples/">Examples</a> has six end-to-end runnable servers
-        covering every transport.</p>
+        <h2 id="withcontextualtoolif-gate-on-a-pure-predicate" class="section"><a class="anchor-link left" href="#withcontextualtoolif-gate-on-a-pure-predicate"><i class="icofont-laika link">&#xef71;</i></a><code>.withContextualToolIf</code> — gate on a pure predicate</h2>
+        <p>The common case: a contextual tool whose visibility depends on the
+        authenticated user. The predicate receives the same <code>U</code> that
+        <code>.authenticated[U]</code> extracted; <code>Ctx</code> inside the handler still carries the
+        user (and any <code>.stateful</code> state) so the handler can read it.</p>
+        <pre><code class="nohighlight"><span class="keyword">val</span><span> </span><span class="identifier">publicTool</span><span> =
+  </span><span class="identifier">contextualTool</span><span>[</span><span class="type-name">User</span><span>].</span><span class="identifier">name</span><span>(</span><span class="string-literal">&quot;status&quot;</span><span>).</span><span class="identifier">in</span><span>[</span><span class="type-name">Req</span><span>].</span><span class="identifier">out</span><span>[</span><span class="type-name">Resp</span><span>]
+    .</span><span class="identifier">run</span><span>((</span><span class="identifier">user</span><span>, </span><span class="identifier">_</span><span>) =&gt; </span><span class="type-name">IO</span><span>.</span><span class="identifier">pure</span><span>(</span><span class="type-name">Resp</span><span>(</span><span class="string-literal">s&quot;hi </span><span class="substitution">${user.name}</span><span class="string-literal">&quot;</span><span>)))
+
+</span><span class="keyword">val</span><span> </span><span class="identifier">adminOnlyTool</span><span> =
+  </span><span class="identifier">contextualTool</span><span>[</span><span class="type-name">User</span><span>].</span><span class="identifier">name</span><span>(</span><span class="string-literal">&quot;reset&quot;</span><span>).</span><span class="identifier">in</span><span>[</span><span class="type-name">Req</span><span>].</span><span class="identifier">out</span><span>[</span><span class="type-name">Resp</span><span>]
+    .</span><span class="identifier">run</span><span>((</span><span class="identifier">user</span><span>, </span><span class="identifier">_</span><span>) =&gt; </span><span class="type-name">IO</span><span>.</span><span class="identifier">pure</span><span>(</span><span class="type-name">Resp</span><span>(</span><span class="string-literal">s&quot;reset by </span><span class="substitution">${user.name}</span><span class="string-literal">&quot;</span><span>)))
+
+</span><span class="keyword">val</span><span> </span><span class="identifier">builder</span><span> =
+  </span><span class="type-name">McpHttp</span><span>.</span><span class="identifier">streaming</span><span>[</span><span class="type-name">IO</span><span>]
+    .</span><span class="identifier">name</span><span>(</span><span class="string-literal">&quot;admin-server&quot;</span><span>).</span><span class="identifier">version</span><span>(</span><span class="string-literal">&quot;1.0.0&quot;</span><span>)
+    .</span><span class="identifier">authenticated</span><span>[</span><span class="type-name">User</span><span>](</span><span class="identifier">extract</span><span>, </span><span class="identifier">onUnauthorized</span><span>)
+    .</span><span class="identifier">withContextualTool</span><span>(</span><span class="identifier">publicTool</span><span>)
+    .</span><span class="identifier">withContextualToolIf</span><span>((</span><span class="identifier">u</span><span>: </span><span class="type-name">User</span><span>) =&gt; </span><span class="identifier">u</span><span>.</span><span class="identifier">isAdmin</span><span>)(</span><span class="identifier">adminOnlyTool</span><span>)</span></code></pre>
+        <p>Alice (admin) sees both <code>status</code> and <code>reset</code> in <code>tools/list</code>. Bob
+        (non-admin) sees only <code>status</code>.</p>
+        
+        <h2 id="withcontextualtooliff-gate-on-an-effectful-predicate" class="section"><a class="anchor-link left" href="#withcontextualtooliff-gate-on-an-effectful-predicate"><i class="icofont-laika link">&#xef71;</i></a><code>.withContextualToolIfF</code> — gate on an effectful predicate</h2>
+        <p>If the visibility check needs I/O (database lookup, feature-flag service,
+        etc.), use the <code>F</code>-suffixed overload. The predicate is run once per session
+        at init time.</p>
+        <pre class="keep-together pdf epub"><code class="nohighlight"><span class="keyword">def</span><span> </span><span class="declaration-name">canSeeBeta</span><span>(</span><span class="identifier">u</span><span>: </span><span class="type-name">User</span><span>): </span><span class="type-name">IO</span><span>[</span><span class="type-name">Boolean</span><span>] = </span><span class="type-name">IO</span><span>.</span><span class="identifier">pure</span><span>(</span><span class="identifier">u</span><span>.</span><span class="identifier">name</span><span>.</span><span class="identifier">startsWith</span><span>(</span><span class="string-literal">&quot;a&quot;</span><span>))
+
+</span><span class="keyword">val</span><span> </span><span class="identifier">betaBuilder</span><span> =
+  </span><span class="type-name">McpHttp</span><span>.</span><span class="identifier">streaming</span><span>[</span><span class="type-name">IO</span><span>]
+    .</span><span class="identifier">name</span><span>(</span><span class="string-literal">&quot;beta-server&quot;</span><span>).</span><span class="identifier">version</span><span>(</span><span class="string-literal">&quot;1.0.0&quot;</span><span>)
+    .</span><span class="identifier">authenticated</span><span>[</span><span class="type-name">User</span><span>](</span><span class="identifier">extract</span><span>, </span><span class="identifier">onUnauthorized</span><span>)
+    .</span><span class="identifier">withContextualToolIfF</span><span>((</span><span class="identifier">u</span><span>: </span><span class="type-name">User</span><span>) =&gt; </span><span class="identifier">canSeeBeta</span><span>(</span><span class="identifier">u</span><span>))(</span><span class="identifier">adminOnlyTool</span><span>)</span></code></pre>
+        
+        <h2 id="non-contextual-variants" class="section"><a class="anchor-link left" href="#non-contextual-variants"><i class="icofont-laika link">&#xef71;</i></a>Non-contextual variants</h2>
+        <p><code>.withToolIf</code> / <code>.withToolIfF</code> exist for tools that don&#39;t need the user
+        inside their handler — same predicate shape, same compile-time guard. In
+        practice, gated tools usually want to read the user (for auditing or
+        permission-narrowing), so <code>.withContextualToolIf</code> is the more common
+        choice.</p>
+        
+        <h2 id="hidden-tools-and-the-authenticated-u-requirement" class="section"><a class="anchor-link left" href="#hidden-tools-and-the-authenticated-u-requirement"><i class="icofont-laika link">&#xef71;</i></a>Hidden tools and the <code>.authenticated[U]</code> requirement</h2>
+        <p><code>.withToolIf*</code> is only callable after <code>.authenticated[U]</code>. The builder
+        encodes this with a <code>NotGiven[A =:= Unit]</code> evidence parameter — if you call
+        the method on an unauthenticated builder it&#39;s a compile error, since there
+        is no auth user for the predicate to evaluate against.</p>
+        <p>When a user with insufficient permissions calls a tool that&#39;s been gated
+        away, the server responds with the same error path as a tool that doesn&#39;t
+        exist (<code>-32603</code> &quot;Tool not found: ...&quot;). There&#39;s no distinct &quot;forbidden&quot;
+        error — clients can&#39;t distinguish &quot;you don&#39;t have access to this tool&quot;
+        from &quot;this tool was never registered.&quot;</p>
+        
+        <h2 id="worked-example" class="section"><a class="anchor-link left" href="#worked-example"><i class="icofont-laika link">&#xef71;</i></a>Worked example</h2>
+        <p>The <code>SharedNotebookMcpServer</code> example gates two admin-only tools
+        (<code>list_all_notes</code>, <code>delete_any_note</code>) on <code>UserContext.isAdmin</code>. Connect as
+        alice (admin) to see eight tools; connect as bob to see six. See
+        <a href="../examples/shared-notebook.html">Shared Notebook</a> for the full setup.</p>
 
         
 <hr class="footer-rule"/>

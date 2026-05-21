@@ -141,6 +141,7 @@
     <li class="level2 nav-leaf"><a href="prompts.html">Prompts</a></li>
     <li class="level2 nav-leaf"><a href="json-schema-derivation.html">JSON Schema derivation</a></li>
     <li class="level2 active nav-leaf"><a href="#">Server construction</a></li>
+    <li class="level2 nav-leaf"><a href="per-user-tools.html">Per-user tool visibility</a></li>
     <li class="level1 nav-header">Clients</li>
     <li class="level2 nav-leaf"><a href="../clients/">Clients</a></li>
     <li class="level2 nav-leaf"><a href="../clients/client-construction.html">Client construction</a></li>
@@ -185,6 +186,7 @@
     <li class="level1 nav-leaf"><a href="#stdio-server">Stdio server</a></li>
     <li class="level1 nav-leaf"><a href="#http-server-basic">HTTP server (basic)</a></li>
     <li class="level1 nav-leaf"><a href="#http-server-streaming-with-per-session-state">HTTP server (streaming with per-session state)</a></li>
+    <li class="level1 nav-leaf"><a href="#per-user-tool-visibility">Per-user tool visibility</a></li>
   </ul>
 
   <p class="footer"></p>
@@ -292,6 +294,37 @@
         calls compose into a tuple-shaped context. See <a href="../examples/">Examples</a> — the
         Shared Notebook server uses <code>.authenticated</code> for HTTP Basic auth, and the
         Pomodoro server uses <code>.stateful</code> for per-session timers.</p>
+        
+        <h2 id="per-user-tool-visibility" class="section"><a class="anchor-link left" href="#per-user-tool-visibility"><i class="icofont-laika link">&#xef71;</i></a>Per-user tool visibility</h2>
+        <p>After <code>.authenticated[U]</code>, tools can be gated on the authenticated user
+        with <code>.withToolIf</code> / <code>.withContextualToolIf</code> (and their <code>F</code>-suffixed
+        overloads for effectful predicates). The predicate is evaluated once per
+        session at init time; tools that don&#39;t pass are filtered out before
+        <code>tools/list</code> is answered.</p>
+        <pre><code class="nohighlight"><span class="keyword">import</span><span> </span><span class="identifier">cats</span><span>.</span><span class="type-name">Eq</span><span>
+</span><span class="keyword">import</span><span> </span><span class="identifier">net</span><span>.</span><span class="identifier">andimiller</span><span>.</span><span class="identifier">mcp</span><span>.</span><span class="identifier">http4s</span><span>.</span><span class="type-name">McpHttp</span><span>
+</span><span class="keyword">import</span><span> </span><span class="identifier">org</span><span>.</span><span class="identifier">http4s</span><span>.{</span><span class="type-name">Request</span><span>, </span><span class="type-name">Response</span><span>, </span><span class="type-name">Status</span><span>}
+
+</span><span class="keyword">case</span><span> </span><span class="keyword">class</span><span> </span><span class="type-name">User</span><span>(</span><span class="identifier">name</span><span>: </span><span class="type-name">String</span><span>, </span><span class="identifier">isAdmin</span><span>: </span><span class="type-name">Boolean</span><span>)
+</span><span class="keyword">given</span><span> </span><span class="type-name">Eq</span><span>[</span><span class="type-name">User</span><span>] = </span><span class="type-name">Eq</span><span>.</span><span class="identifier">fromUniversalEquals</span><span>
+
+</span><span class="type-name">McpHttp</span><span>.</span><span class="identifier">streaming</span><span>[</span><span class="type-name">IO</span><span>]
+  .</span><span class="identifier">name</span><span>(</span><span class="string-literal">&quot;my-server&quot;</span><span>).</span><span class="identifier">version</span><span>(</span><span class="string-literal">&quot;1.0.0&quot;</span><span>)
+  .</span><span class="identifier">authenticated</span><span>[</span><span class="type-name">User</span><span>](
+    </span><span class="identifier">extract</span><span> = (</span><span class="identifier">_</span><span>: </span><span class="type-name">Request</span><span>[</span><span class="type-name">IO</span><span>]) =&gt; </span><span class="type-name">IO</span><span>.</span><span class="identifier">pure</span><span>(</span><span class="type-name">None</span><span>),
+    </span><span class="identifier">onUnauthorized</span><span> = </span><span class="type-name">Response</span><span>[</span><span class="type-name">IO</span><span>](</span><span class="type-name">Status</span><span>.</span><span class="type-name">Unauthorized</span><span>)
+  )
+  .</span><span class="identifier">withContextualTool</span><span>(
+    </span><span class="identifier">contextualTool</span><span>[</span><span class="type-name">User</span><span>].</span><span class="identifier">name</span><span>(</span><span class="string-literal">&quot;status&quot;</span><span>).</span><span class="identifier">in</span><span>[</span><span class="type-name">Req</span><span>].</span><span class="identifier">out</span><span>[</span><span class="type-name">Resp</span><span>]
+      .</span><span class="identifier">run</span><span>((</span><span class="identifier">user</span><span>, </span><span class="identifier">_</span><span>) =&gt; </span><span class="type-name">IO</span><span>.</span><span class="identifier">pure</span><span>(</span><span class="type-name">Resp</span><span>(</span><span class="string-literal">s&quot;hi </span><span class="substitution">${user.name}</span><span class="string-literal">&quot;</span><span>)))
+  )
+  .</span><span class="identifier">withContextualToolIf</span><span>((</span><span class="identifier">u</span><span>: </span><span class="type-name">User</span><span>) =&gt; </span><span class="identifier">u</span><span>.</span><span class="identifier">isAdmin</span><span>)(
+    </span><span class="identifier">contextualTool</span><span>[</span><span class="type-name">User</span><span>].</span><span class="identifier">name</span><span>(</span><span class="string-literal">&quot;reset&quot;</span><span>).</span><span class="identifier">in</span><span>[</span><span class="type-name">Req</span><span>].</span><span class="identifier">out</span><span>[</span><span class="type-name">Resp</span><span>]
+      .</span><span class="identifier">run</span><span>((</span><span class="identifier">user</span><span>, </span><span class="identifier">_</span><span>) =&gt; </span><span class="type-name">IO</span><span>.</span><span class="identifier">pure</span><span>(</span><span class="type-name">Resp</span><span>(</span><span class="string-literal">s&quot;reset by </span><span class="substitution">${user.name}</span><span class="string-literal">&quot;</span><span>)))
+  )</span></code></pre>
+        <p>See <a href="per-user-tools.html">Per-user tool visibility</a> for the full story —
+        effectful predicates, hidden-tool semantics, and the compile-time
+        <code>.authenticated[U]</code> requirement.</p>
 
         
 <hr class="footer-rule"/>

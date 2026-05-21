@@ -8,7 +8,7 @@ builders (`tool`, `resource`, `prompt`, plus their `contextual*` variants),
 and the JSON Schema derivation machinery. Every other module depends on this.
 
 ```scala
-libraryDependencies += "net.andimiller.mcp" %%% "mcp-core" % "0.11.0"
+libraryDependencies += "net.andimiller.mcp" %%% "mcp-core" % "0.12.0"
 ```
 
 A taste of the surface — typed I/O case classes derive JSON Schema and circe

@@ -141,6 +141,7 @@
     <li class="level2 nav-leaf"><a href="../getting-started/prompts.html">Prompts</a></li>
     <li class="level2 nav-leaf"><a href="../getting-started/json-schema-derivation.html">JSON Schema derivation</a></li>
     <li class="level2 nav-leaf"><a href="../getting-started/server-construction.html">Server construction</a></li>
+    <li class="level2 nav-leaf"><a href="../getting-started/per-user-tools.html">Per-user tool visibility</a></li>
     <li class="level1 nav-header">Clients</li>
     <li class="level2 nav-leaf"><a href="../clients/">Clients</a></li>
     <li class="level2 nav-leaf"><a href="../clients/client-construction.html">Client construction</a></li>
@@ -196,7 +197,7 @@
         operations into MCP tools. Used by the <a href="../tools/openapi-mcp-proxy.html">OpenAPI MCP Proxy</a>
         CLI but also available directly when you want to embed OpenAPI-driven tool
         generation inside your own server.</p>
-        <pre class="keep-together pdf epub"><code class="nohighlight"><span class="identifier">libraryDependencies</span><span> += </span><span class="string-literal">&quot;net.andimiller.mcp&quot;</span><span> %%% </span><span class="string-literal">&quot;mcp-openapi&quot;</span><span> % </span><span class="string-literal">&quot;0.11.0&quot;</span></code></pre>
+        <pre class="keep-together pdf epub"><code class="nohighlight"><span class="identifier">libraryDependencies</span><span> += </span><span class="string-literal">&quot;net.andimiller.mcp&quot;</span><span> %%% </span><span class="string-literal">&quot;mcp-openapi&quot;</span><span> % </span><span class="string-literal">&quot;0.12.0&quot;</span></code></pre>
         <p>Given a parsed <code>sttp.apispec.openapi.OpenAPI</code>, <code>OpenApiOperation</code> enumerates
         the operations and produces an MCP <code>ToolDefinition</code> per operation —
         input-schema lifted from the operation&#39;s path/query/header parameters and

@@ -8,7 +8,7 @@ CLI but also available directly when you want to embed OpenAPI-driven tool
 generation inside your own server.
 
 ```scala
-libraryDependencies += "net.andimiller.mcp" %%% "mcp-openapi" % "0.11.0"
+libraryDependencies += "net.andimiller.mcp" %%% "mcp-openapi" % "0.12.0"
 ```
 
 Given a parsed `sttp.apispec.openapi.OpenAPI`, `OpenApiOperation` enumerates
