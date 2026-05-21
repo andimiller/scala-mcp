@@ -46,10 +46,7 @@ object StreamableHttpTransport:
       serverFactory: (String, SessionContext[F]) => F[Server[F]]
   ): Resource[F, HttpRoutes[F]] =
     Resource.eval(SessionStore.inMemory[F]).map { store =>
-      buildRoutesFromInit(
-        createSessionFromContext(serverFactory, defaultSinkFactory[F], defaultRefsFactory[F], store),
-        store
-      )
+      unauthenticatedRoutes(serverFactory, defaultSinkFactory[F], defaultRefsFactory[F], store)
     }
 
   /** Build routes with user-supplied per-session factories.
@@ -69,7 +66,7 @@ object StreamableHttpTransport:
       refsFactory: String => SessionRefs[F],
       store: SessionStore[F]
   ): Resource[F, HttpRoutes[F]] =
-    Resource.pure(buildRoutesFromInit(createSessionFromContext(serverFactory, sinkFactory, refsFactory, store), store))
+    Resource.pure(unauthenticatedRoutes(serverFactory, sinkFactory, refsFactory, store))
 
   /** Build authenticated HTTP routes. On `initialize`, the extracted user identity is stored alongside the session;
     * subsequent requests must present credentials for the same user (enforced via `Eq[U]`).
@@ -82,9 +79,7 @@ object StreamableHttpTransport:
       refsFactory: String => SessionRefs[F],
       store: AuthenticatedSessionStore[F, U]
   ): Resource[F, HttpRoutes[F]] =
-    Resource.pure(
-      buildAuthenticatedRoutes(authenticate, serverFactory, sinkFactory, refsFactory, store, onUnauthorized)
-    )
+    Resource.pure(authedRoutes(authenticate, serverFactory, onUnauthorized, sinkFactory, refsFactory, store))
 
   /** Convenience: authenticated routes with default in-memory factories and store. */
   def authenticatedRoutes[F[_]: Async: UUIDGen, U: Eq](
@@ -93,14 +88,7 @@ object StreamableHttpTransport:
       onUnauthorized: F[Response[F]]
   ): Resource[F, HttpRoutes[F]] =
     Resource.eval(AuthenticatedSessionStore.inMemory[F, U]).map { store =>
-      buildAuthenticatedRoutes(
-        authenticate,
-        serverFactory,
-        defaultSinkFactory[F],
-        defaultRefsFactory[F],
-        store,
-        onUnauthorized
-      )
+      authedRoutes(authenticate, serverFactory, onUnauthorized, defaultSinkFactory[F], defaultRefsFactory[F], store)
     }
 
   // ── Defaults ───────────────────────────────────────────────────────
@@ -167,9 +155,71 @@ object StreamableHttpTransport:
 
   // ── Routes assembly ────────────────────────────────────────────────
 
-  /** The actual routing shape, parameterised on how a new session is initialised. */
-  private def buildRoutesFromInit[F[_]: Async](
-      initSession: F[McpSession[F]],
+  /** Thin wrapper for the unauthenticated path — supplies no-op auth/validation hooks. */
+  private def unauthenticatedRoutes[F[_]: Async: UUIDGen](
+      serverFactory: (String, SessionContext[F]) => F[Server[F]],
+      sinkFactory: String => Resource[F, NotificationSink[F]],
+      refsFactory: String => SessionRefs[F],
+      store: SessionStore[F]
+  ): HttpRoutes[F] =
+    buildRoutes[F, Unit](
+      authCheck = _ => Async[F].pure(Right(())),
+      initSession = _ => createSessionFromContext(serverFactory, sinkFactory, refsFactory, store),
+      validateSession = (_, _) => Async[F].pure(Right(())),
+      store = store
+    )
+
+  /** Thin wrapper for the authenticated path — wires `authenticate`, `getUser`-based validation, and per-user session
+    * binding into the unified route builder.
+    */
+  private def authedRoutes[F[_]: Async: UUIDGen, U: Eq](
+      authenticate: Request[F] => F[Option[U]],
+      serverFactory: (String, U, SessionContext[F]) => F[Server[F]],
+      onUnauthorized: F[Response[F]],
+      sinkFactory: String => Resource[F, NotificationSink[F]],
+      refsFactory: String => SessionRefs[F],
+      store: AuthenticatedSessionStore[F, U]
+  ): HttpRoutes[F] =
+    val dsl = Http4sDsl[F]
+    import dsl.*
+
+    buildRoutes[F, U](
+      authCheck = req =>
+        authenticate(req).flatMap {
+          case Some(user) => Async[F].pure(Right(user))
+          case None       => onUnauthorized.map(Left(_))
+        },
+      initSession = user => createAuthenticatedSession(serverFactory, sinkFactory, refsFactory, store, user),
+      validateSession = (user, sessionId) =>
+        store.getUser(sessionId).flatMap {
+          case Some(stored) if stored === user => Async[F].pure(Right(()))
+          case Some(_)                         => Forbidden("Credential mismatch").map(Left(_))
+          case None                            => NotFound("Session not found").map(Left(_))
+        },
+      store = store
+    )
+
+  /** Unified route builder for both the unauthenticated and authenticated paths.
+    *
+    * Three injection points capture the differences between the two flavours:
+    *
+    *   - `authCheck` runs once per request before any session lookup. `Left` short-circuits the response;
+    *     `Right(authState)` threads through to subsequent steps. The unauthenticated path uses `A = Unit` and always
+    *     returns `Right(())`.
+    *   - `initSession` creates a brand-new session on `initialize`. The authenticated path closes over the user so it
+    *     can bind the identity in the session store.
+    *   - `validateSession` runs once the request's `Mcp-Session-Id` is in hand (but before `store.get(sid)`). `Left`
+    *     short-circuits; `Right(())` proceeds. The authenticated path enforces "the credentials match what was bound at
+    *     `initialize` time"; the unauthenticated path always returns `Right(())`.
+    *
+    * The DELETE path intentionally consults `validateSession` first so the authenticated impl can reject credential
+    * mismatches before the session is touched. On `Right(())`, the existing session (if any) is cancelled and removed —
+    * matching the original unauthenticated behaviour of silently 200-ing on DELETE of a missing session.
+    */
+  private def buildRoutes[F[_]: Async, A](
+      authCheck: Request[F] => F[Either[Response[F], A]],
+      initSession: A => F[McpSession[F]],
+      validateSession: (A, String) => F[Either[Response[F], Unit]],
       store: SessionStore[F]
   ): HttpRoutes[F] =
     val dsl = Http4sDsl[F]
@@ -178,98 +228,15 @@ object StreamableHttpTransport:
     HttpRoutes.of[F] {
       // ── POST /mcp ────────────────────────────────────────────────────
       case req @ POST -> Root / "mcp" =>
-        readBody(req).flatMap {
-          case Left(err) =>
-            BadRequest(err)
-
-          case Right(message) =>
-            message match
-              case r @ Message.Request(_, _, "initialize", _) =>
-                initSession.flatMap { session =>
-                  session.handler.handle(r).flatMap {
-                    case Some(response) =>
-                      Ok(response.asJson.noSpaces).map(
-                        _.putHeaders(
-                          Header.Raw(mcpSessionId, session.id),
-                          `Content-Type`(MediaType.application.json)
-                        )
-                      )
-                    case None =>
-                      Accepted()
-                  }
-                }
-
-              case msg =>
-                getSessionId(req) match
-                  case None      => BadRequest("Missing Mcp-Session-Id header")
-                  case Some(sid) =>
-                    store.get(sid).flatMap {
-                      case None          => NotFound("Session not found")
-                      case Some(session) =>
-                        msg match
-                          case _: Message.Notification | _: Message.Response =>
-                            session.handler.handle(msg).as(Response[F](Status.Accepted))
-                          case _: Message.Request =>
-                            session.handler.handle(msg).flatMap {
-                              case Some(response) =>
-                                Ok(response.asJson.noSpaces)
-                                  .map(_.withContentType(`Content-Type`(MediaType.application.json)))
-                              case None =>
-                                Accepted()
-                            }
-                    }
-        }
-
-      // ── GET /mcp ─────────────────────────────────────────────────────
-      case req @ GET -> Root / "mcp" =>
-        getSessionId(req) match
-          case None      => BadRequest("Missing Mcp-Session-Id header")
-          case Some(sid) =>
-            store.get(sid).flatMap {
-              case None          => NotFound("Session not found")
-              case Some(session) =>
-                val sseStream: Stream[F, String] = session.clientChannel.subscribe.map { msg =>
-                  s"event: message\ndata: ${msg.asJson.noSpaces}\n\n"
-                }
-                Ok(sseStream).map(_.withContentType(`Content-Type`(eventStreamMediaType)))
-            }
-
-      // ── DELETE /mcp ──────────────────────────────────────────────────
-      case req @ DELETE -> Root / "mcp" =>
-        getSessionId(req) match
-          case None      => BadRequest("Missing Mcp-Session-Id header")
-          case Some(sid) =>
-            store.get(sid).flatMap(_.traverse_(_.clientChannel.cancellation.cancelAll)) *>
-              store.remove(sid) *>
-              Ok("Session terminated")
-    }
-
-  /** Authenticated variant — every request runs through `authenticate`, and on subsequent requests the stored user
-    * identity is checked against the new credentials.
-    */
-  private def buildAuthenticatedRoutes[F[_]: Async: UUIDGen, U: Eq](
-      authenticate: Request[F] => F[Option[U]],
-      serverFactory: (String, U, SessionContext[F]) => F[Server[F]],
-      sinkFactory: String => Resource[F, NotificationSink[F]],
-      refsFactory: String => SessionRefs[F],
-      store: AuthenticatedSessionStore[F, U],
-      onUnauthorized: F[Response[F]]
-  ): HttpRoutes[F] =
-    val dsl = Http4sDsl[F]
-    import dsl.*
-
-    HttpRoutes.of[F] {
-      // ── POST /mcp (authenticated) ──────────────────────────────────
-      case req @ POST -> Root / "mcp" =>
-        authenticate(req).flatMap {
-          case None       => onUnauthorized
-          case Some(user) =>
+        authCheck(req).flatMap {
+          case Left(resp)       => Async[F].pure(resp)
+          case Right(authState) =>
             readBody(req).flatMap {
               case Left(err)      => BadRequest(err)
               case Right(message) =>
                 message match
                   case r @ Message.Request(_, _, "initialize", _) =>
-                    createAuthenticatedSession(serverFactory, sinkFactory, refsFactory, store, user).flatMap { session =>
+                    initSession(authState).flatMap { session =>
                       session.handler.handle(r).flatMap {
                         case Some(response) =>
                           Ok(response.asJson.noSpaces).map(
@@ -286,11 +253,12 @@ object StreamableHttpTransport:
                     getSessionId(req) match
                       case None      => BadRequest("Missing Mcp-Session-Id header")
                       case Some(sid) =>
-                        store.get(sid).flatMap {
-                          case None          => NotFound("Session not found")
-                          case Some(session) =>
-                            store.getUser(sid).flatMap {
-                              case Some(storedUser) if storedUser === user =>
+                        validateSession(authState, sid).flatMap {
+                          case Left(resp) => Async[F].pure(resp)
+                          case Right(())  =>
+                            store.get(sid).flatMap {
+                              case None          => NotFound("Session not found")
+                              case Some(session) =>
                                 msg match
                                   case _: Message.Notification | _: Message.Response =>
                                     session.handler.handle(msg).as(Response[F](Status.Accepted))
@@ -301,51 +269,47 @@ object StreamableHttpTransport:
                                           .map(_.withContentType(`Content-Type`(MediaType.application.json)))
                                       case None => Accepted()
                                     }
-                              case Some(_) => Forbidden("Credential mismatch")
-                              case None    => NotFound("Session not found")
                             }
                         }
             }
         }
 
-      // ── GET /mcp (authenticated) ──────────────────────────────────
+      // ── GET /mcp ─────────────────────────────────────────────────────
       case req @ GET -> Root / "mcp" =>
-        authenticate(req).flatMap {
-          case None       => onUnauthorized
-          case Some(user) =>
+        authCheck(req).flatMap {
+          case Left(resp)       => Async[F].pure(resp)
+          case Right(authState) =>
             getSessionId(req) match
               case None      => BadRequest("Missing Mcp-Session-Id header")
               case Some(sid) =>
-                store.get(sid).flatMap {
-                  case None          => NotFound("Session not found")
-                  case Some(session) =>
-                    store.getUser(sid).flatMap {
-                      case Some(storedUser) if storedUser === user =>
+                validateSession(authState, sid).flatMap {
+                  case Left(resp) => Async[F].pure(resp)
+                  case Right(())  =>
+                    store.get(sid).flatMap {
+                      case None          => NotFound("Session not found")
+                      case Some(session) =>
                         val sseStream: Stream[F, String] = session.clientChannel.subscribe.map { msg =>
                           s"event: message\ndata: ${msg.asJson.noSpaces}\n\n"
                         }
                         Ok(sseStream).map(_.withContentType(`Content-Type`(eventStreamMediaType)))
-                      case Some(_) => Forbidden("Credential mismatch")
-                      case None    => NotFound("Session not found")
                     }
                 }
         }
 
-      // ── DELETE /mcp (authenticated) ────────────────────────────────
+      // ── DELETE /mcp ──────────────────────────────────────────────────
       case req @ DELETE -> Root / "mcp" =>
-        authenticate(req).flatMap {
-          case None       => onUnauthorized
-          case Some(user) =>
+        authCheck(req).flatMap {
+          case Left(resp)       => Async[F].pure(resp)
+          case Right(authState) =>
             getSessionId(req) match
               case None      => BadRequest("Missing Mcp-Session-Id header")
               case Some(sid) =>
-                store.getUser(sid).flatMap {
-                  case Some(storedUser) if storedUser === user =>
+                validateSession(authState, sid).flatMap {
+                  case Left(resp) => Async[F].pure(resp)
+                  case Right(())  =>
                     store.get(sid).flatMap(_.traverse_(_.clientChannel.cancellation.cancelAll)) *>
                       store.remove(sid) *>
                       Ok("Session terminated")
-                  case Some(_) => Forbidden("Credential mismatch")
-                  case None    => NotFound("Session not found")
                 }
         }
     }
