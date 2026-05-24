@@ -55,7 +55,8 @@ case class ServerCapabilities(
     prompts: Option[PromptCapabilities] = None,
     logging: Option[LoggingCapabilities] = None,
     completions: Option[CompletionsCapabilities] = None,
-    experimental: Option[JsonObject] = None
+    experimental: Option[JsonObject] = None,
+    extensions: Option[JsonObject] = None
 ) derives Encoder.AsObject,
       Decoder
 

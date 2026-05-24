@@ -1,12 +1,16 @@
 package net.andimiller.mcp.core.server
 
+import io.circe.Json
+import io.circe.JsonObject
+
 import net.andimiller.mcp.core.protocol.*
 
 case class CapabilityTracker(
     tools: Option[ToolCapabilities] = None,
     resources: Option[ResourceCapabilities] = None,
     prompts: Option[PromptCapabilities] = None,
-    logging: Option[LoggingCapabilities] = None
+    logging: Option[LoggingCapabilities] = None,
+    extensions: Map[String, Json] = Map.empty
 ):
 
   // ── Auto-set on handler add ──────────────────────────────────────
@@ -37,6 +41,9 @@ case class CapabilityTracker(
   def withLogging: CapabilityTracker =
     copy(logging = Some(LoggingCapabilities()))
 
+  def withExtension(key: String, value: Json): CapabilityTracker =
+    copy(extensions = extensions.updated(key, value))
+
   // ── Convert to protocol type ─────────────────────────────────────
 
   def toServerCapabilities: ServerCapabilities =
@@ -44,7 +51,8 @@ case class CapabilityTracker(
       tools = tools,
       resources = resources,
       prompts = prompts,
-      logging = logging
+      logging = logging,
+      extensions = Option.when(extensions.nonEmpty)(JsonObject.fromIterable(extensions))
     )
 
 object CapabilityTracker:

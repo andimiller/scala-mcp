@@ -38,6 +38,10 @@ object StdioTransport:
         fs2.io
           .stdin[F](1024)
           .through(fs2.text.utf8.decode)
+          // Split on newlines: when the client (e.g. Claude Desktop) writes several JSON-RPC messages back-to-back, the
+          // OS can deliver them in a single read chunk. Without this split, the JSON parser sees the concatenated text
+          // and fails with "expected whitespace or eof". Each line is a complete JSON-RPC frame per spec.
+          .through(fs2.text.lines)
           .filter(_.trim.nonEmpty)
           .evalMap { line =>
             decode[Message](line) match

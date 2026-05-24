@@ -2,6 +2,7 @@ package net.andimiller.mcp.core.server
 
 import cats.effect.kernel.Async
 import cats.syntax.functor.*
+import io.circe.Json
 
 import net.andimiller.mcp.core.protocol.*
 
@@ -91,6 +92,12 @@ class ServerBuilder[F[_]: Async, Ctx](
 
   def enableLogging: ServerBuilder[F, Ctx] =
     withCopy(capabilities = capabilities.withLogging)
+
+  /** Declare an MCP extension capability under `capabilities.extensions[key]`. The `value` is the extension-specific
+    * configuration document. Multiple extensions compose without trampling.
+    */
+  def withExtension(key: String, value: Json): ServerBuilder[F, Ctx] =
+    withCopy(capabilities = capabilities.withExtension(key, value))
 
   def withTitle(t: String): ServerBuilder[F, Ctx] = withCopy(title = Some(t))
 

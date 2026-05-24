@@ -73,6 +73,21 @@ lazy val core = crossProject(JVMPlatform, JSPlatform, NativePlatform)
   .jsSettings(noCoverage *)
   .nativeSettings(noCoverage *)
 
+lazy val apps = crossProject(JVMPlatform, JSPlatform, NativePlatform)
+  .in(file("modules/apps"))
+  .settings(commonSettings)
+  .settings(publishSettings)
+  .settings(
+    name                 := "mcp-apps",
+    libraryDependencies ++= Seq(
+      "org.scalameta" %%% "munit"             % "1.0.0" % Test,
+      "org.typelevel" %%% "munit-cats-effect" % "2.2.0" % Test
+    )
+  )
+  .jsSettings(noCoverage *)
+  .nativeSettings(noCoverage *)
+  .dependsOn(core)
+
 lazy val stdio = crossProject(JVMPlatform, JSPlatform, NativePlatform)
   .in(file("modules/stdio"))
   .settings(commonSettings)
@@ -265,6 +280,94 @@ lazy val explorer = project
     )
   )
   .dependsOn(core.js)
+
+lazy val appsTyrian = project
+  .in(file("modules/apps-tyrian"))
+  .enablePlugins(ScalaJSPlugin)
+  .settings(commonSettings)
+  .settings(publishSettings)
+  .settings(
+    scalaVersion        := "3.6.4",
+    name                := "mcp-apps-tyrian",
+    coverageEnabled     := false,
+    scalaJSLinkerConfig ~= { _.withModuleKind(ModuleKind.ESModule) },
+    libraryDependencies ++= Seq(
+      "io.indigoengine" %%% "tyrian-io"         % "0.14.0",
+      "io.circe"        %%% "circe-core"        % "0.14.14",
+      "io.circe"        %%% "circe-generic"     % "0.14.14",
+      "io.circe"        %%% "circe-parser"      % "0.14.14",
+      "org.scalameta"   %%% "munit"             % "1.0.0" % Test,
+      "org.typelevel"   %%% "munit-cats-effect" % "2.2.0" % Test
+    )
+  )
+  .dependsOn(core.js, apps.js)
+
+lazy val exampleAppsMcpIframe = project
+  .in(file("modules/example-apps-mcp/iframe"))
+  .enablePlugins(ScalaJSPlugin)
+  .settings(commonSettings)
+  .settings(
+    scalaVersion        := "3.6.4",
+    name                := "example-apps-mcp-iframe",
+    publish / skip      := true,
+    coverageEnabled     := false,
+    // Produce a single classic JS file (no `import` statements) so the example server can inline it into a single
+    // `<script>` tag inside the ui:// HTML resource. This makes the iframe self-contained — no separate asset hosting
+    // needed, works in any MCP host (Claude desktop, Claude web, VS Code) including sandboxed srcdoc iframes.
+    scalaJSLinkerConfig             ~= { _.withModuleKind(ModuleKind.NoModule) },
+    scalaJSUseMainModuleInitializer := true,
+    Compile / mainClass             := Some("net.andimiller.mcp.examples.apps.ClockMain")
+  )
+  .dependsOn(core.js, apps.js, appsTyrian)
+
+lazy val exampleAppsMcp = project
+  .in(file("modules/example-apps-mcp/server"))
+  .settings(commonSettings)
+  .settings(
+    name                := "example-apps-mcp",
+    publish / skip      := true,
+    Compile / mainClass := Some("net.andimiller.mcp.examples.apps.ClockMcpServer"),
+    libraryDependencies ++= Seq(
+      "ch.qos.logback" % "logback-classic" % "1.5.6"
+    ),
+    // Bundle the Scala.js clock-app SPA into the JVM build's resources so the embedded http4s
+    // server can serve it inline inside the ui:// HTML resource.
+    Compile / resourceGenerators += Def.task {
+      val _         = (LocalRootProject / buildClockApp).value
+      val sourceJs  =
+        (exampleAppsMcpIframe / Compile / fastLinkJS / scalaJSLinkerOutputDirectory).value / "main.js"
+      val targetDir = (Compile / resourceManaged).value / "clock-app"
+      IO.delete(targetDir)
+      IO.createDirectory(targetDir)
+      val targetJs = targetDir / "main.js"
+      IO.copyFile(sourceJs, targetJs)
+      Seq(targetJs)
+    }.taskValue,
+    // Assembly: ship the http4s-transport fat jar. Listens on :8080 for MCP-over-HTTP and serves a /preview route for
+    // browser-side debugging. For Claude Desktop config use mcp-remote as a stdio↔HTTP proxy, e.g.:
+    //   { "command": "npx", "args": ["mcp-remote", "http://localhost:8080/mcp"] }
+    // The stdio entry point (ClockStdioMcpServer) is still buildable via `sbt exampleAppsMcp/run` with the right mainClass.
+    assembly / mainClass                  := Some("net.andimiller.mcp.examples.apps.ClockMcpServer"),
+    assembly / assemblyJarName            := "clock-mcp-app.jar",
+    assembly / assemblyMergeStrategy      := {
+      case PathList("META-INF", "versions", _, "module-info.class") => MergeStrategy.discard
+      case PathList("META-INF", "io.netty.versions.properties")     => MergeStrategy.first
+      case x if x.endsWith("module-info.class")                     => MergeStrategy.discard
+      case x                                                        =>
+        val oldStrategy = (assembly / assemblyMergeStrategy).value
+        oldStrategy(x)
+    }
+  )
+  .dependsOn(core.jvm, http4s.jvm, stdio.jvm, apps.jvm)
+
+lazy val buildClockApp = taskKey[Unit]("Build the example-apps-mcp clock iframe for production")
+
+buildClockApp := {
+  val log = streams.value.log
+  log.info("Compiling clock-app Scala.js...")
+  (exampleAppsMcpIframe / Compile / fastLinkJS).value
+  log.info("Clock-app build complete.")
+}
 
 lazy val buildExplorer = taskKey[Unit]("Build explorer for production")
 
@@ -542,9 +645,9 @@ lazy val root = project
     publish / skip := true
   )
   .aggregate(
-    core.jvm, core.js, core.native, stdio.jvm, stdio.js, stdio.native, exampleDice.jvm, exampleDice.js,
-    exampleDice.native, http4s.jvm, http4s.js, http4s.native, redis, trace4cats, tapir, examplePomodoro, exampleChat,
-    exampleClient, exampleHarness.jvm, exampleHarness.native, exampleDns, exampleNotebook, exampleRpgCharacterCreator,
-    explorer, goldenMunit.jvm, goldenMunit.js, goldenMunit.native, openapi.jvm, openapi.js, openapi.native,
-    openapiMcpProxy
+    core.jvm, core.js, core.native, stdio.jvm, stdio.js, stdio.native, apps.jvm, apps.js, apps.native, appsTyrian,
+    exampleDice.jvm, exampleDice.js, exampleDice.native, http4s.jvm, http4s.js, http4s.native, redis, trace4cats, tapir,
+    examplePomodoro, exampleChat, exampleClient, exampleHarness.jvm, exampleHarness.native, exampleDns, exampleNotebook,
+    exampleRpgCharacterCreator, exampleAppsMcp, exampleAppsMcpIframe, explorer, goldenMunit.jvm, goldenMunit.js,
+    goldenMunit.native, openapi.jvm, openapi.js, openapi.native, openapiMcpProxy
   )
