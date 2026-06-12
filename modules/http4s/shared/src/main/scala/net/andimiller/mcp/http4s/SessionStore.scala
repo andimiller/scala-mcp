@@ -4,6 +4,9 @@ import cats.effect.kernel.Async
 import cats.effect.kernel.Ref
 import cats.syntax.all.*
 
+import io.circe.Decoder
+import io.circe.Encoder
+
 /** Pluggable session registry for MCP HTTP sessions.
   *
   * In-memory by default; can be replaced with an external store (e.g. Redis) for distributed deployments.
@@ -66,3 +69,19 @@ object AuthenticatedSessionStore:
 trait SessionStoreFactory[F[_]]:
 
   def create(reconstruct: String => F[McpSession[F]]): F[SessionStore[F]]
+
+/** Factory that defers [[AuthenticatedSessionStore]] creation until both a `reconstruct` callback and the user-type
+  * codec evidence are available. The user-type codecs are required at construction time (e.g. for serialising user
+  * identity into Redis), but they only become available inside `.authenticated[U]`, so this factory takes them as a
+  * type parameter at call time rather than at factory construction.
+  *
+  * The `reconstruct` callback is user-aware so cache-miss session rebuilds on a different process can recover the
+  * original authenticated identity from the store and materialise a `Server[F]` with the same tool-visibility
+  * predicates as the original session. Implementations are expected to fetch the user (e.g. via `getUser`) before
+  * invoking `reconstruct`.
+  */
+trait AuthenticatedSessionStoreFactory[F[_]]:
+
+  def createAuthenticated[U: Encoder: Decoder](
+      reconstruct: (String, U) => F[McpSession[F]]
+  ): F[AuthenticatedSessionStore[F, U]]

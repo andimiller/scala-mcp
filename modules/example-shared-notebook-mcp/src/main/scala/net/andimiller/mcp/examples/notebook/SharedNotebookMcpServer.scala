@@ -22,7 +22,7 @@ import org.http4s.Status
 import org.http4s.headers.Authorization
 import org.typelevel.ci.CIStringSyntax
 
-case class UserContext(username: String, isAdmin: Boolean = false)
+case class UserContext(username: String, isAdmin: Boolean = false) derives Encoder.AsObject, Decoder
 
 object UserContext:
 

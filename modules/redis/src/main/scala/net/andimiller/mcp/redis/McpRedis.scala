@@ -47,3 +47,4 @@ object McpRedis:
         .withNotificationSinkFactory(id => RedisNotificationSink.create(pubSub, id))
         .withSessionRefsFactory(id => new RedisSessionRefs(redis, id, ttl))
         .withSessionStoreFactory(new RedisSessionStoreFactory(redis, ttl))
+        .withAuthenticatedSessionStoreFactory(new RedisAuthenticatedSessionStoreFactory(redis, ttl))

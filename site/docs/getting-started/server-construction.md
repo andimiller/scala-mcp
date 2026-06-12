@@ -124,10 +124,11 @@ session at init time; tools that don't pass are filtered out before
 
 ```scala mdoc:compile-only
 import cats.Eq
+import io.circe.{Decoder, Encoder}
 import net.andimiller.mcp.http4s.McpHttp
 import org.http4s.{Request, Response, Status}
 
-case class User(name: String, isAdmin: Boolean)
+case class User(name: String, isAdmin: Boolean) derives Encoder.AsObject, Decoder
 given Eq[User] = Eq.fromUniversalEquals
 
 McpHttp.streaming[IO]

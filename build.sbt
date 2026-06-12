@@ -334,8 +334,12 @@ lazy val redis = project
   .settings(
     name                 := "mcp-redis",
     libraryDependencies ++= Seq(
-      "dev.profunktor" %% "redis4cats-effects" % "2.0.3",
-      "dev.profunktor" %% "redis4cats-streams" % "2.0.3"
+      "dev.profunktor" %% "redis4cats-effects"         % "2.0.3",
+      "dev.profunktor" %% "redis4cats-streams"         % "2.0.3",
+      "org.scalameta"  %% "munit"                      % "1.0.0"   % Test,
+      "org.typelevel"  %% "munit-cats-effect"          % "2.2.0"   % Test,
+      "com.dimafeng"   %% "testcontainers-scala-munit" % "0.44.1"  % Test,
+      "org.http4s"     %% "http4s-ember-client"        % "0.23.34" % Test
     )
   )
   .dependsOn(core.jvm, http4s.jvm)

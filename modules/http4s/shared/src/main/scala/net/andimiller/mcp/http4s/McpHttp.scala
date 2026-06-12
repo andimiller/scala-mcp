@@ -65,6 +65,7 @@ object McpHttp:
       mSinkFactory = None,
       mSessionRefsFactory = None,
       mSessionStoreFactory = None,
+      mAuthSessionStoreFactory = None,
       mExtraRoutes = HttpRoutes.empty[F]
     )
 

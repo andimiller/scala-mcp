@@ -20,7 +20,7 @@ import net.andimiller.mcp.core.server.*
 import net.andimiller.mcp.http4s.McpHttp
 import org.http4s.{Request, Response, Status}
 
-case class User(name: String, isAdmin: Boolean)
+case class User(name: String, isAdmin: Boolean) derives Encoder.AsObject, Decoder
 object User:
   given Eq[User] = Eq.fromUniversalEquals
 
@@ -31,6 +31,12 @@ case class Resp(text: String) derives JsonSchema, Decoder, Encoder.AsObject
 def extract(req: Request[IO]): IO[Option[User]] = IO.pure(None)
 val onUnauthorized: Response[IO] = Response[IO](Status.Unauthorized)
 ```
+
+`.authenticated[U]` requires `Eq[U]`, `Encoder[U]`, and `Decoder[U]`. The codecs
+let stores like [Redis](../modules/redis.md) persist the authenticated identity
+so multi-instance deployments can validate sessions across processes. For
+in-memory deployments the codecs are unused at runtime, but they must still be
+in scope — circe-generic `derives` clauses or hand-rolled givens are both fine.
 
 ## `.withContextualToolIf` — gate on a pure predicate
 

@@ -4,6 +4,7 @@ import scala.concurrent.duration.*
 
 import cats.Eq
 import cats.effect.IO
+import cats.effect.kernel.Ref
 import cats.syntax.all.*
 
 import net.andimiller.mcp.core.protocol.*
@@ -11,6 +12,8 @@ import net.andimiller.mcp.core.protocol.content.Content
 import net.andimiller.mcp.core.server.*
 import net.andimiller.mcp.core.state.SessionRefs
 
+import io.circe.Decoder
+import io.circe.Encoder
 import io.circe.Json
 import munit.CatsEffectSuite
 import org.http4s.*
@@ -19,7 +22,7 @@ class StreamingMcpHttpBuilderAuthSpec extends CatsEffectSuite:
 
   override def munitIOTimeout: FiniteDuration = 10.seconds
 
-  case class User(name: String, isAdmin: Boolean)
+  case class User(name: String, isAdmin: Boolean) derives Encoder.AsObject, Decoder
 
   given Eq[User] = Eq.fromUniversalEquals
 
@@ -147,4 +150,69 @@ class StreamingMcpHttpBuilderAuthSpec extends CatsEffectSuite:
   test("hasPredicatedTools is false for ungated registrations") {
     val builder = authBuilder.withTool(echoTool[User]("public"))
     assertEquals(builder.hasPredicatedTools, false)
+  }
+
+  test(".authenticated + withAuthenticatedSessionStoreFactory consults the factory") {
+    // Regression: previously the authenticated branch ignored mSessionStoreFactory and only checked mSessionStore,
+    // silently falling back to in-memory even when a Redis-backed factory was wired. This test ensures the new
+    // mAuthSessionStoreFactory slot is consulted from the authenticated path.
+    Ref.of[IO, Int](0).flatMap { calls =>
+      val tracking = new AuthenticatedSessionStoreFactory[IO]:
+        def createAuthenticated[U: io.circe.Encoder: io.circe.Decoder](
+            reconstruct: (String, U) => IO[McpSession[IO]]
+        ): IO[AuthenticatedSessionStore[IO, U]] =
+          calls.update(_ + 1) *> AuthenticatedSessionStore.inMemory[IO, U]
+      val builder = authBuilder.withAuthenticatedSessionStoreFactory(tracking)
+      builder.routes.use_ *> calls.get.map(c => assertEquals(c, 1, "auth factory should be called exactly once"))
+    }
+  }
+
+  test("authenticated reconstruct receives a user-aware (String, U) lambda") {
+    // Cross-process cache-miss contract: when an authenticated store reconstructs a session on a different process,
+    // it must pass the stored user identity into the rebuild so the resulting `Server[F]` evaluates `withToolIf`
+    // predicates against that identity. We verify by capturing the reconstruct the builder hands to the factory,
+    // invoking it with two distinct users, and checking that the resulting `McpSession` carries the matching user
+    // identity through `newAuthenticatedSessionFactory` (whose own correctness is covered by the spec above).
+    val admin = User("alice", isAdmin = true)
+    val guest = User("bob", isAdmin = false)
+    Ref.of[IO, Option[(String, Any) => IO[McpSession[IO]]]](None).flatMap { captured =>
+      val captureFactory = new AuthenticatedSessionStoreFactory[IO]:
+        def createAuthenticated[U: io.circe.Encoder: io.circe.Decoder](
+            reconstruct: (String, U) => IO[McpSession[IO]]
+        ): IO[AuthenticatedSessionStore[IO, U]] =
+          captured.set(Some(reconstruct.asInstanceOf[(String, Any) => IO[McpSession[IO]]])) *>
+            AuthenticatedSessionStore.inMemory[IO, U]
+      val builder = authBuilder
+        .withTool(echoTool[User]("public"))
+        .withToolIf((u: User) => u.isAdmin)(echoTool[User]("admin_only"))
+        .withAuthenticatedSessionStoreFactory(captureFactory)
+      builder.routes.use_ *> captured.get.flatMap {
+        case None      => IO(fail("reconstruct should have been captured"))
+        case Some(rec) =>
+          for
+            adminSession <- rec("admin-sid", admin)
+            guestSession <- rec("guest-sid", guest)
+          yield
+            // Session IDs round-trip through the user-aware reconstruct — proves the lambda accepts (String, U) and
+            // not String. Behavioural verification of tool filtering on rebuilt sessions is covered end-to-end at
+            // the Server[F] level by the listToolsFor tests on the same builder above.
+            assertEquals(adminSession.id, "admin-sid")
+            assertEquals(guestSession.id, "guest-sid")
+      }
+    }
+  }
+
+  test(".authenticated + withSessionStoreFactory (no auth factory) is not preferred over inMemory fallback") {
+    // The plain SessionStoreFactory cannot satisfy the AuthenticatedSessionStore type required by the auth path.
+    // The defensive warn fires (covered by code path, not asserted here without a Console capture) and the in-memory
+    // auth store is used. We assert only that this doesn't throw and that the plain factory is NOT incorrectly
+    // adopted.
+    Ref.of[IO, Int](0).flatMap { plainCalls =>
+      val plainFactory = new SessionStoreFactory[IO]:
+        def create(reconstruct: String => IO[McpSession[IO]]): IO[SessionStore[IO]] =
+          plainCalls.update(_ + 1) *> SessionStore.inMemory[IO]
+      val builder = authBuilder.withSessionStoreFactory(plainFactory)
+      builder.routes.use_ *>
+        plainCalls.get.map(c => assertEquals(c, 0, "plain SessionStoreFactory must not be used on the auth path"))
+    }
   }

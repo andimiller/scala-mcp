@@ -7,6 +7,7 @@ import cats.effect.IO
 import cats.effect.kernel.Async
 import cats.effect.kernel.Ref
 import cats.effect.kernel.Resource
+import cats.effect.std.Console
 import cats.effect.std.UUIDGen
 import cats.syntax.all.*
 
@@ -14,6 +15,8 @@ import net.andimiller.mcp.core.protocol.*
 import net.andimiller.mcp.core.server.*
 import net.andimiller.mcp.core.state.SessionRefs
 
+import io.circe.Decoder
+import io.circe.Encoder
 import com.comcast.ip4s.*
 import org.http4s.*
 import org.http4s.ember.server.EmberServerBuilder
@@ -53,6 +56,7 @@ class StreamingMcpHttpBuilder[F[_]: Async, A, Ctx] private[http4s] (
     val mSinkFactory: Option[String => Resource[F, NotificationSink[F]]],
     val mSessionRefsFactory: Option[String => SessionRefs[F]],
     val mSessionStoreFactory: Option[SessionStoreFactory[F]],
+    val mAuthSessionStoreFactory: Option[AuthenticatedSessionStoreFactory[F]],
     val mTitle: Option[String] = None,
     val mDescription: Option[String] = None,
     val mIcons: List[Icon] = Nil,
@@ -82,6 +86,7 @@ class StreamingMcpHttpBuilder[F[_]: Async, A, Ctx] private[http4s] (
       mSinkFactory: Option[String => Resource[F, NotificationSink[F]]] = this.mSinkFactory,
       mSessionRefsFactory: Option[String => SessionRefs[F]] = this.mSessionRefsFactory,
       mSessionStoreFactory: Option[SessionStoreFactory[F]] = this.mSessionStoreFactory,
+      mAuthSessionStoreFactory: Option[AuthenticatedSessionStoreFactory[F]] = this.mAuthSessionStoreFactory,
       mTitle: Option[String] = this.mTitle,
       mDescription: Option[String] = this.mDescription,
       mIcons: List[Icon] = this.mIcons,
@@ -94,7 +99,8 @@ class StreamingMcpHttpBuilder[F[_]: Async, A, Ctx] private[http4s] (
       mName, mVersion, mConfig, mAuthInfo, mStatefulCreators, mAuthExtractor, mPlainTools, mContextTools,
       mPlainResources, mContextResourceResolvers, mPlainResourceTemplates, mContextResourceTemplateResolvers,
       mPlainPrompts, mContextPromptResolvers, mCaps, mSessionStore, mSinkFactory, mSessionRefsFactory,
-      mSessionStoreFactory, mTitle, mDescription, mIcons, mWebsiteUrl, mExtraRoutes, mToolMiddlewares
+      mSessionStoreFactory, mAuthSessionStoreFactory, mTitle, mDescription, mIcons, mWebsiteUrl, mExtraRoutes,
+      mToolMiddlewares
     )
 
   // ── Config ──────────────────────────────────────────────────────────
@@ -146,6 +152,11 @@ class StreamingMcpHttpBuilder[F[_]: Async, A, Ctx] private[http4s] (
   def withSessionStoreFactory(factory: SessionStoreFactory[F]): StreamingMcpHttpBuilder[F, A, Ctx] =
     copy(mSessionStoreFactory = Some(factory))
 
+  def withAuthenticatedSessionStoreFactory(
+      factory: AuthenticatedSessionStoreFactory[F]
+  ): StreamingMcpHttpBuilder[F, A, Ctx] =
+    copy(mAuthSessionStoreFactory = Some(factory))
+
   // ── Context accumulation ──────────────────────────────────────────
 
   /** Register a per-session state creator. The creator receives a [[SessionContext]] — a bundle of `id`, `channel`
@@ -163,14 +174,22 @@ class StreamingMcpHttpBuilder[F[_]: Async, A, Ctx] private[http4s] (
   /** Wire up authentication. The extractor reads credentials off the http4s `Request` (e.g. a Bearer header) and
     * returns `Some(U)` if valid or `None` to short-circuit with `onUnauthorized`. The user identity flows through to
     * tool handlers as the head of `Ctx`, and predicates registered via `.withToolIf` are typed on `U`.
+    *
+    * `Encoder[U]: Decoder[U]` are required so user identity can be serialised by stores that persist auth state across
+    * processes (e.g. Redis). For in-memory deployments the codecs are unused at runtime; circe-generic or hand-rolled
+    * `given` instances are both fine.
     */
-  def authenticated[U: Eq](
+  def authenticated[U: Eq: Encoder: Decoder](
       extract: Request[F] => F[Option[U]],
       onUnauthorized: Response[F]
   ): StreamingMcpHttpBuilder[F, U, Append[U, Ctx]] =
-    val eqAny: Eq[Any]                               = Eq.instance[Any]((a, b) => summon[Eq[U]].eqv(a.asInstanceOf[U], b.asInstanceOf[U]))
+    val eqAny: Eq[Any] =
+      Eq.instance[Any]((a, b) => summon[Eq[U]].eqv(a.asInstanceOf[U], b.asInstanceOf[U]))
+    val encoderAny: Encoder[Any]                     = summon[Encoder[U]].contramap(_.asInstanceOf[U])
+    val decoderAny: Decoder[Any]                     = summon[Decoder[U]].map(_.asInstanceOf[Any])
     val widenedExtract: Request[F] => F[Option[Any]] = req => extract(req).map(_.map(_.asInstanceOf[Any]))
-    val info                                         = StreamingMcpHttpBuilder.AuthInfo[F](eqAny, widenedExtract, onUnauthorized)
+    val info                                         =
+      StreamingMcpHttpBuilder.AuthInfo[F](eqAny, encoderAny, decoderAny, widenedExtract, onUnauthorized)
     copy[U, Append[U, Ctx]](mAuthInfo = Some(info), mAuthExtractor = Some(widenedExtract))
 
   // ── Plain tools ────────────────────────────────────────────────────
@@ -401,7 +420,40 @@ class StreamingMcpHttpBuilder[F[_]: Async, A, Ctx] private[http4s] (
   private def refsFactory: String => SessionRefs[F] =
     mSessionRefsFactory.getOrElse(_ => SessionRefs.inMemory[F])
 
+  /** Build the cache-miss `reconstruct` callback handed to session-store factories. Rebuilds the per-session machinery
+    * (notification sink, client channel, server handler) for a session whose registry entry exists in the external
+    * store but whose live in-process objects have been evicted (e.g. on a different process after a restart).
+    */
+  private def buildReconstruct: String => F[McpSession[F]] = (id: String) =>
+    for
+      sinkPair      <- sinkFactory(id).allocated
+      (sink, _)      = sinkPair
+      ccPair        <- ClientChannel.fromSink[F](sink).allocated
+      (cc, _)        = ccPair
+      ctx            = SessionContext(id, cc, refsFactory(id))
+      server        <- newSessionFactory(id)(ctx)
+      handler        = new RequestHandler[F](server, cc.requester, cc.cancellation)
+      subscriptions <- Ref.of[F, Set[String]](Set.empty)
+    yield McpSession(id, handler, cc, subscriptions)
+
+  /** As [[buildReconstruct]], but materialises the rebuilt `Server[F]` with the authenticated user — so tool-visibility
+    * predicates (`withToolIf` etc.) evaluate against the same identity that originally created the session, even when
+    * the rebuild happens on a different process.
+    */
+  private def buildAuthReconstruct: (String, Any) => F[McpSession[F]] = (id: String, user: Any) =>
+    for
+      sinkPair      <- sinkFactory(id).allocated
+      (sink, _)      = sinkPair
+      ccPair        <- ClientChannel.fromSink[F](sink).allocated
+      (cc, _)        = ccPair
+      ctx            = SessionContext(id, cc, refsFactory(id))
+      server        <- newAuthenticatedSessionFactory(id)(user, ctx)
+      handler        = new RequestHandler[F](server, cc.requester, cc.cancellation)
+      subscriptions <- Ref.of[F, Set[String]](Set.empty)
+    yield McpSession(id, handler, cc, subscriptions)
+
   def routes(using UUIDGen[F]): Resource[F, HttpRoutes[F]] =
+    given Console[F] = Console.make[F]
     if hasPredicatedTools && mAuthInfo.isEmpty then
       Resource.eval(
         Async[F].raiseError[HttpRoutes[F]](
@@ -414,10 +466,29 @@ class StreamingMcpHttpBuilder[F[_]: Async, A, Ctx] private[http4s] (
       mAuthInfo match
         case Some(info) =>
           val extractReq: Request[F] => F[Option[Any]] = mAuthExtractor.getOrElse(_ => Async[F].pure(None))
-          val storeR                                   = mSessionStore match
+          // Bring the widened codec evidence into implicit scope so the auth factory can summon Encoder[Any]/Decoder[Any].
+          given Encoder[Any]                                         = info.encoderAny
+          given Decoder[Any]                                         = info.decoderAny
+          val authReconstruct                                        = buildAuthReconstruct
+          val storeR: Resource[F, AuthenticatedSessionStore[F, Any]] = mSessionStore match
             case Some(store: AuthenticatedSessionStore[F, Any] @unchecked) =>
-              Resource.pure[F, AuthenticatedSessionStore[F, Any]](store)
-            case _ => Resource.eval(AuthenticatedSessionStore.inMemory[F, Any])
+              Resource.pure(store)
+            case _ =>
+              mAuthSessionStoreFactory match
+                case Some(factory) =>
+                  Resource.eval(factory.createAuthenticated[Any](authReconstruct))
+                case None =>
+                  // Defensive: with McpRedis.configure setting both factories, this branch is unreachable in normal
+                  // flows. If a user has wired a plain SessionStoreFactory without an authenticated counterpart we
+                  // can't honour it (the auth path needs putUser/getUser), so we fall back to in-memory and warn.
+                  val warn = mSessionStoreFactory match
+                    case Some(_) =>
+                      Console[F].errorln(
+                        "WARN: .authenticated combined with SessionStoreFactory but no AuthenticatedSessionStoreFactory; " +
+                          "falling back to in-memory session store. Sessions will not be shared across instances."
+                      )
+                    case None => Async[F].unit
+                  Resource.eval(warn *> AuthenticatedSessionStore.inMemory[F, Any])
           storeR.flatMap { store =>
             val serverF: (String, Any, SessionContext[F]) => F[Server[F]] =
               (id, user, ctx) => newAuthenticatedSessionFactory(id)(user, ctx)
@@ -432,20 +503,8 @@ class StreamingMcpHttpBuilder[F[_]: Async, A, Ctx] private[http4s] (
           }
         case None =>
           val storeR: Resource[F, SessionStore[F]] = mSessionStoreFactory match
-            case Some(factory) =>
-              val reconstruct: String => F[McpSession[F]] = (id: String) =>
-                for
-                  sinkPair      <- sinkFactory(id).allocated
-                  (sink, _)      = sinkPair
-                  ccPair        <- ClientChannel.fromSink[F](sink).allocated
-                  (cc, _)        = ccPair
-                  ctx            = SessionContext(id, cc, refsFactory(id))
-                  server        <- newSessionFactory(id)(ctx)
-                  handler        = new RequestHandler[F](server, cc.requester, cc.cancellation)
-                  subscriptions <- Ref.of[F, Set[String]](Set.empty)
-                yield McpSession(id, handler, cc, subscriptions)
-              Resource.eval(factory.create(reconstruct))
-            case None =>
+            case Some(factory) => Resource.eval(factory.create(buildReconstruct))
+            case None          =>
               mSessionStore.fold(Resource.eval(SessionStore.inMemory[F]))(Resource.pure(_))
           storeR.flatMap { store =>
             val serverF: (String, SessionContext[F]) => F[Server[F]] =
@@ -457,6 +516,10 @@ object StreamingMcpHttpBuilder:
 
   final private[http4s] case class AuthInfo[F[_]](
       eqAny: Eq[Any],
+      // Widened from Encoder[U]/Decoder[U] via the same runtime-cast trick as eqAny — values flowing through are
+      // genuinely U at runtime; the Any annotation is the lie.
+      encoderAny: Encoder[Any],
+      decoderAny: Decoder[Any],
       extract: Request[F] => F[Option[Any]],
       onForbidden: Response[F]
   )

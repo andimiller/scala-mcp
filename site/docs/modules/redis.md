@@ -38,3 +38,27 @@ def withRedis(
 ```
 
 The [Chat](../examples/chat.md) example server uses this module end-to-end.
+
+## Authenticated sessions across instances
+
+When the builder also calls `.authenticated[U]`, `McpRedis.configure` wires a
+Redis-backed `AuthenticatedSessionStore` that persists the user identity bound
+at `initialize` time alongside the session marker. This makes two behaviours
+hold across replicas:
+
+- **Predicates on reconstructed sessions.** When a request hits an instance
+  whose local cache doesn't know the session, the rebuild reads the stored
+  user from Redis and materialises the `Server[F]` with that identity — so
+  [`.withToolIf`](../getting-started/per-user-tools.md) gates evaluate the
+  same way they did on the originating instance.
+- **Drift rejection.** Every request's authenticated identity is compared
+  against the identity stored in Redis at session-init time. If they differ
+  (an admin flag flipped, a role revoked) the request is rejected with
+  `403 Forbidden — Credential mismatch`, regardless of which instance handles
+  it and regardless of whether the live session is still in that instance's
+  cache.
+
+`U` must have `Encoder[U]` and `Decoder[U]` instances in scope at the call to
+`.authenticated[U]` — that's what lets the identity round-trip through Redis.
+A `derives Encoder.AsObject, Decoder` clause on the user case class is the
+common way to satisfy this.
