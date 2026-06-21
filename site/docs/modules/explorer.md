@@ -15,6 +15,7 @@ on your `McpHttp.basic` / `McpHttp.streaming` builder:
 
 ```scala mdoc:compile-only
 import cats.effect.IO
+import net.andimiller.mcp.core.logging.NoOpLogging.given
 import net.andimiller.mcp.http4s.McpHttp
 
 val builder =

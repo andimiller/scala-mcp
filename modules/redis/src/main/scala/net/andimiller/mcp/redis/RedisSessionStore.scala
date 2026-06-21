@@ -17,6 +17,7 @@ import io.circe.Decoder
 import io.circe.Encoder
 import io.circe.parser.decode
 import io.circe.syntax.*
+import org.typelevel.log4cats.LoggerFactory
 
 /** A [[SessionStore]] that uses a Redis hash for session registry (with TTL) and a local in-memory cache for live
   * `McpSession` objects (which contain non-serializable handles like request handlers and notification sinks).
@@ -84,12 +85,14 @@ class RedisSessionStoreFactory[F[_]: Async](
   * so that the rebuilt `Server[F]` carries the correct authenticated identity (and therefore the correct
   * tool-visibility predicates).
   */
-class RedisAuthenticatedSessionStore[F[_]: Async, U: Encoder: Decoder](
+class RedisAuthenticatedSessionStore[F[_]: Async: LoggerFactory, U: Encoder: Decoder](
     redis: RedisCommands[F, String, String],
     localCache: Ref[F, Map[String, McpSession[F]]],
     reconstruct: (String, U) => F[McpSession[F]],
     ttl: FiniteDuration
 ) extends AuthenticatedSessionStore[F, U]:
+
+  private val logger    = LoggerFactory[F].getLoggerFromName("net.andimiller.mcp.redis.RedisAuthenticatedSessionStore")
 
   private def key(id: String): String = s"mcp:session:$id"
 
@@ -130,7 +133,12 @@ class RedisAuthenticatedSessionStore[F[_]: Async, U: Encoder: Decoder](
 
   def getUser(sessionId: String): F[Option[U]] =
     redis.hGet(key(sessionId), userField).flatMap {
-      case Some(str) => Async[F].fromEither(decode[U](str)).map(Some(_))
+      case Some(str) =>
+        decode[U](str) match
+          case Right(u) => Async[F].pure(Some(u))
+          case Left(t)  =>
+            logger.error(Map("sessionId" -> sessionId), t)("Redis user decode failed") *>
+              Async[F].raiseError(t)
       case None      => Async[F].pure(None)
     }
 
@@ -139,7 +147,7 @@ class RedisAuthenticatedSessionStore[F[_]: Async, U: Encoder: Decoder](
 
 object RedisAuthenticatedSessionStore:
 
-  def make[F[_]: Async, U: Encoder: Decoder](
+  def make[F[_]: Async: LoggerFactory, U: Encoder: Decoder](
       redis: RedisCommands[F, String, String],
       reconstruct: (String, U) => F[McpSession[F]],
       ttl: FiniteDuration
@@ -148,7 +156,7 @@ object RedisAuthenticatedSessionStore:
       new RedisAuthenticatedSessionStore(redis, cache, reconstruct, ttl)
     }
 
-class RedisAuthenticatedSessionStoreFactory[F[_]: Async](
+class RedisAuthenticatedSessionStoreFactory[F[_]: Async: LoggerFactory](
     redis: RedisCommands[F, String, String],
     ttl: FiniteDuration
 ) extends AuthenticatedSessionStoreFactory[F]:

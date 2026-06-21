@@ -13,8 +13,12 @@ import net.andimiller.mcp.http4s.McpHttp
 import com.comcast.ip4s.{Dns as _, *}
 import io.circe.Decoder
 import io.circe.Encoder
+import org.typelevel.log4cats.LoggerFactory
+import org.typelevel.log4cats.noop.NoOpFactory
 
 object DnsMcpServer extends IOApp.Simple:
+
+  given LoggerFactory[IO] = NoOpFactory[IO]
 
   // ── request / response types ──────────────────────────────────────
 

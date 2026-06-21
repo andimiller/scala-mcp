@@ -27,11 +27,15 @@ import io.circe.Json
 import io.circe.parser.decode
 import io.circe.syntax.*
 import munit.CatsEffectSuite
+import org.typelevel.log4cats.LoggerFactory
+import org.typelevel.log4cats.testing.TestingLoggerFactory
 
 /** End-to-end test for [[StdioMcpClient.fromStreams]] over paired in-memory byte pipes. Exercises the line-delimited
   * JSON-RPC wire format without spawning a subprocess.
   */
 class StdioMcpClientSuite extends CatsEffectSuite:
+
+  private given LoggerFactory[IO] = TestingLoggerFactory.atomic[IO]()
 
   override def munitIOTimeout: FiniteDuration = 10.seconds
 
@@ -109,7 +113,7 @@ class StdioMcpClientSuite extends CatsEffectSuite:
           chDrain         <- Resource.eval(serverChannel(serverPipe.source, serverPipe.sink))
           (chan, drainOut) = chDrain
           cc              <- ClientChannel.create[IO]
-          session          = new ServerSession[IO](server, chan, cc, ServerSessionConfig.default)
+          session          = new ServerSession[IO]("test", server, chan, cc, ServerSessionConfig.default)
           _               <- session.run.background
           _               <- drainOut.background
           // Client side: StdioMcpClient.fromStreams + initialize

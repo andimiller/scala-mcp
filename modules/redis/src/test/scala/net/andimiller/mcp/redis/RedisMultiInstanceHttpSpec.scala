@@ -38,6 +38,8 @@ import org.http4s.ember.client.EmberClientBuilder
 import org.http4s.ember.server.EmberServerBuilder
 import org.http4s.syntax.literals.*
 import org.testcontainers.containers.wait.strategy.Wait
+import org.typelevel.log4cats.LoggerFactory
+import org.typelevel.log4cats.testing.TestingLoggerFactory
 import org.typelevel.ci.CIStringSyntax
 
 /** Full-stack multi-instance integration test:
@@ -50,6 +52,8 @@ import org.typelevel.ci.CIStringSyntax
   * requests) is rejected, regardless of which instance and regardless of cache state.
   */
 class RedisMultiInstanceHttpSpec extends CatsEffectSuite with TestContainerForAll:
+
+  private given LoggerFactory[IO] = TestingLoggerFactory.atomic[IO]()
 
   override def munitIOTimeout: FiniteDuration = 60.seconds
 

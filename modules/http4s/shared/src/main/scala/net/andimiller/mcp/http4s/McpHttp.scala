@@ -16,6 +16,7 @@ import net.andimiller.mcp.core.server.ServerRequester
 import net.andimiller.mcp.core.server.SessionContext
 import net.andimiller.mcp.core.server.Server as McpServer
 
+import io.circe.Encoder
 import io.circe.parser.decode
 import io.circe.syntax.*
 import org.http4s.*
@@ -25,12 +26,13 @@ import org.http4s.headers.Location
 import org.http4s.headers.`Content-Type`
 import org.http4s.implicits.*
 import org.http4s.server.Router
+import org.typelevel.log4cats.LoggerFactory
 
 object McpHttp:
 
   // ── Builder entry points ──────────────────────────────────────────
 
-  def basic[F[_]: Async]: BasicMcpHttpBuilder[F, Unit] =
+  def basic[F[_]: Async: LoggerFactory]: BasicMcpHttpBuilder[F, Unit] =
     new BasicMcpHttpBuilder[F, Unit](
       mName = "",
       mVersion = "",
@@ -44,7 +46,7 @@ object McpHttp:
       mExtraRoutes = HttpRoutes.empty[F]
     )
 
-  def streaming[F[_]: Async]: StreamingMcpHttpBuilder[F, Unit, Unit] =
+  def streaming[F[_]: Async: LoggerFactory]: StreamingMcpHttpBuilder[F, Unit, Unit] =
     new StreamingMcpHttpBuilder[F, Unit, Unit](
       mName = "",
       mVersion = "",
@@ -71,7 +73,7 @@ object McpHttp:
 
   // ── Simple HTTP transport (no sessions, no SSE) ──────────────────
 
-  def routes[F[_]: Async](server: F[McpServer[F]]): HttpRoutes[F] =
+  def routes[F[_]: Async: LoggerFactory](server: F[McpServer[F]]): HttpRoutes[F] =
     val dsl = Http4sDsl[F]
     import dsl.*
     HttpRoutes.of[F] { case req @ POST -> Root / "mcp" =>
@@ -79,7 +81,7 @@ object McpHttp:
         s         <- server
         requester <- ServerRequester.noop[F]
         cancel     = CancellationRegistry.noop[F]
-        handler    = new RequestHandler[F](s, requester, cancel)
+        handler    = new RequestHandler[F]("basic", s, requester, cancel)
         body      <- req.bodyText.compile.string
         resp      <- decode[Message](body) match
                   case Right(message) =>
@@ -97,12 +99,12 @@ object McpHttp:
 
   // ── Streamable HTTP transport (sessions + SSE) ───────────────────
 
-  def streamableRoutes[F[_]: Async: UUIDGen](
+  def streamableRoutes[F[_]: Async: UUIDGen: LoggerFactory](
       newSession: SessionContext[F] => F[McpServer[F]]
   ): Resource[F, HttpRoutes[F]] =
     StreamableHttpTransport.routes[F]((_, ctx) => newSession(ctx))
 
-  def authenticatedStreamableRoutes[F[_]: Async: UUIDGen, U: Eq](
+  def authenticatedStreamableRoutes[F[_]: Async: UUIDGen: LoggerFactory, U: Eq: Encoder](
       authenticate: Request[F] => F[Option[U]],
       newSession: (U, SessionContext[F]) => F[McpServer[F]],
       onUnauthorized: F[Response[F]]
@@ -118,7 +120,7 @@ object McpHttp:
   def serve(
       server: McpServer[IO],
       config: McpHttpConfig = McpHttpConfig()
-  ): Resource[IO, org.http4s.server.Server] =
+  )(using LoggerFactory[IO]): Resource[IO, org.http4s.server.Server] =
     val mcpRoutes = McpHttp.routes[IO](IO.pure(server))
     val app       = buildApp(mcpRoutes, config)
     EmberServerBuilder
@@ -131,7 +133,7 @@ object McpHttp:
   def serveStreamable(
       newSession: SessionContext[IO] => IO[McpServer[IO]],
       config: McpHttpConfig = McpHttpConfig()
-  ): Resource[IO, org.http4s.server.Server] =
+  )(using LoggerFactory[IO]): Resource[IO, org.http4s.server.Server] =
     StreamableHttpTransport.routes[IO]((_, ctx) => newSession(ctx)).flatMap { mcpRoutes =>
       val app = buildApp(mcpRoutes, config)
       EmberServerBuilder
@@ -142,12 +144,12 @@ object McpHttp:
         .build
     }
 
-  def serveStreamableAuthenticated[U: Eq](
+  def serveStreamableAuthenticated[U: Eq: Encoder](
       authenticate: Request[IO] => IO[Option[U]],
       newSession: (U, SessionContext[IO]) => IO[McpServer[IO]],
       onUnauthorized: Response[IO],
       config: McpHttpConfig = McpHttpConfig()
-  ): Resource[IO, org.http4s.server.Server] =
+  )(using LoggerFactory[IO]): Resource[IO, org.http4s.server.Server] =
     StreamableHttpTransport
       .authenticatedRoutes[IO, U](
         authenticate,

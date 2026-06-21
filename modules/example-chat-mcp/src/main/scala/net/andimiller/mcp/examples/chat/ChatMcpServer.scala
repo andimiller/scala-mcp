@@ -23,6 +23,8 @@ import dev.profunktor.redis4cats.effect.Log.Stdout.given
 import dev.profunktor.redis4cats.pubsub.PubSub
 import io.circe.Decoder
 import io.circe.Encoder
+import org.typelevel.log4cats.LoggerFactory
+import org.typelevel.log4cats.slf4j.Slf4jFactory
 
 // ── Per-session context ──────────────────────────────────────────────
 
@@ -86,6 +88,8 @@ case class ChatMessageView(sender: String, content: String, timestamp: Long) der
 // ── Server ───────────────────────────────────────────────────────────
 
 object ChatMcpServer extends IOApp.Simple:
+
+  given LoggerFactory[IO] = Slf4jFactory.create[IO]
 
   final def run: IO[Unit] =
     (for

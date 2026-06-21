@@ -24,6 +24,8 @@ import org.http4s.Uri
 import org.http4s.client.middleware.Retry
 import org.http4s.client.middleware.RetryPolicy
 import org.http4s.ember.client.EmberClientBuilder
+import org.typelevel.log4cats.LoggerFactory
+import org.typelevel.log4cats.noop.NoOpFactory
 
 /** Tiny LLM ↔ MCP harness. Reads a Claude-style `.mcp.json`, opens every server it lists, hands those servers' tools to
   * an OpenAI-compatible chat endpoint, and runs a REPL.
@@ -34,6 +36,8 @@ object Main
       header = "Mini LLM agent that drives MCP tools over an OpenAI-compatible endpoint",
       version = "0.1.0"
     ):
+
+  given LoggerFactory[IO] = NoOpFactory[IO]
 
   private val clientInfo = Implementation("example-harness", "0.1.0")
 

@@ -63,8 +63,11 @@ lazy val core = crossProject(JVMPlatform, JSPlatform, NativePlatform)
       "com.softwaremill.sttp.apispec" %%% "jsonschema-circe"  % "0.11.10",
       "com.lihaoyi"                   %%% "sourcecode"        % "0.4.2",
       "org.scodec"                    %%% "scodec-core"       % "2.3.3",
+      "org.typelevel"                 %%% "log4cats-core"     % "2.8.0",
+      "org.typelevel"                 %%% "log4cats-noop"     % "2.8.0",
       "org.scalameta"                 %%% "munit"             % "1.0.0" % Test,
-      "org.typelevel"                 %%% "munit-cats-effect" % "2.2.0" % Test
+      "org.typelevel"                 %%% "munit-cats-effect" % "2.2.0" % Test,
+      "org.typelevel"                 %%% "log4cats-testing"  % "2.8.0" % Test
     )
   )
   .jvmSettings(
@@ -81,7 +84,8 @@ lazy val stdio = crossProject(JVMPlatform, JSPlatform, NativePlatform)
     name                 := "mcp-stdio",
     libraryDependencies ++= Seq(
       "org.scalameta" %%% "munit"             % "1.0.0" % Test,
-      "org.typelevel" %%% "munit-cats-effect" % "2.2.0" % Test
+      "org.typelevel" %%% "munit-cats-effect" % "2.2.0" % Test,
+      "org.typelevel" %%% "log4cats-testing"  % "2.8.0" % Test
     )
   )
   .jsSettings(noCoverage *)
@@ -102,7 +106,8 @@ lazy val http4s = crossProject(JVMPlatform, JSPlatform, NativePlatform)
       "org.http4s"    %%% "http4s-circe"        % "0.23.34",
       "org.http4s"    %%% "http4s-ember-client" % "0.23.34" % Test,
       "org.scalameta" %%% "munit"               % "1.0.0"   % Test,
-      "org.typelevel" %%% "munit-cats-effect"   % "2.2.0"   % Test
+      "org.typelevel" %%% "munit-cats-effect"   % "2.2.0"   % Test,
+      "org.typelevel" %%% "log4cats-testing"    % "2.8.0"   % Test
     )
   )
   .jvmSettings(
@@ -179,7 +184,8 @@ lazy val examplePomodoro = project
     name                 := "example-pomodoro-mcp",
     publish / skip       := true,
     libraryDependencies ++= Seq(
-      "ch.qos.logback" % "logback-classic" % "1.5.6"
+      "ch.qos.logback" % "logback-classic" % "1.5.6",
+      "org.typelevel" %% "log4cats-slf4j"  % "2.8.0"
     ),
     assembly / mainClass                  := Some("net.andimiller.mcp.examples.pomodoro.PomodoroMcpServer"),
     assembly / assemblyJarName            := "pomodoro-mcp",
@@ -202,7 +208,8 @@ lazy val exampleNotebook = project
     name                 := "example-shared-notebook-mcp",
     publish / skip       := true,
     libraryDependencies ++= Seq(
-      "ch.qos.logback" % "logback-classic" % "1.5.6"
+      "ch.qos.logback" % "logback-classic" % "1.5.6",
+      "org.typelevel" %% "log4cats-slf4j"  % "2.8.0"
     )
   )
   .dependsOn(core.jvm, http4s.jvm, goldenMunit.jvm % Test)
@@ -214,7 +221,8 @@ lazy val exampleChat = project
     name                 := "example-chat-mcp",
     publish / skip       := true,
     libraryDependencies ++= Seq(
-      "ch.qos.logback" % "logback-classic" % "1.5.6"
+      "ch.qos.logback" % "logback-classic" % "1.5.6",
+      "org.typelevel" %% "log4cats-slf4j"  % "2.8.0"
     )
   )
   .dependsOn(core.jvm, http4s.jvm, redis)
@@ -227,7 +235,8 @@ lazy val exampleRpgCharacterCreator = project
     publish / skip       := true,
     libraryDependencies ++= Seq(
       "ch.qos.logback"  % "logback-classic" % "1.5.6",
-      "net.andimiller" %% "enumerive-circe" % "1.0.0"
+      "net.andimiller" %% "enumerive-circe" % "1.0.0",
+      "org.typelevel"  %% "log4cats-slf4j"  % "2.8.0"
     )
   )
   .dependsOn(core.jvm, http4s.jvm, goldenMunit.jvm % Test)
@@ -339,7 +348,8 @@ lazy val redis = project
       "org.scalameta"  %% "munit"                      % "1.0.0"   % Test,
       "org.typelevel"  %% "munit-cats-effect"          % "2.2.0"   % Test,
       "com.dimafeng"   %% "testcontainers-scala-munit" % "0.44.1"  % Test,
-      "org.http4s"     %% "http4s-ember-client"        % "0.23.34" % Test
+      "org.http4s"     %% "http4s-ember-client"        % "0.23.34" % Test,
+      "org.typelevel"  %% "log4cats-testing"           % "2.8.0"   % Test
     )
   )
   .dependsOn(core.jvm, http4s.jvm)
@@ -390,6 +400,7 @@ lazy val openapiMcpProxy = project
       "org.http4s"    %% "http4s-circe"        % "0.23.34",
       "com.monovore"  %% "decline-effect"      % "2.6.1",
       "ch.qos.logback" % "logback-classic"     % "1.5.6",
+      "org.typelevel" %% "log4cats-slf4j"      % "2.8.0",
       "org.scalameta" %% "munit"               % "1.0.0" % Test,
       "org.typelevel" %% "munit-cats-effect"   % "2.2.0" % Test
     ),

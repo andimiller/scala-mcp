@@ -16,7 +16,7 @@ import org.http4s.*
   * Parameterised on `Ctx` so per-tool/per-server middleware can carry a typed context. For most users `Ctx = Unit` is
   * the right choice; the `BasicMcpHttpBuilder[F](name, version)` factory in the companion picks `Unit` automatically.
   */
-class BasicMcpHttpBuilder[F[_]: Async, Ctx] private[http4s] (
+class BasicMcpHttpBuilder[F[_]: Async: org.typelevel.log4cats.LoggerFactory, Ctx] private[http4s] (
     val mName: String,
     val mVersion: String,
     val mConfig: McpHttpConfig,
@@ -174,7 +174,7 @@ object BasicMcpHttpBuilder:
 
   extension [Ctx](builder: BasicMcpHttpBuilder[IO, Ctx])
 
-    def serve: Resource[IO, org.http4s.server.Server] =
+    def serve(using org.typelevel.log4cats.LoggerFactory[IO]): Resource[IO, org.http4s.server.Server] =
       Resource.eval(builder.buildServer).flatMap { server =>
         McpHttp.serve(server, builder.mConfig)
       }

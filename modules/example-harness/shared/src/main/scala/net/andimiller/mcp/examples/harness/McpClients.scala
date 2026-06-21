@@ -25,7 +25,7 @@ import org.typelevel.ci.CIString
   */
 object McpClients:
 
-  def open[F[_]: Async](
+  def open[F[_]: Async: org.typelevel.log4cats.LoggerFactory](
       spec: McpServerSpec,
       info: Implementation,
       capabilities: ClientCapabilities,
@@ -58,7 +58,7 @@ object McpClients:
             .connect
         }
 
-  def openAll[F[_]: Async](
+  def openAll[F[_]: Async: org.typelevel.log4cats.LoggerFactory](
       cfg: McpJsonConfig,
       info: Implementation,
       capabilities: ClientCapabilities,

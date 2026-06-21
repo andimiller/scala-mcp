@@ -22,6 +22,8 @@ import com.comcast.ip4s.*
 import io.circe.Codec
 import io.circe.Decoder
 import io.circe.Encoder
+import org.typelevel.log4cats.LoggerFactory
+import org.typelevel.log4cats.slf4j.Slf4jFactory
 import sttp.apispec.Schema
 
 /** Loosely D&D 5e–themed character creator demonstrating multi-step elicitation over HTTP.
@@ -35,6 +37,8 @@ import sttp.apispec.Schema
   * A separate `list_characters` tool reads the per-session history.
   */
 object RpgCharacterCreatorMcpServer extends IOApp.Simple:
+
+  given LoggerFactory[IO] = Slf4jFactory.create[IO]
 
   // ── Catalog ────────────────────────────────────────────────────────
 

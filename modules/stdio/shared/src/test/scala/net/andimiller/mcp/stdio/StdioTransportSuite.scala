@@ -19,8 +19,12 @@ import fs2.Stream
 import io.circe.Json
 import io.circe.syntax.*
 import munit.CatsEffectSuite
+import org.typelevel.log4cats.LoggerFactory
+import org.typelevel.log4cats.testing.TestingLoggerFactory
 
 class StdioTransportSuite extends CatsEffectSuite:
+
+  private given LoggerFactory[IO] = TestingLoggerFactory.atomic[IO]()
 
   override def munitIOTimeout: FiniteDuration = 10.seconds
 
@@ -77,7 +81,7 @@ class StdioTransportSuite extends CatsEffectSuite:
                       capabilities = ServerCapabilities(),
                       toolHandlers = tools
                     )
-          session = new ServerSession[IO](server, r.channel, cc, ServerSessionConfig(maxConcurrent))
+          session = new ServerSession[IO]("test", server, r.channel, cc, ServerSessionConfig(maxConcurrent))
           fib    <- session.run.start
           _      <- use(r, cc)
           _      <- fib.cancel

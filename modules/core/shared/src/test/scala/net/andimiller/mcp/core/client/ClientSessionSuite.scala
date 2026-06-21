@@ -19,8 +19,12 @@ import fs2.Stream
 import io.circe.Json
 import io.circe.syntax.*
 import munit.CatsEffectSuite
+import org.typelevel.log4cats.LoggerFactory
+import org.typelevel.log4cats.testing.TestingLoggerFactory
 
 class ClientSessionSuite extends CatsEffectSuite:
+
+  private given LoggerFactory[IO] = TestingLoggerFactory.atomic[IO]()
 
   /** A pair of [[MessageChannel]]s wired together by two queues — `client` writes go to `server.incoming` and
     * vice-versa. Lets us drive client-server round-trips entirely in-memory.

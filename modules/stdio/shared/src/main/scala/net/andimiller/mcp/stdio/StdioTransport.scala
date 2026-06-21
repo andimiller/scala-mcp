@@ -3,6 +3,7 @@ package net.andimiller.mcp.stdio
 import cats.effect.LiftIO
 import cats.effect.kernel.Async
 import cats.effect.std.Console
+import cats.effect.syntax.all.*
 import cats.syntax.all.*
 
 import net.andimiller.mcp.core.codecs.CirceCodecs.given
@@ -18,6 +19,7 @@ import net.andimiller.mcp.core.transport.MessageChannel
 import fs2.Stream
 import io.circe.parser.decode
 import io.circe.syntax.*
+import org.typelevel.log4cats.LoggerFactory
 
 /** Transport implementation using stdin/stdout for communication.
   *
@@ -30,8 +32,9 @@ object StdioTransport:
     *
     * Reads JSON-RPC messages from stdin (one per line) and writes responses to stdout.
     */
-  def channel[F[_]: Async: LiftIO: Console]: F[MessageChannel[F]] =
+  def channel[F[_]: Async: LiftIO: Console: LoggerFactory]: F[MessageChannel[F]] =
     val console = Console[F]
+    val logger  = LoggerFactory[F].getLoggerFromName("net.andimiller.mcp.stdio.StdioTransport")
     new MessageChannel[F]:
 
       def incoming: Stream[F, Message] =
@@ -42,7 +45,9 @@ object StdioTransport:
           .evalMap { line =>
             decode[Message](line) match
               case Right(message) => Async[F].pure(message)
-              case Left(error)    => Async[F].raiseError(new Exception(s"Failed to parse message: ${error.getMessage}"))
+              case Left(error)    =>
+                val err = new Exception(s"Failed to parse message: ${error.getMessage}")
+                logger.error(err)("stdio JSON-RPC parse failure") *> Async[F].raiseError(err)
           }
 
       def send(message: Message): F[Unit] =
@@ -55,25 +60,29 @@ object StdioTransport:
     *
     * This will block until stdin is closed or an error occurs.
     */
-  def run[F[_]: Async: LiftIO: Console](
+  def run[F[_]: Async: LiftIO: Console: LoggerFactory](
       server: Server[F],
       clientChannel: ClientChannel[F],
       config: ServerSessionConfig = ServerSessionConfig.default
   ): F[Unit] =
+    val logger = LoggerFactory[F].getLoggerFromName("net.andimiller.mcp.stdio.StdioTransport")
     for
       channel <- StdioTransport.channel[F]
-      session  = new ServerSession[F](server, channel, clientChannel, config)
-      _       <- session.run
+      session  = new ServerSession[F]("stdio", server, channel, clientChannel, config)
+      _       <- logger.info(Map("sessionId" -> "stdio", "transport" -> "stdio"))("session created")
+      _       <- session.run.guarantee(
+             logger.info(Map("sessionId" -> "stdio", "reason" -> "stdin-closed"))("session destroyed")
+           )
     yield ()
 
   /** Run an MCP server over stdio transport. Creates an internal [[ClientChannel]] for the transport's outbound
     * traffic. Use the `SessionContext`-taking overload if the server itself needs access to the channel (e.g. for
     * notifications or elicitation requests).
     */
-  def run[F[_]: Async: LiftIO: Console](server: Server[F], config: ServerSessionConfig): F[Unit] =
+  def run[F[_]: Async: LiftIO: Console: LoggerFactory](server: Server[F], config: ServerSessionConfig): F[Unit] =
     ClientChannel.create[F].use(cc => run(server, cc, config))
 
-  def run[F[_]: Async: LiftIO: Console](server: Server[F]): F[Unit] =
+  def run[F[_]: Async: LiftIO: Console: LoggerFactory](server: Server[F]): F[Unit] =
     run(server, ServerSessionConfig.default)
 
   /** Run a server built from a [[SessionContext]] factory — the unified shape that grants access to the per-session
@@ -82,7 +91,7 @@ object StdioTransport:
     *
     * Stdio is single-session, so the context's id is the literal `"stdio"`.
     */
-  def run[F[_]: Async: LiftIO: Console](
+  def run[F[_]: Async: LiftIO: Console: LoggerFactory](
       factory: SessionContext[F] => F[Server[F]],
       config: ServerSessionConfig
   ): F[Unit] =
@@ -91,9 +100,9 @@ object StdioTransport:
       factory(ctx).flatMap(run(_, cc, config))
     }
 
-  def run[F[_]: Async: LiftIO: Console](factory: SessionContext[F] => F[Server[F]]): F[Unit] =
+  def run[F[_]: Async: LiftIO: Console: LoggerFactory](factory: SessionContext[F] => F[Server[F]]): F[Unit] =
     run(factory, ServerSessionConfig.default)
 
   /** Convenience method to run a server from an `F`-wrapped server. */
-  def runServer[F[_]: Async: LiftIO: Console](serverF: F[Server[F]]): F[Unit] =
+  def runServer[F[_]: Async: LiftIO: Console: LoggerFactory](serverF: F[Server[F]]): F[Unit] =
     serverF.flatMap(run[F])

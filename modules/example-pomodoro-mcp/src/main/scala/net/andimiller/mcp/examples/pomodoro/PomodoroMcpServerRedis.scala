@@ -13,8 +13,12 @@ import dev.profunktor.redis4cats.connection.RedisClient
 import dev.profunktor.redis4cats.data.RedisCodec
 import dev.profunktor.redis4cats.effect.Log.Stdout.given
 import dev.profunktor.redis4cats.pubsub.PubSub
+import org.typelevel.log4cats.LoggerFactory
+import org.typelevel.log4cats.slf4j.Slf4jFactory
 
 object PomodoroMcpServerRedis extends IOApp.Simple:
+
+  given LoggerFactory[IO] = Slf4jFactory.create[IO]
 
   final def run: IO[Unit] =
     (for

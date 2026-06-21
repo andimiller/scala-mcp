@@ -13,8 +13,12 @@ import net.andimiller.mcp.core.protocol.jsonrpc.RequestId
 import io.circe.Json
 import io.circe.syntax.*
 import munit.CatsEffectSuite
+import org.typelevel.log4cats.LoggerFactory
+import org.typelevel.log4cats.testing.TestingLoggerFactory
 
 class RequestHandlerCancellationSuite extends CatsEffectSuite:
+
+  private given LoggerFactory[IO] = TestingLoggerFactory.atomic[IO]()
 
   private def gatedTool(gate: Deferred[IO, Unit]): Tool[IO, Unit] =
     new Tool[IO, Unit]:
@@ -34,7 +38,7 @@ class RequestHandlerCancellationSuite extends CatsEffectSuite:
                 )
       requester <- ServerRequester.noop[IO]
       cancel    <- CancellationRegistry.create[IO]
-    yield new RequestHandler[IO](server, requester, cancel)
+    yield new RequestHandler[IO]("test", server, requester, cancel)
 
   test("tools/call followed by notifications/cancelled returns None (no response)") {
     val id          = RequestId.fromLong(7L)

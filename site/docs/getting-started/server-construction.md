@@ -11,9 +11,10 @@ The setup block below builds a minimal tool / resource / prompt so the
 import cats.effect.{IO, IOApp}
 import com.comcast.ip4s.*
 import io.circe.{Decoder, Encoder}
+import net.andimiller.mcp.core.logging.NoOpLogging.given
+import net.andimiller.mcp.core.protocol.PromptMessage
 import net.andimiller.mcp.core.schema.JsonSchema
 import net.andimiller.mcp.core.server.*
-import net.andimiller.mcp.core.protocol.PromptMessage
 
 case class Req(value: String)  derives JsonSchema, Decoder, Encoder.AsObject
 case class Resp(value: String) derives JsonSchema, Decoder, Encoder.AsObject

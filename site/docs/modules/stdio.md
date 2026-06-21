@@ -17,6 +17,7 @@ one line:
 
 ```scala mdoc:compile-only
 import cats.effect.{IO, IOApp}
+import net.andimiller.mcp.core.logging.NoOpLogging.given
 import net.andimiller.mcp.core.server.{Server, ServerBuilder}
 import net.andimiller.mcp.stdio.StdioTransport
 

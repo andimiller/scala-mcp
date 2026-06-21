@@ -28,6 +28,7 @@ import org.http4s.*
 import org.http4s.client.Client
 import org.http4s.headers.`Content-Type`
 import org.typelevel.ci.*
+import org.typelevel.log4cats.LoggerFactory
 
 /** MCP client over the streamable HTTP transport (single endpoint, POST + SSE GET + DELETE). Counterpart to
   * [[StreamableHttpTransport]] on the server side.
@@ -49,19 +50,20 @@ object StreamableHttpMcpClient:
 
   // ── Low-level API ─────────────────────────────────────────────────
 
-  def fromHttpClient[F[_]: Async](
+  def fromHttpClient[F[_]: Async: LoggerFactory](
       httpClient: Client[F],
       endpoint: Uri
   ): Resource[F, UninitializedMcpClient[F]] =
     fromHttpClient(httpClient, endpoint, Headers.empty, openSseStream = true, ClientHandler.noop[F])
 
-  def fromHttpClient[F[_]: Async](
+  def fromHttpClient[F[_]: Async: LoggerFactory](
       httpClient: Client[F],
       endpoint: Uri,
       extraHeaders: Headers,
       openSseStream: Boolean,
       handler: ClientHandler[F]
   ): Resource[F, UninitializedMcpClient[F]] =
+    val logger = LoggerFactory[F].getLoggerFromName("net.andimiller.mcp.http4s.StreamableHttpMcpClient")
     for
       sessionId    <- Resource.eval(Ref[F].of(Option.empty[String]))
       sessionReady <- Resource.eval(Deferred[F, String])
@@ -91,13 +93,22 @@ object StreamableHttpMcpClient:
                 .start
             )(fiber =>
               shutdown.complete(()).attempt.void *>
-                fiber.cancel.timeoutTo(2.seconds, Async[F].unit).attempt.void
+                fiber.cancel.timeoutTo(2.seconds, Async[F].unit).attempt.flatMap {
+                  case Left(t)  =>
+                    logger.warn(Map("task" -> "sseFiberCancel"), t)("background task failure ignored")
+                  case Right(_) => Async[F].unit
+                }
             )
             .void
         else Resource.eval(subscribed.complete(()).attempt.void)
       channel = httpChannel(httpClient, endpoint, sessionId, sessionReady, inbound, extraHeaders)
       inner  <- ClientSession.resource[F](channel, handler)
-      _      <- Resource.onFinalize(deleteSession(httpClient, endpoint, sessionId, extraHeaders).attempt.void)
+      _      <- Resource.onFinalize(
+             deleteSession(httpClient, endpoint, sessionId, extraHeaders).attempt.flatMap {
+               case Left(t)  => logger.warn(Map("task" -> "deleteSession"), t)("background task failure ignored")
+               case Right(_) => Async[F].unit
+             }
+           )
     yield new UninitializedMcpClient[F]:
       def initialize(
           info: Implementation,
@@ -114,7 +125,7 @@ object StreamableHttpMcpClient:
 
   // ── High-level API: builder ───────────────────────────────────────
 
-  def builder[F[_]: Async](
+  def builder[F[_]: Async: LoggerFactory](
       httpClient: Client[F],
       endpoint: Uri
   ): HttpClientBuilder[F] =
@@ -267,7 +278,7 @@ object StreamableHttpMcpClient:
     }
 
 /** Fluent builder for [[StreamableHttpMcpClient]] that wraps fromHttpClient + initialize. */
-final class HttpClientBuilder[F[_]: Async] private (
+final class HttpClientBuilder[F[_]: Async: LoggerFactory] private (
     private val httpClient: Client[F],
     private val endpoint: Uri,
     private val extraHeaders: Headers,
@@ -317,7 +328,7 @@ final class HttpClientBuilder[F[_]: Async] private (
 
 object HttpClientBuilder:
 
-  def empty[F[_]: Async](httpClient: Client[F], endpoint: Uri): HttpClientBuilder[F] =
+  def empty[F[_]: Async: LoggerFactory](httpClient: Client[F], endpoint: Uri): HttpClientBuilder[F] =
     new HttpClientBuilder[F](
       httpClient = httpClient,
       endpoint = endpoint,

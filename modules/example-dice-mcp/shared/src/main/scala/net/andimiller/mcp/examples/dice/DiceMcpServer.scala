@@ -30,9 +30,13 @@ import io.circe.Codec
 import io.circe.Decoder
 import io.circe.Encoder
 import io.circe.syntax.*
+import org.typelevel.log4cats.LoggerFactory
+import org.typelevel.log4cats.noop.NoOpFactory
 import sttp.apispec.Schema
 
 object DiceMcpServer extends IOApp.Simple:
+
+  given LoggerFactory[IO] = NoOpFactory[IO]
 
   case class DiceResources(
       rollHistory: Ref[IO, List[DiceRoller.RollResult]],

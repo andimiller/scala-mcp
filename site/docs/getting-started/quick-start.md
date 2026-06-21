@@ -35,6 +35,12 @@ import io.circe.{Decoder, Encoder}
 import net.andimiller.mcp.core.schema.JsonSchema
 import net.andimiller.mcp.core.server.*
 
+// scala-mcp requires a log4cats LoggerFactory in scope at server / client
+// construction sites. The opt-in import below provides a no-op default;
+// swap it for `given LoggerFactory[IO] = Slf4jFactory.create[IO]`
+// (from log4cats-slf4j) on the JVM to route logs through SLF4J.
+import net.andimiller.mcp.core.logging.NoOpLogging.given
+
 case class GreetRequest(name: String) derives JsonSchema, Decoder
 case class GreetResponse(message: String) derives JsonSchema, Encoder.AsObject
 

@@ -13,8 +13,12 @@ import net.andimiller.mcp.core.protocol.jsonrpc.RequestId
 import io.circe.Json
 import io.circe.syntax.*
 import munit.CatsEffectSuite
+import org.typelevel.log4cats.LoggerFactory
+import org.typelevel.log4cats.testing.TestingLoggerFactory
 
 class RequestHandlerDispatchSuite extends CatsEffectSuite:
+
+  private given LoggerFactory[IO] = TestingLoggerFactory.atomic[IO]()
 
   private def textTool: Tool[IO, Unit] =
     new Tool[IO, Unit]:
@@ -57,7 +61,7 @@ class RequestHandlerDispatchSuite extends CatsEffectSuite:
                 )
       requester <- ServerRequester.create[IO](_ => IO.unit)
       cancel    <- CancellationRegistry.create[IO]
-    yield (new RequestHandler[IO](server, requester, cancel), requester)
+    yield (new RequestHandler[IO]("test", server, requester, cancel), requester)
 
   private def buildHandler(
       tools: List[Tool[IO, Unit]] = Nil,
@@ -233,7 +237,7 @@ class RequestHandlerDispatchSuite extends CatsEffectSuite:
       requester <- ServerRequester.create[IO](published.offer)
       cancel    <- CancellationRegistry.create[IO]
       server    <- DefaultServer[IO](Implementation("t", "0"), ServerCapabilities())
-      handler    = new RequestHandler[IO](server, requester, cancel)
+      handler    = new RequestHandler[IO]("test", server, requester, cancel)
       reqFib    <- requester.request("ping", None).start
       msg       <- published.take
       reqId      = msg match

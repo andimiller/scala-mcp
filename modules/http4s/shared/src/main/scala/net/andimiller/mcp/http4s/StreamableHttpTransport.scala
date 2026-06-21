@@ -17,12 +17,14 @@ import net.andimiller.mcp.core.server.SessionContext
 import net.andimiller.mcp.core.state.SessionRefs
 
 import fs2.Stream
+import io.circe.Encoder
 import io.circe.parser.decode
 import io.circe.syntax.*
 import org.http4s.*
 import org.http4s.dsl.Http4sDsl
 import org.http4s.headers.`Content-Type`
 import org.typelevel.ci.*
+import org.typelevel.log4cats.LoggerFactory
 
 /** Streamable HTTP transport for MCP (spec 2025-03-26).
   *
@@ -42,7 +44,7 @@ object StreamableHttpTransport:
   private val eventStreamMediaType = new MediaType("text", "event-stream")
 
   /** Convenience: build routes with default in-memory sinks, refs, and session store. */
-  def routes[F[_]: Async: UUIDGen](
+  def routes[F[_]: Async: UUIDGen: LoggerFactory](
       serverFactory: (String, SessionContext[F]) => F[Server[F]]
   ): Resource[F, HttpRoutes[F]] =
     Resource.eval(SessionStore.inMemory[F]).map { store =>
@@ -60,7 +62,7 @@ object StreamableHttpTransport:
     * @param store
     *   where to persist [[McpSession]]s by id
     */
-  def routes[F[_]: Async: UUIDGen](
+  def routes[F[_]: Async: UUIDGen: LoggerFactory](
       serverFactory: (String, SessionContext[F]) => F[Server[F]],
       sinkFactory: String => Resource[F, NotificationSink[F]],
       refsFactory: String => SessionRefs[F],
@@ -71,7 +73,7 @@ object StreamableHttpTransport:
   /** Build authenticated HTTP routes. On `initialize`, the extracted user identity is stored alongside the session;
     * subsequent requests must present credentials for the same user (enforced via `Eq[U]`).
     */
-  def authenticatedRoutes[F[_]: Async: UUIDGen, U: Eq](
+  def authenticatedRoutes[F[_]: Async: UUIDGen: LoggerFactory, U: Eq: Encoder](
       authenticate: Request[F] => F[Option[U]],
       serverFactory: (String, U, SessionContext[F]) => F[Server[F]],
       onUnauthorized: F[Response[F]],
@@ -82,7 +84,7 @@ object StreamableHttpTransport:
     Resource.pure(authedRoutes(authenticate, serverFactory, onUnauthorized, sinkFactory, refsFactory, store))
 
   /** Convenience: authenticated routes with default in-memory factories and store. */
-  def authenticatedRoutes[F[_]: Async: UUIDGen, U: Eq](
+  def authenticatedRoutes[F[_]: Async: UUIDGen: LoggerFactory, U: Eq: Encoder](
       authenticate: Request[F] => F[Option[U]],
       serverFactory: (String, U, SessionContext[F]) => F[Server[F]],
       onUnauthorized: F[Response[F]]
@@ -110,12 +112,13 @@ object StreamableHttpTransport:
     }
 
   /** Build a session given a SessionContext-aware factory. */
-  private def createSessionFromContext[F[_]: Async: UUIDGen](
+  private def createSessionFromContext[F[_]: Async: UUIDGen: LoggerFactory](
       serverFactory: (String, SessionContext[F]) => F[Server[F]],
       sinkFactory: String => Resource[F, NotificationSink[F]],
       refsFactory: String => SessionRefs[F],
       store: SessionStore[F]
   ): F[McpSession[F]] =
+    val logger = LoggerFactory[F].getLoggerFromName("net.andimiller.mcp.http4s.StreamableHttpTransport")
     for
       id            <- UUIDGen[F].randomUUID.map(_.toString)
       sinkPair      <- sinkFactory(id).allocated
@@ -124,20 +127,22 @@ object StreamableHttpTransport:
       (cc, _)        = ccPair
       ctx            = SessionContext[F](id, cc, refsFactory(id))
       server        <- serverFactory(id, ctx)
-      handler        = new RequestHandler[F](server, cc.requester, cc.cancellation)
+      handler        = new RequestHandler[F](id, server, cc.requester, cc.cancellation)
       subscriptions <- Ref.of[F, Set[String]](Set.empty)
       session        = McpSession(id, handler, cc, subscriptions)
       _             <- store.put(session)
+      _             <- logger.info(Map("sessionId" -> id, "transport" -> "http"))("session created")
     yield session
 
   /** Same as [[createSessionFromContext]] but additionally binds the user identity in the authenticated session store. */
-  private def createAuthenticatedSession[F[_]: Async: UUIDGen, U](
+  private def createAuthenticatedSession[F[_]: Async: UUIDGen: LoggerFactory, U: Encoder](
       serverFactory: (String, U, SessionContext[F]) => F[Server[F]],
       sinkFactory: String => Resource[F, NotificationSink[F]],
       refsFactory: String => SessionRefs[F],
       store: AuthenticatedSessionStore[F, U],
       user: U
   ): F[McpSession[F]] =
+    val logger = LoggerFactory[F].getLoggerFromName("net.andimiller.mcp.http4s.StreamableHttpTransport")
     for
       id            <- UUIDGen[F].randomUUID.map(_.toString)
       sinkPair      <- sinkFactory(id).allocated
@@ -146,17 +151,25 @@ object StreamableHttpTransport:
       (cc, _)        = ccPair
       ctx            = SessionContext[F](id, cc, refsFactory(id))
       server        <- serverFactory(id, user, ctx)
-      handler        = new RequestHandler[F](server, cc.requester, cc.cancellation)
+      handler        = new RequestHandler[F](id, server, cc.requester, cc.cancellation)
       subscriptions <- Ref.of[F, Set[String]](Set.empty)
       session        = McpSession(id, handler, cc, subscriptions)
       _             <- store.put(session)
       _             <- store.putUser(id, user)
+      _             <- logger.info(
+             Map("sessionId" -> id, "user" -> encodeUserForLog(user), "transport" -> "http-auth")
+           )("session created")
     yield session
+
+  /** Truncate the JSON-encoded form of `user` to 256 chars so logs don't blow up on pathological encoders. */
+  private[http4s] def encodeUserForLog[U: Encoder](u: U): String =
+    val s = u.asJson.noSpaces
+    if s.length > 256 then s.take(256) + "…(truncated)" else s
 
   // ── Routes assembly ────────────────────────────────────────────────
 
   /** Thin wrapper for the unauthenticated path — supplies no-op auth/validation hooks. */
-  private def unauthenticatedRoutes[F[_]: Async: UUIDGen](
+  private def unauthenticatedRoutes[F[_]: Async: UUIDGen: LoggerFactory](
       serverFactory: (String, SessionContext[F]) => F[Server[F]],
       sinkFactory: String => Resource[F, NotificationSink[F]],
       refsFactory: String => SessionRefs[F],
@@ -172,7 +185,7 @@ object StreamableHttpTransport:
   /** Thin wrapper for the authenticated path — wires `authenticate`, `getUser`-based validation, and per-user session
     * binding into the unified route builder.
     */
-  private def authedRoutes[F[_]: Async: UUIDGen, U: Eq](
+  private def authedRoutes[F[_]: Async: UUIDGen: LoggerFactory, U: Eq: Encoder](
       authenticate: Request[F] => F[Option[U]],
       serverFactory: (String, U, SessionContext[F]) => F[Server[F]],
       onUnauthorized: F[Response[F]],
@@ -180,8 +193,9 @@ object StreamableHttpTransport:
       refsFactory: String => SessionRefs[F],
       store: AuthenticatedSessionStore[F, U]
   ): HttpRoutes[F] =
-    val dsl = Http4sDsl[F]
+    val dsl    = Http4sDsl[F]
     import dsl.*
+    val logger = LoggerFactory[F].getLoggerFromName("net.andimiller.mcp.http4s.StreamableHttpTransport")
 
     buildRoutes[F, U](
       authCheck = req =>
@@ -193,8 +207,12 @@ object StreamableHttpTransport:
       validateSession = (user, sessionId) =>
         store.getUser(sessionId).flatMap {
           case Some(stored) if stored === user => Async[F].pure(Right(()))
-          case Some(_)                         => Forbidden("Credential mismatch").map(Left(_))
-          case None                            => NotFound("Session not found").map(Left(_))
+          case Some(_)                         =>
+            logger.info(Map("sessionId" -> sessionId, "reason" -> "credential-mismatch"))("authorization rejected") *>
+              Forbidden("Credential mismatch").map(Left(_))
+          case None                            =>
+            logger.info(Map("sessionId" -> sessionId, "reason" -> "session-not-found"))("authorization rejected") *>
+              NotFound("Session not found").map(Left(_))
         },
       store = store
     )
@@ -216,14 +234,15 @@ object StreamableHttpTransport:
     * mismatches before the session is touched. On `Right(())`, the existing session (if any) is cancelled and removed —
     * matching the original unauthenticated behaviour of silently 200-ing on DELETE of a missing session.
     */
-  private def buildRoutes[F[_]: Async, A](
+  private def buildRoutes[F[_]: Async: LoggerFactory, A](
       authCheck: Request[F] => F[Either[Response[F], A]],
       initSession: A => F[McpSession[F]],
       validateSession: (A, String) => F[Either[Response[F], Unit]],
       store: SessionStore[F]
   ): HttpRoutes[F] =
-    val dsl = Http4sDsl[F]
+    val dsl    = Http4sDsl[F]
     import dsl.*
+    val logger = LoggerFactory[F].getLoggerFromName("net.andimiller.mcp.http4s.StreamableHttpTransport")
 
     HttpRoutes.of[F] {
       // ── POST /mcp ────────────────────────────────────────────────────
@@ -232,7 +251,8 @@ object StreamableHttpTransport:
           case Left(resp)       => Async[F].pure(resp)
           case Right(authState) =>
             readBody(req).flatMap {
-              case Left(err)      => BadRequest(err)
+              case Left(err)      =>
+                logger.info(Map("error" -> err))("JSON-RPC parse failure") *> BadRequest(err)
               case Right(message) =>
                 message match
                   case r @ Message.Request(_, _, "initialize", _) =>
@@ -309,6 +329,7 @@ object StreamableHttpTransport:
                   case Right(())  =>
                     store.get(sid).flatMap(_.traverse_(_.clientChannel.cancellation.cancelAll)) *>
                       store.remove(sid) *>
+                      logger.info(Map("sessionId" -> sid, "reason" -> "client-delete"))("session destroyed") *>
                       Ok("Session terminated")
                 }
         }

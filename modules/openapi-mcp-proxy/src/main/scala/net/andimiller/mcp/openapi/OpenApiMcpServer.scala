@@ -11,6 +11,8 @@ import net.andimiller.mcp.stdio.StdioTransport
 import com.monovore.decline.*
 import com.monovore.decline.effect.CommandIOApp
 import org.http4s.ember.client.EmberClientBuilder
+import org.typelevel.log4cats.LoggerFactory
+import org.typelevel.log4cats.slf4j.Slf4jFactory
 
 object OpenApiMcpServer
     extends CommandIOApp(
@@ -18,6 +20,8 @@ object OpenApiMcpServer
       header = "Expose OpenAPI operations as MCP tools",
       version = BuildInfo.version
     ):
+
+  given LoggerFactory[IO] = Slf4jFactory.create[IO]
 
   private val console = Console[IO]
 

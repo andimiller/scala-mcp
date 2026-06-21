@@ -7,6 +7,7 @@ import net.andimiller.mcp.core.protocol.*
 import net.andimiller.mcp.core.transport.MessageChannel
 
 import fs2.Stream
+import org.typelevel.log4cats.LoggerFactory
 
 /** Core MCP server interface.
   *
@@ -56,14 +57,16 @@ trait Server[F[_]]:
   * published to the [[ClientChannel]] back onto the transport. Inbound and outbound streams are merged so the same
   * fiber drives both directions.
   */
-class ServerSession[F[_]: Async](
+class ServerSession[F[_]: Async: LoggerFactory](
+    sessionId: String,
     server: Server[F],
     channel: MessageChannel[F],
     clientChannel: ClientChannel[F],
     config: ServerSessionConfig = ServerSessionConfig.default
 ):
 
-  private val handler = new RequestHandler[F](server, clientChannel.requester, clientChannel.cancellation)
+  private val handler =
+    new RequestHandler[F](sessionId, server, clientChannel.requester, clientChannel.cancellation)
 
   /** Run the server session, processing incoming messages and forwarding server-initiated outbound traffic until the
     * underlying transport closes.

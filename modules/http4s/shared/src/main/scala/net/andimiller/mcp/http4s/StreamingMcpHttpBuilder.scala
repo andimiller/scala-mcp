@@ -36,7 +36,7 @@ private[http4s] type ToolEntry[F[_], Ctx] = (Tool[F, Ctx], Option[Any => F[Boole
   *     Tool-visibility predicates (`.withToolIf`) operate on `A`.
   *   - `Ctx` — the per-session runtime context, grown by `.stateful[S]` and (back-compat) `.authenticated[U]`.
   */
-class StreamingMcpHttpBuilder[F[_]: Async, A, Ctx] private[http4s] (
+class StreamingMcpHttpBuilder[F[_]: Async: org.typelevel.log4cats.LoggerFactory, A, Ctx] private[http4s] (
     val mName: String,
     val mVersion: String,
     val mConfig: McpHttpConfig,
@@ -425,6 +425,8 @@ class StreamingMcpHttpBuilder[F[_]: Async, A, Ctx] private[http4s] (
     * store but whose live in-process objects have been evicted (e.g. on a different process after a restart).
     */
   private def buildReconstruct: String => F[McpSession[F]] = (id: String) =>
+    val logger = org.typelevel.log4cats.LoggerFactory[F]
+      .getLoggerFromName("net.andimiller.mcp.http4s.StreamingMcpHttpBuilder")
     for
       sinkPair      <- sinkFactory(id).allocated
       (sink, _)      = sinkPair
@@ -432,25 +434,32 @@ class StreamingMcpHttpBuilder[F[_]: Async, A, Ctx] private[http4s] (
       (cc, _)        = ccPair
       ctx            = SessionContext(id, cc, refsFactory(id))
       server        <- newSessionFactory(id)(ctx)
-      handler        = new RequestHandler[F](server, cc.requester, cc.cancellation)
+      handler        = new RequestHandler[F](id, server, cc.requester, cc.cancellation)
       subscriptions <- Ref.of[F, Set[String]](Set.empty)
+      _             <- logger.info(Map("sessionId" -> id))("session reconstructed from store")
     yield McpSession(id, handler, cc, subscriptions)
 
   /** As [[buildReconstruct]], but materialises the rebuilt `Server[F]` with the authenticated user — so tool-visibility
     * predicates (`withToolIf` etc.) evaluate against the same identity that originally created the session, even when
     * the rebuild happens on a different process.
     */
-  private def buildAuthReconstruct: (String, Any) => F[McpSession[F]] = (id: String, user: Any) =>
-    for
-      sinkPair      <- sinkFactory(id).allocated
-      (sink, _)      = sinkPair
-      ccPair        <- ClientChannel.fromSink[F](sink).allocated
-      (cc, _)        = ccPair
-      ctx            = SessionContext(id, cc, refsFactory(id))
-      server        <- newAuthenticatedSessionFactory(id)(user, ctx)
-      handler        = new RequestHandler[F](server, cc.requester, cc.cancellation)
-      subscriptions <- Ref.of[F, Set[String]](Set.empty)
-    yield McpSession(id, handler, cc, subscriptions)
+  private def buildAuthReconstruct(using encoder: Encoder[Any]): (String, Any) => F[McpSession[F]] =
+    (id: String, user: Any) =>
+      val logger = org.typelevel.log4cats.LoggerFactory[F]
+        .getLoggerFromName("net.andimiller.mcp.http4s.StreamingMcpHttpBuilder")
+      for
+        sinkPair      <- sinkFactory(id).allocated
+        (sink, _)      = sinkPair
+        ccPair        <- ClientChannel.fromSink[F](sink).allocated
+        (cc, _)        = ccPair
+        ctx            = SessionContext(id, cc, refsFactory(id))
+        server        <- newAuthenticatedSessionFactory(id)(user, ctx)
+        handler        = new RequestHandler[F](id, server, cc.requester, cc.cancellation)
+        subscriptions <- Ref.of[F, Set[String]](Set.empty)
+        _             <- logger.info(
+               Map("sessionId" -> id, "user" -> StreamableHttpTransport.encodeUserForLog(user))
+             )("session reconstructed from store")
+      yield McpSession(id, handler, cc, subscriptions)
 
   def routes(using UUIDGen[F]): Resource[F, HttpRoutes[F]] =
     given Console[F] = Console.make[F]
@@ -499,7 +508,7 @@ class StreamingMcpHttpBuilder[F[_]: Async, A, Ctx] private[http4s] (
               sinkFactory,
               refsFactory,
               store
-            )(using Async[F], summon[UUIDGen[F]], info.eqAny)
+            )(using Async[F], summon[UUIDGen[F]], summon[org.typelevel.log4cats.LoggerFactory[F]], info.eqAny, info.encoderAny)
           }
         case None =>
           val storeR: Resource[F, SessionStore[F]] = mSessionStoreFactory match

@@ -14,6 +14,7 @@ import fs2.Stream
 import io.circe.Json
 import io.circe.parser.decode
 import io.circe.syntax.*
+import org.typelevel.log4cats.LoggerFactory
 
 /** A [[NotificationSink]] backed by Redis pub/sub, enabling notifications to route across multiple server instances.
   *
@@ -21,11 +22,12 @@ import io.circe.syntax.*
   */
 object RedisNotificationSink:
 
-  def create[F[_]: Async](
+  def create[F[_]: Async: LoggerFactory](
       pubSub: PubSubCommands[F, [x] =>> Stream[F, x], String, String],
       sessionId: String
   ): Resource[F, NotificationSink[F]] =
     val channel = RedisChannel(s"mcp:notifications:$sessionId")
+    val logger  = LoggerFactory[F].getLoggerFromName("net.andimiller.mcp.redis.RedisNotificationSink")
     Resource.pure(
       new NotificationSink[F]:
         def notify(method: String, params: Json): F[Unit] =
@@ -50,6 +52,11 @@ object RedisNotificationSink:
 
         def subscribe: Stream[F, Message] =
           pubSub.subscribe(channel).evalMap { str =>
-            Async[F].fromEither(decode[Message](str))
+            decode[Message](str) match
+              case Right(m) => Async[F].pure(m)
+              case Left(t)  =>
+                logger.error(Map("channel" -> channel.underlying), t)(
+                  "Redis pubsub message decode failed"
+                ) *> Async[F].raiseError(t)
           }
     )

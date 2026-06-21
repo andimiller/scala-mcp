@@ -24,6 +24,8 @@ import org.http4s.HttpRoutes
 import org.http4s.MediaType
 import org.http4s.dsl.io.*
 import org.http4s.headers.`Content-Type`
+import org.typelevel.log4cats.LoggerFactory
+import org.typelevel.log4cats.slf4j.Slf4jFactory
 
 // ── request / response types ────────────────────────────────────────
 
@@ -50,6 +52,8 @@ case class MessageResponse(message: String) derives Encoder.AsObject, JsonSchema
 // ── shared builder setup ────────────────────────────────────────────
 
 object PomodoroMcpServer extends IOApp.Simple:
+
+  given LoggerFactory[IO] = Slf4jFactory.create[IO]
 
   /** A tiny tomato SVG, served at `/icon.svg` alongside the MCP routes. Some clients fall back to fetching the icon as
     * an HTTPS resource rather than reading a `data:` URI from `serverInfo.icons`.

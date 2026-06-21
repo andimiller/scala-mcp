@@ -14,6 +14,7 @@ import fs2.Stream
 import fs2.concurrent.Topic
 import io.circe.Json
 import io.circe.syntax.*
+import org.typelevel.log4cats.LoggerFactory
 
 /** Drives the client-side message loop over a [[MessageChannel]].
   *
@@ -49,7 +50,7 @@ object ClientSession:
     val default: Config = Config()
 
   /** Build a session over an arbitrary [[MessageChannel]] with a no-op [[ClientHandler]]. */
-  def resource[F[_]: Async](
+  def resource[F[_]: Async: LoggerFactory](
       channel: MessageChannel[F]
   ): Resource[F, UninitializedMcpClient[F]] =
     resource(channel, ClientHandler.noop[F], Config.default)
@@ -57,7 +58,7 @@ object ClientSession:
   /** Build a session over an arbitrary [[MessageChannel]] with the given handler. The fiber that reads the channel runs
     * in a [[Supervisor]]; when the resource is released it is cancelled and the channel closed.
     */
-  def resource[F[_]: Async](
+  def resource[F[_]: Async: LoggerFactory](
       channel: MessageChannel[F],
       handler: ClientHandler[F],
       config: Config = Config.default
@@ -80,13 +81,14 @@ object ClientSession:
 
   // ── Internals ──────────────────────────────────────────────────────────
 
-  private def loop[F[_]: Async](
+  private def loop[F[_]: Async: LoggerFactory](
       channel: MessageChannel[F],
       requester: ClientRequester[F],
       handler: ClientHandler[F],
       topic: Topic[F, Message.Notification],
       config: Config
   ): Stream[F, Unit] =
+    val logger = LoggerFactory[F].getLoggerFromName("net.andimiller.mcp.core.client.ClientSession")
     channel.incoming.parEvalMapUnordered(config.maxConcurrent) {
       case Message.Response(_, id, result, error) =>
         val resolved: Either[JsonRpcError, Json] = error match
@@ -95,7 +97,11 @@ object ClientSession:
         requester.completeResponse(id, resolved)
 
       case n: Message.Notification =>
-        handler.handleNotification(n.method, n.params).attempt.void *> topic.publish1(n).void
+        handler
+          .handleNotification(n.method, n.params)
+          .handleErrorWith { t =>
+            logger.error(Map("method" -> n.method), t)("Client notification handler raised")
+          } *> topic.publish1(n).void
 
       case Message.Request(_, id, method, params) =>
         ClientHandler.respond(handler, method, id, params).flatMap(channel.send)

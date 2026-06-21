@@ -9,6 +9,7 @@ import net.andimiller.mcp.http4s.StreamingMcpHttpBuilder
 import dev.profunktor.redis4cats.RedisCommands
 import dev.profunktor.redis4cats.pubsub.PubSubCommands
 import fs2.Stream
+import org.typelevel.log4cats.LoggerFactory
 
 /** Convenience wiring for configuring a [[StreamingMcpHttpBuilder]] with Redis-backed session management.
   *
@@ -37,7 +38,7 @@ object McpRedis:
     * @param ttl
     *   TTL for session keys and state (default: 1 hour)
     */
-  def configure[F[_]: Async, A, Ctx](
+  def configure[F[_]: Async: LoggerFactory, A, Ctx](
       redis: RedisCommands[F, String, String],
       pubSub: PubSubCommands[F, [x] =>> Stream[F, x], String, String],
       ttl: FiniteDuration = 1.hour

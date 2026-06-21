@@ -34,6 +34,7 @@ usual choice on JVM and Native, fetch-client on Scala.js.
 
 ```scala mdoc:compile-only
 import cats.effect.IO
+import net.andimiller.mcp.core.logging.NoOpLogging.given
 import net.andimiller.mcp.core.protocol.Implementation
 import net.andimiller.mcp.stdio.StdioMcpClient
 
@@ -70,6 +71,7 @@ request/response over `POST`).
 
 ```scala mdoc:compile-only
 import cats.effect.IO
+import net.andimiller.mcp.core.logging.NoOpLogging.given
 import net.andimiller.mcp.core.protocol.Implementation
 import net.andimiller.mcp.http4s.StreamableHttpMcpClient
 import org.http4s.Uri

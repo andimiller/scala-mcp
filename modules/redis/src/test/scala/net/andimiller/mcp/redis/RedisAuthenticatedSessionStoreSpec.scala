@@ -18,6 +18,8 @@ import io.circe.Decoder
 import io.circe.Encoder
 import munit.CatsEffectSuite
 import org.testcontainers.containers.wait.strategy.Wait
+import org.typelevel.log4cats.LoggerFactory
+import org.typelevel.log4cats.testing.TestingLoggerFactory
 
 /** Cross-process Redis integration test for [[RedisAuthenticatedSessionStore]].
   *
@@ -26,6 +28,8 @@ import org.testcontainers.containers.wait.strategy.Wait
   * receives the user identity stored by A so the rebuilt `Server[F]` can apply tool-visibility predicates.
   */
 class RedisAuthenticatedSessionStoreSpec extends CatsEffectSuite with TestContainerForAll:
+
+  private given LoggerFactory[IO] = TestingLoggerFactory.atomic[IO]()
 
   case class User(name: String, isAdmin: Boolean) derives Encoder.AsObject, Decoder
 

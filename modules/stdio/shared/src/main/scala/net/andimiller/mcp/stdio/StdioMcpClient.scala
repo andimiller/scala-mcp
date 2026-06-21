@@ -24,6 +24,7 @@ import fs2.io.process.ProcessBuilder
 import fs2.io.process.Processes
 import io.circe.parser.decode
 import io.circe.syntax.*
+import org.typelevel.log4cats.LoggerFactory
 
 /** MCP client over stdio — counterpart to [[StdioTransport]] for the server side.
   *
@@ -47,14 +48,14 @@ object StdioMcpClient:
     * @param processOut
     *   stream of bytes from the child's stdout
     */
-  def fromStreams[F[_]: Async](
+  def fromStreams[F[_]: Async: LoggerFactory](
       processIn: Pipe[F, Byte, Nothing],
       processOut: Stream[F, Byte]
   ): Resource[F, UninitializedMcpClient[F]] =
     fromStreams(processIn, processOut, ClientHandler.noop[F])
 
   /** Same as [[fromStreams]] above, but with a user-supplied [[ClientHandler]] for server-initiated requests. */
-  def fromStreams[F[_]: Async](
+  def fromStreams[F[_]: Async: LoggerFactory](
       processIn: Pipe[F, Byte, Nothing],
       processOut: Stream[F, Byte],
       handler: ClientHandler[F]
@@ -78,7 +79,7 @@ object StdioMcpClient:
     * The child's stderr is consumed and discarded. If you need to surface it, drop down to [[fromStreams]] and wire it
     * yourself.
     */
-  def spawn[F[_]: Async](
+  def spawn[F[_]: Async: LoggerFactory](
       command: String,
       args: List[String] = Nil,
       env: Map[String, String] = Map.empty,
@@ -87,7 +88,7 @@ object StdioMcpClient:
     spawn(command, args, env, workingDirectory, ClientHandler.noop[F])
 
   /** Same as [[spawn]] above, but with a user-supplied [[ClientHandler]]. */
-  def spawn[F[_]: Async](
+  def spawn[F[_]: Async: LoggerFactory](
       command: String,
       args: List[String],
       env: Map[String, String],
@@ -109,7 +110,7 @@ object StdioMcpClient:
   /** Entry point for the fluent builder. Configure the subprocess and the initialize parameters, then call
     * [[StdioClientBuilder.connect]] to get a fully-initialised [[McpClient]].
     */
-  def builder[F[_]: Async]: StdioClientBuilder[F] = StdioClientBuilder.empty[F]
+  def builder[F[_]: Async: LoggerFactory]: StdioClientBuilder[F] = StdioClientBuilder.empty[F]
 
   // ── Internals ─────────────────────────────────────────────────────
 
@@ -136,7 +137,7 @@ object StdioMcpClient:
     def close: F[Unit] = outbound.offer(None)
 
 /** Fluent builder for [[StdioMcpClient]] that wraps spawn + initialize. */
-final class StdioClientBuilder[F[_]: Async] private (
+final class StdioClientBuilder[F[_]: Async: LoggerFactory] private (
     private val command: Option[String],
     private val args: List[String],
     private val env: Map[String, String],
@@ -195,7 +196,7 @@ final class StdioClientBuilder[F[_]: Async] private (
 
 object StdioClientBuilder:
 
-  def empty[F[_]: Async]: StdioClientBuilder[F] = new StdioClientBuilder[F](
+  def empty[F[_]: Async: LoggerFactory]: StdioClientBuilder[F] = new StdioClientBuilder[F](
     command = None,
     args = Nil,
     env = Map.empty,

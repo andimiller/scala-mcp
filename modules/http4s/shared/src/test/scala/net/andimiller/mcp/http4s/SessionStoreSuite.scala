@@ -12,8 +12,12 @@ import net.andimiller.mcp.core.server.RequestHandler
 import net.andimiller.mcp.core.server.ServerRequester
 
 import munit.CatsEffectSuite
+import org.typelevel.log4cats.LoggerFactory
+import org.typelevel.log4cats.testing.TestingLoggerFactory
 
 class SessionStoreSuite extends CatsEffectSuite:
+
+  private given LoggerFactory[IO] = TestingLoggerFactory.atomic[IO]()
 
   private def fakeSession(id: String): IO[McpSession[IO]] =
     for
@@ -21,7 +25,7 @@ class SessionStoreSuite extends CatsEffectSuite:
       server    <- DefaultServer[IO](Implementation("t", "0"), ServerCapabilities())
       cancel    <- CancellationRegistry.create[IO]
       requester <- ServerRequester.noop[IO]
-      handler    = new RequestHandler[IO](server, requester, cancel)
+      handler    = new RequestHandler[IO](id, server, requester, cancel)
       subs      <- Ref.of[IO, Set[String]](Set.empty)
     yield McpSession(id, handler, cc, subs)
 

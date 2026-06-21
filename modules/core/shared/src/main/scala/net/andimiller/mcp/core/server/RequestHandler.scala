@@ -10,6 +10,7 @@ import net.andimiller.mcp.core.protocol.jsonrpc.RequestId
 
 import io.circe.Json
 import io.circe.syntax.*
+import org.typelevel.log4cats.LoggerFactory
 
 /** Pure request→response message handler extracted from ServerSession.
   *
@@ -20,11 +21,14 @@ import io.circe.syntax.*
   *
   * This is transport-agnostic and can be shared between stdio and HTTP transports.
   */
-class RequestHandler[F[_]: Async](
+class RequestHandler[F[_]: Async: LoggerFactory](
+    sessionId: String,
     server: Server[F],
     requester: ServerRequester[F],
     cancellation: CancellationRegistry[F]
 ):
+
+  private val logger = LoggerFactory[F].getLoggerFromName("net.andimiller.mcp.core.server.RequestHandler")
 
   /** Methods that bypass the cancellation registry. `initialize` MUST NOT be cancelled per spec (MCP 2025-11-25);
     * `ping` is trivial and used for liveness, so cancelling it is pointless.
@@ -40,13 +44,20 @@ class RequestHandler[F[_]: Async](
         else cancellation.track(id)(handleRequest(id, method, params))
 
       dispatched.handleErrorWith { error =>
-        Some(Message.errorResponse(id, JsonRpcError.internalError(error.getMessage))).pure[F]
+        logger.error(
+          Map("sessionId" -> sessionId, "requestId" -> id.toString, "method" -> method),
+          error
+        )("JSON-RPC request handler raised") *>
+          Some(Message.errorResponse(id, JsonRpcError.internalError(error.getMessage))).pure[F]
       }
 
     case Message.Notification(_, method, params) =>
       handleNotification(method, params)
         .as(None)
-        .handleErrorWith(_ => None.pure[F])
+        .handleErrorWith { error =>
+          logger.error(Map("sessionId" -> sessionId, "method" -> method), error)("Notification handler raised") *>
+            None.pure[F]
+        }
 
     case Message.Response(_, id, result, error) =>
       val resolved: Either[JsonRpcError, Json] = error match
@@ -54,9 +65,26 @@ class RequestHandler[F[_]: Async](
         case None    => Right(result.getOrElse(Json.obj()))
       requester.completeResponse(id, resolved).as(None)
 
+  /** Build the structured-log context for a request. Tool name, resource URI, and prompt name are pulled from `params`
+    * (when present) so operators can see *what* was called without us logging the full arguments — which may contain
+    * user input.
+    */
+  private def requestLogFields(id: RequestId, method: String, params: Option[Json]): Map[String, String] =
+    val base   = Map("sessionId" -> sessionId, "requestId" -> id.toString, "method" -> method)
+    val cursor = params.map(_.hcursor)
+    method match
+      case "tools/call"                                                =>
+        cursor.flatMap(_.downField("name").as[String].toOption).fold(base)(n => base + ("tool" -> n))
+      case "resources/read" | "resources/subscribe" | "resources/unsubscribe" =>
+        cursor.flatMap(_.downField("uri").as[String].toOption).fold(base)(u => base + ("uri" -> u))
+      case "prompts/get"                                               =>
+        cursor.flatMap(_.downField("name").as[String].toOption).fold(base)(n => base + ("prompt" -> n))
+      case _                                                           => base
+
   /** Handle a JSON-RPC request and return a response message. */
   private def handleRequest(id: RequestId, method: String, params: Option[Json]): F[Message] =
-    val result = method match
+    val logFields = requestLogFields(id, method, params)
+    val result    = logger.info(logFields)("dispatching request") *> (method match
       case "initialize" =>
         handleInitialize(params)
 
@@ -116,10 +144,11 @@ class RequestHandler[F[_]: Async](
             Async[F].raiseError(new Exception("Missing or invalid prompt get request"))
 
       case unknown =>
-        Async[F].raiseError(new Exception(s"Unknown method: $unknown"))
+        Async[F].raiseError(new Exception(s"Unknown method: $unknown")))
 
     result.map(json => Message.response(id, json)).handleErrorWith { error =>
-      Message.errorResponse(id, JsonRpcError.internalError(error.getMessage)).pure[F]
+      logger.error(logFields, error)("JSON-RPC method dispatch failed") *>
+        Message.errorResponse(id, JsonRpcError.internalError(error.getMessage)).pure[F]
     }
 
   /** Handle the initialize request. */

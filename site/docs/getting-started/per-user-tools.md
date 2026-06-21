@@ -15,6 +15,7 @@ patchy today.
 import cats.Eq
 import cats.effect.IO
 import io.circe.{Decoder, Encoder}
+import net.andimiller.mcp.core.logging.NoOpLogging.given
 import net.andimiller.mcp.core.schema.JsonSchema
 import net.andimiller.mcp.core.server.*
 import net.andimiller.mcp.http4s.McpHttp

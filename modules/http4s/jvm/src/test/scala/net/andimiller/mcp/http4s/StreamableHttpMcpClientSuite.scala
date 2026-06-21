@@ -19,9 +19,13 @@ import munit.CatsEffectSuite
 import org.http4s.Uri
 import org.http4s.ember.client.EmberClientBuilder
 import org.http4s.ember.server.EmberServerBuilder
+import org.typelevel.log4cats.LoggerFactory
+import org.typelevel.log4cats.testing.TestingLoggerFactory
 
 /** End-to-end test: real http4s server + real ember-client wired through `StreamableHttpMcpClient`. */
 class StreamableHttpMcpClientSuite extends CatsEffectSuite:
+
+  private given LoggerFactory[IO] = TestingLoggerFactory.atomic[IO]()
 
   override def munitIOTimeout: FiniteDuration = 30.seconds
 

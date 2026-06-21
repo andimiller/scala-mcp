@@ -70,6 +70,7 @@ capabilities the client advertised during `initialize`. Pass a populated
 
 ```scala mdoc:compile-only
 import cats.effect.IO
+import net.andimiller.mcp.core.logging.NoOpLogging.given
 import net.andimiller.mcp.core.protocol.{
   ClientCapabilities, ElicitationCapabilities, FormElicitationCapability,
   Implementation, RootsCapabilities, SamplingCapabilities

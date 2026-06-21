@@ -17,8 +17,12 @@ import io.circe.Encoder
 import io.circe.Json
 import munit.CatsEffectSuite
 import org.http4s.*
+import org.typelevel.log4cats.LoggerFactory
+import org.typelevel.log4cats.testing.TestingLoggerFactory
 
 class StreamingMcpHttpBuilderAuthSpec extends CatsEffectSuite:
+
+  private given LoggerFactory[IO] = TestingLoggerFactory.atomic[IO]()
 
   override def munitIOTimeout: FiniteDuration = 10.seconds
 

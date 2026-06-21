@@ -24,6 +24,7 @@ import com.comcast.ip4s.*
 import dev.profunktor.redis4cats.RedisCommands
 import dev.profunktor.redis4cats.pubsub.PubSubCommands
 import fs2.Stream
+import net.andimiller.mcp.core.logging.NoOpLogging.given
 import net.andimiller.mcp.http4s.McpHttp
 import net.andimiller.mcp.redis.McpRedis
 

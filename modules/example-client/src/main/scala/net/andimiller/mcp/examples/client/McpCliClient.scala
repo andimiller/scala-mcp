@@ -22,6 +22,8 @@ import org.http4s.Headers
 import org.http4s.Uri
 import org.http4s.ember.client.EmberClientBuilder
 import org.typelevel.ci.CIString
+import org.typelevel.log4cats.LoggerFactory
+import org.typelevel.log4cats.noop.NoOpFactory
 
 /** Tiny interactive REPL over an MCP server reachable via stdio or streamable HTTP.
   *
@@ -38,6 +40,8 @@ object McpCliClient
       header = "Interactive MCP client over stdio or HTTP",
       version = "0.1.0"
     ):
+
+  given LoggerFactory[IO] = NoOpFactory[IO]
 
   // ── CLI definitions ────────────────────────────────────────────────
 

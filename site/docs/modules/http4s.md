@@ -16,6 +16,7 @@ A minimal HTTP server built on `McpHttp.basic` looks like:
 ```scala mdoc:compile-only
 import cats.effect.{IO, IOApp}
 import com.comcast.ip4s.*
+import net.andimiller.mcp.core.logging.NoOpLogging.given
 import net.andimiller.mcp.http4s.McpHttp
 
 object MyHttpServer extends IOApp.Simple:
@@ -43,6 +44,7 @@ MCP server. Enable it on your server with `.withExplorer(...)`:
 
 ```scala mdoc:silent
 import cats.effect.IO
+import net.andimiller.mcp.core.logging.NoOpLogging.given
 import net.andimiller.mcp.http4s.McpHttp
 
 val builder =

@@ -1,0 +1,26 @@
+<configuration>
+  <!-- Pattern includes the log4cats structured context map via %mdc so the
+       sessionId / tool / user fields emitted by scala-mcp surface in the
+       console output. Wrapped in braces so it renders as "{sessionId=...}"
+       when populated and stays empty otherwise. -->
+  <appender name="STDERR" class="ch.qos.logback.core.ConsoleAppender">
+    <target>System.err</target>
+    <encoder>
+      <pattern>%d{HH:mm:ss.SSS} %-5level [%thread] %logger{36} - %msg %mdc%n</pattern>
+    </encoder>
+  </appender>
+
+  <root level="INFO">
+    <appender-ref ref="STDERR" />
+  </root>
+
+  <!-- redis4cats logs every command at DEBUG by default; INFO at root keeps
+       those quiet but pin explicitly in case the lib raises its default. -->
+  <logger name="dev.profunktor.redis4cats" level="INFO" />
+  <!-- Lettuce (the underlying Redis client) is similarly chatty. -->
+  <logger name="io.lettuce" level="INFO" />
+  <!-- http4s / netty / ember internals — keep to WARN so we only hear them
+       on actual problems, not on every connection lifecycle event. -->
+  <logger name="org.http4s" level="WARN" />
+  <logger name="io.netty" level="WARN" />
+</configuration>
