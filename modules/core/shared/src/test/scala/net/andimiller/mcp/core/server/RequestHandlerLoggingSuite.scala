@@ -48,7 +48,11 @@ class RequestHandlerLoggingSuite extends CatsEffectSuite:
       handler <- buildHandler(factory, tools = List(throwingTool))
       reqId    = RequestId.fromLong(42L)
       _       <- handler.handle(
-             Message.request(reqId, "tools/call", Some(io.circe.parser.parse("""{"name":"explode","arguments":{}}""").toOption.get))
+             Message.request(
+               reqId,
+               "tools/call",
+               Some(io.circe.parser.parse("""{"name":"explode","arguments":{}}""").toOption.get)
+             )
            )
       logged <- factory.logged
     yield

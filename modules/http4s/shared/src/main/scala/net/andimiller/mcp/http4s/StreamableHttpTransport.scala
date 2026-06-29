@@ -193,7 +193,7 @@ object StreamableHttpTransport:
       refsFactory: String => SessionRefs[F],
       store: AuthenticatedSessionStore[F, U]
   ): HttpRoutes[F] =
-    val dsl    = Http4sDsl[F]
+    val dsl = Http4sDsl[F]
     import dsl.*
     val logger = LoggerFactory[F].getLoggerFromName("net.andimiller.mcp.http4s.StreamableHttpTransport")
 
@@ -210,7 +210,7 @@ object StreamableHttpTransport:
           case Some(_)                         =>
             logger.info(Map("sessionId" -> sessionId, "reason" -> "credential-mismatch"))("authorization rejected") *>
               Forbidden("Credential mismatch").map(Left(_))
-          case None                            =>
+          case None =>
             logger.info(Map("sessionId" -> sessionId, "reason" -> "session-not-found"))("authorization rejected") *>
               NotFound("Session not found").map(Left(_))
         },
@@ -240,7 +240,7 @@ object StreamableHttpTransport:
       validateSession: (A, String) => F[Either[Response[F], Unit]],
       store: SessionStore[F]
   ): HttpRoutes[F] =
-    val dsl    = Http4sDsl[F]
+    val dsl = Http4sDsl[F]
     import dsl.*
     val logger = LoggerFactory[F].getLoggerFromName("net.andimiller.mcp.http4s.StreamableHttpTransport")
 
@@ -251,7 +251,7 @@ object StreamableHttpTransport:
           case Left(resp)       => Async[F].pure(resp)
           case Right(authState) =>
             readBody(req).flatMap {
-              case Left(err)      =>
+              case Left(err) =>
                 logger.info(Map("error" -> err))("JSON-RPC parse failure") *> BadRequest(err)
               case Right(message) =>
                 message match

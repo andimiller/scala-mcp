@@ -94,7 +94,7 @@ object StreamableHttpMcpClient:
             )(fiber =>
               shutdown.complete(()).attempt.void *>
                 fiber.cancel.timeoutTo(2.seconds, Async[F].unit).attempt.flatMap {
-                  case Left(t)  =>
+                  case Left(t) =>
                     logger.warn(Map("task" -> "sseFiberCancel"), t)("background task failure ignored")
                   case Right(_) => Async[F].unit
                 }

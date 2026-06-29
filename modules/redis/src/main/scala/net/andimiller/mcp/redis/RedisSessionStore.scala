@@ -92,7 +92,7 @@ class RedisAuthenticatedSessionStore[F[_]: Async: LoggerFactory, U: Encoder: Dec
     ttl: FiniteDuration
 ) extends AuthenticatedSessionStore[F, U]:
 
-  private val logger    = LoggerFactory[F].getLoggerFromName("net.andimiller.mcp.redis.RedisAuthenticatedSessionStore")
+  private val logger = LoggerFactory[F].getLoggerFromName("net.andimiller.mcp.redis.RedisAuthenticatedSessionStore")
 
   private def key(id: String): String = s"mcp:session:$id"
 
@@ -139,7 +139,7 @@ class RedisAuthenticatedSessionStore[F[_]: Async: LoggerFactory, U: Encoder: Dec
           case Left(t)  =>
             logger.error(Map("sessionId" -> sessionId), t)("Redis user decode failed") *>
               Async[F].raiseError(t)
-      case None      => Async[F].pure(None)
+      case None => Async[F].pure(None)
     }
 
   def removeUser(sessionId: String): F[Unit] =

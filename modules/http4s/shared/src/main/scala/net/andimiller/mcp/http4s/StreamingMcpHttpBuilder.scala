@@ -425,7 +425,8 @@ class StreamingMcpHttpBuilder[F[_]: Async: org.typelevel.log4cats.LoggerFactory,
     * store but whose live in-process objects have been evicted (e.g. on a different process after a restart).
     */
   private def buildReconstruct: String => F[McpSession[F]] = (id: String) =>
-    val logger = org.typelevel.log4cats.LoggerFactory[F]
+    val logger = org.typelevel.log4cats
+      .LoggerFactory[F]
       .getLoggerFromName("net.andimiller.mcp.http4s.StreamingMcpHttpBuilder")
     for
       sinkPair      <- sinkFactory(id).allocated
@@ -445,7 +446,8 @@ class StreamingMcpHttpBuilder[F[_]: Async: org.typelevel.log4cats.LoggerFactory,
     */
   private def buildAuthReconstruct(using encoder: Encoder[Any]): (String, Any) => F[McpSession[F]] =
     (id: String, user: Any) =>
-      val logger = org.typelevel.log4cats.LoggerFactory[F]
+      val logger = org.typelevel.log4cats
+        .LoggerFactory[F]
         .getLoggerFromName("net.andimiller.mcp.http4s.StreamingMcpHttpBuilder")
       for
         sinkPair      <- sinkFactory(id).allocated
@@ -508,7 +510,13 @@ class StreamingMcpHttpBuilder[F[_]: Async: org.typelevel.log4cats.LoggerFactory,
               sinkFactory,
               refsFactory,
               store
-            )(using Async[F], summon[UUIDGen[F]], summon[org.typelevel.log4cats.LoggerFactory[F]], info.eqAny, info.encoderAny)
+            )(using
+              Async[F],
+              summon[UUIDGen[F]],
+              summon[org.typelevel.log4cats.LoggerFactory[F]],
+              info.eqAny,
+              info.encoderAny
+            )
           }
         case None =>
           val storeR: Resource[F, SessionStore[F]] = mSessionStoreFactory match

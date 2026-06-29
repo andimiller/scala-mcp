@@ -73,13 +73,13 @@ class RequestHandler[F[_]: Async: LoggerFactory](
     val base   = Map("sessionId" -> sessionId, "requestId" -> id.toString, "method" -> method)
     val cursor = params.map(_.hcursor)
     method match
-      case "tools/call"                                                =>
+      case "tools/call" =>
         cursor.flatMap(_.downField("name").as[String].toOption).fold(base)(n => base + ("tool" -> n))
       case "resources/read" | "resources/subscribe" | "resources/unsubscribe" =>
         cursor.flatMap(_.downField("uri").as[String].toOption).fold(base)(u => base + ("uri" -> u))
-      case "prompts/get"                                               =>
+      case "prompts/get" =>
         cursor.flatMap(_.downField("name").as[String].toOption).fold(base)(n => base + ("prompt" -> n))
-      case _                                                           => base
+      case _ => base
 
   /** Handle a JSON-RPC request and return a response message. */
   private def handleRequest(id: RequestId, method: String, params: Option[Json]): F[Message] =

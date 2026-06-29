@@ -113,6 +113,8 @@ lazy val http4s = crossProject(JVMPlatform, JSPlatform, NativePlatform)
   .jvmSettings(
     // Bundle the Scala.js explorer SPA into the JVM build's resources so the embedded http4s
     // server can serve it under /explorer. Native and JS builds don't ship the SPA.
+    // Source maps are excluded — they tripled the published jar size and aren't useful to
+    // downstream consumers (browser devtools can't resolve them through the http4s endpoint).
     Compile / resourceGenerators += Def.task {
       val _ = (LocalRootProject / buildExplorer).value
 
@@ -120,9 +122,18 @@ lazy val http4s = crossProject(JVMPlatform, JSPlatform, NativePlatform)
       val targetDir = (Compile / resourceManaged).value / "explorer"
       IO.delete(targetDir)
       IO.copyDirectory(distDir, targetDir)
+      // Remove source maps after copy; sbt's IO.copyDirectory doesn't expose a filter.
+      Path.allSubpaths(targetDir).map(_._1).foreach { f =>
+        if (f.getName.endsWith(".map")) IO.delete(f)
+      }
 
       Path.allSubpaths(targetDir).map(_._1).toSeq
-    }.taskValue
+    }.taskValue,
+    // The explorer SPA isn't Scala source — keep it out of the sources jar. Without this,
+    // resourceGenerators output leaks into packageSrc and inflates the sources artifact.
+    Compile / packageSrc / mappings := (Compile / packageSrc / mappings).value.filterNot { case (_, path) =>
+      path.startsWith("explorer/")
+    }
   )
   .jsSettings(noCoverage *)
   .nativeSettings(noCoverage *)
@@ -284,10 +295,13 @@ buildExplorer := {
   log.info("Compiling explorer Scala.js...")
   (explorer / Compile / fastLinkJS).value
 
-  // 2. Run yarn build in explorer directory
+  // 2. Run yarn build in explorer directory. Wipe dist/ first — Parcel keeps every
+  // hashed artifact it has ever emitted, which would otherwise ship duplicate copies
+  // of the SPA in the mcp-http4s jar.
   log.info("Bundling with Parcel...")
   val explorerDir = (explorer / baseDirectory).value
-  val exitCode    = scala.sys.process.Process("yarn" :: "build" :: Nil, explorerDir).!
+  IO.delete(explorerDir / "dist")
+  val exitCode = scala.sys.process.Process("yarn" :: "build" :: Nil, explorerDir).!
   if (exitCode != 0) sys.error("yarn build failed")
 
   log.info("Explorer build complete.")
